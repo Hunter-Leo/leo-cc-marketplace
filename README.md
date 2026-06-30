@@ -24,7 +24,7 @@ Personal development toolkit with commands and skills:
 | Component | Usage | Description |
 |-----------|-------|-------------|
 | `/agnes-json-img` | `/agnes-json-img prompt.json` | Generate Agnes AI images from structured JSON prompts — avoids shell escaping traps |
-| `/calm` | `/calm` | Pause, reset, and analyze when stuck on a bug. Forces structured root-cause analysis before proposing fixes |
+| `/calm` | `/calm` | Pause, reset, and analyze when stuck on a bug. Forces structured root-cause analysis before proposing fixes. Helps mitigate LLM context anxiety by breaking the cycle of rushed fixes |
 | `/spec-coding-skill` | `/spec-coding-skill` | Spec-driven, round-based coding workflow: initialization → prereq tasks → algorithm design → implementation plan → task planning → execution. Includes TDD, debugging, architecture review, and dual-axis review methods |
 
 ## Local Development
