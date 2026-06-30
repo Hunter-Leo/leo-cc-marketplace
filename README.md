@@ -2,31 +2,21 @@
 
 A curated collection of Claude Code plugins for productivity, development workflows, and team collaboration.
 
-## Plugins
-
-| Plugin | Description |
-|--------|-------------|
-| [example-plugin](plugins/example-plugin) | Starter plugin demonstrating Claude Code plugin structure |
-
 ## Usage
 
 ### Add this marketplace
 
 ```bash
-# From GitHub (once pushed)
-/plugin marketplace add Fightinglee/leo-cc-marketplace
-
-# Or from local path
-/plugin marketplace add ./path/to/leo-cc-marketplace
+/plugin marketplace add Hunter-Leo/leo-cc-marketplace
 ```
 
 ### Install a plugin
 
 ```bash
-/plugin install example-plugin@leo-cc-marketplace
+/plugin install <plugin-name>@leo-cc-marketplace
 ```
 
-### Verify installation
+### Verify
 
 ```bash
 /plugin list
@@ -34,33 +24,21 @@ A curated collection of Claude Code plugins for productivity, development workfl
 
 ## Development
 
-### Prerequisites
-
-- [Claude Code](https://claude.ai/code) installed
-
-### Local testing
+### Validate marketplace structure
 
 ```bash
-# Validate marketplace structure
 claude plugin validate .
-
-# Add marketplace locally
-/plugin marketplace add .
-
-# Install a plugin
-/plugin install example-plugin@leo-cc-marketplace
 ```
 
 ### Creating a new plugin
 
 ```bash
-# Create plugin directory
+# Create plugin structure
 mkdir -p plugins/my-plugin/.claude-plugin
 mkdir -p plugins/my-plugin/skills/my-skill
 
-# Create plugin manifest (plugin.json)
-# Create skill file (SKILL.md)
-# Add entry to .claude-plugin/marketplace.json
+# Create plugin manifest
+# then add entry to .claude-plugin/marketplace.json
 ```
 
 ## License
