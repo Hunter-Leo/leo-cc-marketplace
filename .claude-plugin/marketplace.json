@@ -1,0 +1,13 @@
+{
+  "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
+  "name": "leo-cc-marketplace",
+  "owner": {
+    "name": "Fightinglee"
+  },
+  "metadata": {
+    "description": "A curated collection of Claude Code plugins for productivity, development workflows, and team collaboration",
+    "version": "1.0.0",
+    "pluginRoot": "./plugins"
+  },
+  "plugins": []
+}
