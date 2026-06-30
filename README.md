@@ -2,46 +2,47 @@
 
 A curated collection of Claude Code plugins for productivity, development workflows, and team collaboration.
 
-## Plugins
-
-| Plugin | Description |
-|--------|-------------|
-| [leo-dev-plugin](plugins/leo-dev-plugin) | Personal dev toolkit — agnes-json-img command, calm debug command, and spec-driven coding skill |
-
-## Usage
-
-### Add this marketplace
+## Quick Start
 
 ```bash
+# Add the marketplace
 /plugin marketplace add Hunter-Leo/leo-cc-marketplace
-```
 
-### Install a plugin
-
-```bash
+# Install the plugin
 /plugin install leo-dev-plugin@leo-cc-marketplace
-```
 
-### Verify
-
-```bash
+# Verify
 /plugin list
 ```
 
-## Development
+## Plugins
 
-### Validate marketplace structure
+### leo-dev-plugin
+
+Personal development toolkit with commands and skills:
+
+| Component | Usage | Description |
+|-----------|-------|-------------|
+| `/agnes-json-img` | `/agnes-json-img prompt.json` | Generate Agnes AI images from structured JSON prompts — avoids shell escaping traps |
+| `/calm` | `/calm` | Pause, reset, and analyze when stuck on a bug. Forces structured root-cause analysis before proposing fixes |
+| `/spec-coding-skill` | `/spec-coding-skill` | Spec-driven, round-based coding workflow: initialization → prereq tasks → algorithm design → implementation plan → task planning → execution. Includes TDD, debugging, architecture review, and dual-axis review methods |
+
+## Local Development
+
+### Validate
 
 ```bash
 claude plugin validate .
+claude plugin validate ./plugins/leo-dev-plugin
 ```
 
-### Creating a new plugin
+### Adding a new plugin
 
 ```bash
 mkdir -p plugins/my-plugin/.claude-plugin
 mkdir -p plugins/my-plugin/skills/my-skill
 mkdir -p plugins/my-plugin/commands
+# Create plugin.json, SKILL.md, then add entry to .claude-plugin/marketplace.json
 ```
 
 ## License
