@@ -2,6 +2,12 @@
 
 A curated collection of Claude Code plugins for productivity, development workflows, and team collaboration.
 
+## Plugins
+
+| Plugin | Description |
+|--------|-------------|
+| [leo-dev-plugin](plugins/leo-dev-plugin) | Personal dev toolkit — agnes-json-img command, calm debug command, and spec-driven coding skill |
+
 ## Usage
 
 ### Add this marketplace
@@ -13,7 +19,7 @@ A curated collection of Claude Code plugins for productivity, development workfl
 ### Install a plugin
 
 ```bash
-/plugin install <plugin-name>@leo-cc-marketplace
+/plugin install leo-dev-plugin@leo-cc-marketplace
 ```
 
 ### Verify
@@ -33,12 +39,9 @@ claude plugin validate .
 ### Creating a new plugin
 
 ```bash
-# Create plugin structure
 mkdir -p plugins/my-plugin/.claude-plugin
 mkdir -p plugins/my-plugin/skills/my-skill
-
-# Create plugin manifest
-# then add entry to .claude-plugin/marketplace.json
+mkdir -p plugins/my-plugin/commands
 ```
 
 ## License

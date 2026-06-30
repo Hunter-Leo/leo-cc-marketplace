@@ -9,5 +9,17 @@
     "version": "1.0.0",
     "pluginRoot": "./plugins"
   },
-  "plugins": []
+  "plugins": [
+    {
+      "name": "leo-dev-plugin",
+      "source": "./plugins/leo-dev-plugin",
+      "description": "Personal development toolkit: agnes-json-img command, calm command, and spec-driven coding skill",
+      "version": "1.0.0",
+      "author": {
+        "name": "Fightinglee"
+      },
+      "category": "development",
+      "keywords": ["coding", "agnes", "calm", "productivity", "spec-driven"]
+    }
+  ]
 }

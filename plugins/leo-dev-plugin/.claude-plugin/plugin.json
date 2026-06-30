@@ -1,0 +1,8 @@
+{
+  "name": "leo-dev-plugin",
+  "description": "Personal development toolkit: agnes-json-img, calm commands, and spec-driven coding skill",
+  "version": "1.0.0",
+  "author": {
+    "name": "Fightinglee"
+  }
+}
