@@ -6,7 +6,7 @@
   },
   "metadata": {
     "description": "A curated collection of Claude Code plugins for productivity, development workflows, and team collaboration",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "pluginRoot": "./plugins"
   },
   "plugins": [
@@ -14,7 +14,7 @@
       "name": "leo-dev-plugin",
       "source": "./plugins/leo-dev-plugin",
       "description": "Personal development toolkit: agnes-json-img command, calm command, and spec-driven coding skill",
-      "version": "1.0.0",
+      "version": "1.1.0",
       "author": {
         "name": "Fightinglee"
       },

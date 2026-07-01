@@ -38,4 +38,8 @@ plugins/
 
 | Plugin | Contents |
 |--------|----------|
-| `leo-dev-plugin` | `agnes-json-img` (Agnes AI JSON prompt command), `calm` (debug pause command), `spec-coding-skill` (spec-driven round-based coding workflow with 13 reference docs) |
+| `leo-dev-plugin` | `agnes-json-img` (Agnes AI JSON prompt command), `calm` (debug pause command), `spec-coding-skill` (spec-driven round-based coding workflow with references and utility scripts) |
+
+## Spec-Driven Development
+
+For spec-driven development workflow, see [plugins/leo-dev-plugin/skills/spec-coding-skill/SKILL.md](plugins/leo-dev-plugin/skills/spec-coding-skill/SKILL.md) — covers Phase A (需求构建) through Phase B (需求执行) with hard gates, execution discipline, and utility scripts.

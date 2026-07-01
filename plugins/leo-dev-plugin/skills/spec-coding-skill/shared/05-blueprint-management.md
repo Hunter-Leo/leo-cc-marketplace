@@ -108,10 +108,10 @@ graph LR
 
 When the user asks for a project-level overview — progress summary, what's blocked, what's next, overall roadmap:
 
-1. **Read 00-agent-execution.md § Handling Project Overview Queries** first — it defines the response format and rules
+1. **Read shared/00-agent-execution.md § Handling Project Overview Queries** first — it defines the response format and rules
 2. Read `.dev/blueprint.md` — project-level status
 3. For each active requirement (`▶ in-progress` or `⏸ blocked`), read `tasks.md` and `init.md` for detail
-4. Present the structured summary using the format defined in [00-agent-execution.md](../constitution/00-agent-execution.md)
+4. Present the structured summary using the format defined in [shared/00-agent-execution.md](../shared/00-agent-execution.md)
 
 ## Resuming with Blueprint
 

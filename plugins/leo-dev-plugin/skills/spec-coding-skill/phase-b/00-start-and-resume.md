@@ -106,7 +106,7 @@ Tracked in this document's own `## Round History` section (see template below). 
 ---
 
 ## Constitution
-See `init.md § Constitution` for this requirement's design rules, and [../constitution/01-oop-principles.md](../constitution/01-oop-principles.md) / [../constitution/02-coding-standards.md](../constitution/02-coding-standards.md) for the full standards.
+See `init.md § Constitution` for this requirement's design rules, and [../shared/01-oop-principles.md](../shared/01-oop-principles.md) / [../shared/02-coding-standards.md](../shared/02-coding-standards.md) for the full standards.
 
 Key principles that apply to every task:
 - **OOP & SOLID** — encapsulation, SRP, OCP (no if/elif chains), DIP (depend on abstractions)
@@ -119,7 +119,7 @@ Key principles that apply to every task:
 ---
 
 ## Git Workflow
-See [../constitution/03-git-workflow.md](../constitution/03-git-workflow.md) for the full rules — this section only summarizes what you need during execution.
+See [../shared/03-git-workflow.md](../shared/03-git-workflow.md) for the full rules — this section only summarizes what you need during execution.
 
 Branch: `<type>/[NNN]-[req-name]`
 
@@ -132,8 +132,40 @@ Types: `feat` · `fix` · `refactor` · `test` · `docs` · `style` · `perf` ·
 
 ---
 
+## Phase B Discipline Reminder
+
+Every agent entering Phase B (execution) MUST follow these rules:
+
+1. **Read this document** — especially Constitution, Git Workflow, and Phase B Execution Discipline
+2. **Read spec-coding-skill SKILL.md** — full methodology, state machine, deviation protocol
+3. **No implicit fallback** — do not silently catch errors, add hidden retry logic, or log-and-continue past real failures. Always use the Deviation Protocol.
+4. **Integration tests: no mocking internal code or external dependencies** — mock only at system boundaries
+5. **Follow the execution loop step by step** — never skip steps or batch tasks
+6. **Update tasks.md on every status change** — not-started → in-progress → done/blocked, with Notes
+
+---
+
 ## Step 0.5 — Execution Mode Recommendation
-Before starting the Execution Loop, recommend the best execution mode for this requirement:
+Before starting the Execution Loop, recommend the best execution mode for this requirement. The default recommendation depends on the tasks.md analysis:
+
+### Default Mode — Dual Agent (recommended for most projects)
+
+When tasks.md shows a **sequential dependency chain** (most tasks depend on previous ones):
+
+1. **Execution Agent** (execution-capable model, e.g. Opus) — executes all tasks in sequence, may batch multiple tasks when simple
+2. **Review Agent** — reviews after each execution agent's batch
+3. **Auto-advance** — the execution loop proceeds without pauses, updating tasks.md at each step. Blockers and deviations still pause for input (per Deviation Protocol).
+
+**OMC execution skills:** If oh-my-claudecode is available, consider leveraging execution-class skills like `oh-my-claudecode:ralph` (self-referential loop until completion) or `oh-my-claudecode:ultrawork` (parallel execution engine) to automate Phase B advancement. The Agent driving Phase B should evaluate these skills against the task structure and recommend the best fit.
+
+**Every Agent entering Phase B MUST:**
+- Read `start-and-resume.md` § Phase B Execution Discipline before any work
+- Read the spec-coding-skill `SKILL.md` to understand the full methodology
+- Follow all Git Workflow, Coding Standards, and Comment Standards in the Constitution
+- Never implement implicit fallback — problems go through Deviation Protocol, not silent recovery
+- Scan local environment for tools/skills/methods that could assist execution
+
+### Alternative Modes
 
 **Step 1 — Check available execution skills from session context:**
 - Read the list of available skills provided by the system at session start (visible in the session context / system-reminder)
@@ -172,8 +204,93 @@ d. After user confirmation, **agent directly invokes** the chosen execution mode
 
 > Rules: Agent role types are read from OMC in real time — never hardcoded. When OMC adds new execution modes, this step picks them up automatically on next run.
 
-## After Completing Phase 06
-`start-and-resume.md` now exists and the execution mode is set. Before entering the execution loop, update `.dev/blueprint.md`: advance this requirement's Phase to `06 Start-and-resume` and Status to `▶ in-progress` (execution is about to begin).
+## Phase A→B Gate: User Confirmation Required
+
+> HARD GATE — Agent MUST NOT bypass or treat as advisory.
+> The items below are presented in ONE message.
+> User confirms ONCE; Agent creates branch and enters Phase B automatically.
+
+### Step 1 — Present Proposal (ONE message to user)
+
+Template:
+```
+## Phase A Complete — Ready to Enter Phase B
+
+All requirements documents are ready. Here's the summary:
+
+**Documents produced:**
+- ✅ `init.md` — scope, requirements, constitution
+- ✅ `plan.md` — technical approach
+- ✅ `tasks.md` — X tasks identified
+- ✅ `start-and-resume.md` — execution guide
+
+**Branch:** `<type>/[NNN]-[req-name>` (auto-generated from requirement name)
+
+**Recommended execution mode:**
+执行 Agent + Review Agent. Tasks will be batched (executed sequentially by the execution agent, reviewed by the reviewer after each batch). Auto-advance mode — the execution loop proceeds without pauses, updating tasks.md at each step. Blockers and deviations still pause for input.
+
+**Phase B Discipline:**
+All agents read start-and-resume.md + spec-coding-skill before execution. No implicit fallback — every issue goes through Deviation Protocol.
+
+Reply **confirmed** to proceed, or tell me what to adjust.
+```
+
+### Step 2 — Process Confirmation
+
+On user confirmation:
+1. Create the branch:
+   ```bash
+   git checkout -b <type>/[NNN]-[req-name]
+   ```
+2. Update `.dev/blueprint.md`: set Phase to `07 Execution`, Status to `▶ in-progress`
+3. Enter Execution Loop (Phase 07)
+
+### Step 3 — Handle Change Requests (if user doesn't confirm)
+
+If user asks for changes to docs, branch name, or execution mode:
+- Apply the change
+- Re-present the updated proposal (complete template above)
+- Wait for confirmation again
+
+GATE RULE: "Looks good" without explicit confirmation of the full proposal is NOT sufficient.
+The model MUST explicitly ask: "Do you confirm? Reply **confirmed** to proceed."
+
+---
+
+## Phase B Execution Discipline
+
+> These rules apply to ALL agents entering Phase B — whether a single execution agent, a team of agents, or any other execution mode. Every agent MUST read this section before starting the first task.
+
+### Hard Rules
+
+1. **Read start-and-resume.md before execution** — every agent entering Phase B MUST read this document's Constitution, Coding Reference, Git Workflow, and this Phase B Execution Discipline before writing any code. If resuming an interrupted session: run the Session Bootstrap first.
+
+2. **Read spec-coding-skill SKILL.md** — every agent MUST read the master SKILL.md file to understand the full methodology, state machine, and deviation protocol. Do not rely on memory or partial context.
+
+3. **Follow the execution loop** — the 12-step loop (step 0-12) below must be followed for each task. Do not skip steps or merge multiple tasks into one pass.
+
+4. **Follow code standards** — OOP/SOLID principles, type annotations on all function parameters and return values, consistent naming conventions (see [../shared/01-oop-principles.md](../shared/01-oop-principles.md) and [../shared/02-coding-standards.md](../shared/02-coding-standards.md)).
+
+5. **Follow comment standards** — every public class, function, and file must have a docstring. Module-level docstrings for every new file. See [../shared/02-coding-standards.md](../shared/02-coding-standards.md) Documentation.
+
+6. **Follow Git standards** — branch naming (`<type>/[NNN]-[req-name]`), commit format, pre-commit checks, PR/local merge format. See [../shared/03-git-workflow.md](../shared/03-git-workflow.md).
+
+7. **Never implement implicit fallback** — this is prohibited at ALL severity levels:
+   - Do not silently catch exceptions and return default values
+   - Do not add hidden retry logic that masks transient failures
+   - Do not "log and continue" when a real error occurs
+   - Do not silently fall back to a less correct implementation when the planned approach fails
+   - When a problem occurs: ALWAYS follow the Deviation Protocol below. Log to issues.md, assess severity, present to user.
+
+8. **Integration tests must not mock internal code or external dependencies** — integration tests MUST test real interactions between modules. Mock only at system boundaries (network, time, randomness, third-party APIs unavailable in the test environment). See [../shared/02-coding-standards.md](../shared/02-coding-standards.md) Testing Philosophy (Mock discipline).
+
+9. **Scan local environment for tools, skills, and methods** — before starting execution, check the available skills, MCP tools, and agent types from the session context (system-reminder). During each task's step 2 (read plan.md and generated docs), match available tools against the current task type. Apply relevant [methods](../methods/) via Method Selection at Phase 07 entry.
+
+### Execution Loop Reminder
+When executing the loop below, the agent has already:
+- [x] Passed the Phase A-B Gate (docs confirmed, branch created, mode confirmed)
+- [x] Read this file's full content including Phase B Execution Discipline
+- [x] Read spec-coding-skill SKILL.md
 
 ---
 
@@ -191,7 +308,7 @@ d. After user confirmation, **agent directly invokes** the chosen execution mode
 > | 4 | Evaluate [Vertical Slice TDD](../methods/01-vertical-slice-tdd.md) trigger for this task | Miss TDD when it applies |
 > | 5 | Confirm you are on the correct feature branch (`git branch --show-current`) | Commit to wrong branch |
 >
-> **After implementing**, you MUST complete the [Self-Check](../constitution/00-agent-execution.md#self-check-after-each-task) before marking the task `done`.
+> **After implementing**, you MUST complete the [Self-Check](../shared/00-agent-execution.md#self-check-after-each-task) before marking the task `done`.
 
 Repeat for each task in the current round's `tasks.md` (at `generated/rounds/round-[NNN]/tasks.md`) — **never skip a step, never batch tasks**:
 
@@ -202,10 +319,10 @@ Repeat for each task in the current round's `tasks.md` (at `generated/rounds/rou
 - When resuming a round, re-read this document's § Deviation Protocol and § Round History.
 
 ```
-0.  Ensure the correct feature branch exists and is checked out:
+0.  Confirm feature branch exists:
       git branch --show-current
-      If not on the feature branch:
-      git checkout -b <type>/[NNN]-[req-name]
+      If NOT on the feature branch (should not happen after Phase A→B Gate):
+      → STOP. Branch was not created in the gate. Return to Phase A→B Gate.
 
 1.  Mark task as `in-progress` in `generated/rounds/round-[NNN]/tasks.md`
 
@@ -217,7 +334,7 @@ Repeat for each task in the current round's `tasks.md` (at `generated/rounds/rou
       a. init.md § Constitution — design rules for this requirement
       b. § OOP & SOLID Principles above — key OOP/SOLID rules
       c. § Coding Standards above — key coding rules
-      d. ../constitution/03-git-workflow.md § Branch — confirm branch naming and type
+      d. ../shared/03-git-workflow.md § Branch — confirm branch naming and type
 
 4a. **Method Selection — Vertical Slice TDD:** Evaluate whether [Vertical Slice TDD](../methods/01-vertical-slice-tdd.md) applies to this task:
 
@@ -259,7 +376,7 @@ Repeat for each task in the current round's `tasks.md` (at `generated/rounds/rou
 
 7.  Run existing tests — must pass (no regressions)
 
-8.  Read ../constitution/02-coding-standards.md § Testing to confirm test file naming and coverage
+8.  Read ../shared/02-coding-standards.md § Testing to confirm test file naming and coverage
     requirements, then write unit tests:
 
     > If using [Vertical Slice TDD](../methods/01-vertical-slice-tdd.md), the test-writing step is folded into the RED phase of each RED-GREEN-REFACTOR cycle. Verify that the micro-cycle has produced sufficient coverage instead.
@@ -282,7 +399,7 @@ Repeat for each task in the current round's `tasks.md` (at `generated/rounds/rou
       [ ] On the correct feature branch (not main)
       [ ] Commit message follows Google style: ≤72 chars, imperative, English
 
-12. Commit following the [Git Workflow](../constitution/03-git-workflow.md):
+12. Commit following the [Git Workflow](../shared/03-git-workflow.md):
       git add <specific files>
       git commit -m "[NNN] T-XXX <type>: <imperative summary ≤ 72 chars>"
 
@@ -417,7 +534,7 @@ When all tasks in `tasks.md` reach `done` (or all runnable tasks are `blocked`):
    - **Summary:** What this round achieved.
    ```
 
-4. **Update `.dev/blueprint.md`** — set Round, Phase, Status. Read [../phases/05-blueprint-management.md](../phases/05-blueprint-management.md).
+4. **Update `.dev/blueprint.md`** — set Round, Phase, Status. Read [../shared/05-blueprint-management.md](../shared/05-blueprint-management.md).
 
 5. **Method Selection — Dual-Axis Review:** Before declaring Round Complete, evaluate whether this method applies.
 
@@ -472,16 +589,16 @@ When a task cannot proceed:
 ---
 
 ## Git Workflow
-See [../constitution/03-git-workflow.md](../constitution/03-git-workflow.md) — all git rules live there (branch naming, commit format, pre-commit checks, PR/local merge, release tagging). This section contains only the execution-loop-specific reminders.
+See [../shared/03-git-workflow.md](../shared/03-git-workflow.md) — all git rules live there (branch naming, commit format, pre-commit checks, PR/local merge, release tagging). This section contains only the execution-loop-specific reminders.
 
 ### In the Execution Loop
-Step 11 of the execution loop commits following the format defined in [../constitution/03-git-workflow.md § Commit Messages](../constitution/03-git-workflow.md#commit-messages):
+Step 11 of the execution loop commits following the format defined in [../shared/03-git-workflow.md § Commit Messages](../shared/03-git-workflow.md#commit-messages):
 ```
 git commit -m "[NNN] T-XXX <type>: <imperative summary ≤ 72 chars>"
 ```
 
 ### At Requirement Complete
-Step 4 of [§ Requirement Complete](#requirement-complete) creates a PR or local merge using the format in [../constitution/03-git-workflow.md § Pull Request / Local Merge](../constitution/03-git-workflow.md#pull-request--local-merge).
+Step 4 of [§ Requirement Complete](#requirement-complete) creates a PR or local merge using the format in [../shared/03-git-workflow.md § Pull Request / Local Merge](../shared/03-git-workflow.md#pull-request--local-merge).
 
 ---
 

@@ -2,12 +2,12 @@
 
 Create the requirement definition document before any planning or coding begins.
 
-**Entry:** A need or requirement has been identified, sized M or larger via [Task Sizing](../constitution/00-agent-execution.md#task-sizing).
+**Entry:** A need or requirement has been identified, sized M or larger via [Task Sizing](../shared/00-agent-execution.md#task-sizing).
 **Exit:** `init.md` created at `.dev/[NNN]-[req-name]/init.md`, `.dev/blueprint.md` updated with the new requirement.
 
-**Round check:** Before starting, check if `.dev/[NNN]-[req-name]/issues.md` exists. If **yes** (open issues): this is Round N+1 re-entry — read [01-round-mechanism.md](../execution/01-round-mechanism.md) § Phase 01* first, then update init.md based on open issues.
+**Round check:** Before starting, check if `.dev/[NNN]-[req-name]/issues.md` exists. If **yes** (open issues): this is Round N+1 re-entry — read [phase-b/01-round-mechanism.md](../phase-b/01-round-mechanism.md) § Phase 01* first, then update init.md based on open issues.
 
-**XS/S sizing:** complete Pre-flight Checks below, then produce lightweight init.md with inline plan (no separate plan.md/tasks.md). See [Task Sizing](../constitution/00-agent-execution.md#task-sizing) for the direct execution flow.
+**XS/S sizing:** complete Pre-flight Checks below, then produce lightweight init.md with inline plan (no separate plan.md/tasks.md). See [Task Sizing](../shared/00-agent-execution.md#task-sizing) for the direct execution flow.
 
 ## Step 0 — Requirement Clarity Check
 
@@ -39,8 +39,8 @@ Wait for user confirmation before continuing. If user provides a spec doc path, 
 
 Before creating `init.md`, complete these two steps (each asked only once per requirement):
 
-1. **Language** — detect the user's communication language and ask if needed (see [00-agent-execution.md](../constitution/00-agent-execution.md) § Language)
-2. **Interactive mode** — ask the user whether to proceed interactively or automatically (see [00-agent-execution.md](../constitution/00-agent-execution.md) § Interactive Mode)
+1. **Language** — detect the user's communication language and ask if needed (see [shared/00-agent-execution.md](../shared/00-agent-execution.md) § Language)
+2. **Interactive mode** — ask the user whether to proceed interactively or automatically (see [shared/00-agent-execution.md](../shared/00-agent-execution.md) § Interactive Mode)
 
 ---
 
@@ -120,7 +120,7 @@ Declare the current stage of the project.
 project_stage: pre-launch   # or: live
 ```
 
-See `../execution/00-start-and-resume.md § Breaking Changes Policy` for how this value affects execution.
+See `phase-b/00-start-and-resume.md § Breaking Changes Policy` for how this value affects execution.
 
 ### # Spec
 
@@ -171,8 +171,8 @@ All generated documents go under `.dev/[NNN]-[req-name]/generated/`. Requirement
 
 Mandatory coding standards for this requirement. Read the following documents and include applicable rules in this section of `init.md`:
 
-- [../constitution/01-oop-principles.md](../constitution/01-oop-principles.md) — OOP & SOLID principles (**all code must comply; this section must include the relevant rules**)
-- [../constitution/02-coding-standards.md](../constitution/02-coding-standards.md) — language-specific standards
+- [../shared/01-oop-principles.md](../shared/01-oop-principles.md) — OOP & SOLID principles (**all code must comply; this section must include the relevant rules**)
+- [../shared/02-coding-standards.md](../shared/02-coding-standards.md) — language-specific standards
 
 Keep only the languages and rules that apply to this requirement. Document any project-specific extensions (e.g., team conventions not covered by the reference documents).
 

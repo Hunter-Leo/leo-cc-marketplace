@@ -27,8 +27,8 @@ Determine what to compare against: a branch diff, the previous state before the 
 Use two sub-agents (e.g. Agent tool with general-purpose type) in a single message:
 
 **Axis 1 — Standards Review:**
-- Read coding standards (constitution/02-coding-standards.md)
-- Read OOP/SOLID principles (constitution/01-oop-principles.md)
+- Read coding standards (shared/02-coding-standards.md)
+- Read OOP/SOLID principles (shared/01-oop-principles.md)
 - Read the diff
 - Report per-file violations of: naming conventions, type annotations, docstrings, error handling, testing coverage, no hardcoded secrets, no lint errors
 - Distinguish hard violations from judgment calls

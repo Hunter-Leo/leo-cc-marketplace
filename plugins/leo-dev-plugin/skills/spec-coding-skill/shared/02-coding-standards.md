@@ -127,6 +127,12 @@ def test_order_service_creates_order():
     assert repo.save.called          # tests call sequence, not behavior
 ```
 
+**Integration testing rules:**
+
+Integration tests MUST NOT mock internal modules or classes of the project itself, nor real external dependencies (databases, APIs, file systems). Acceptable mocks are limited to system boundaries only (network, time, randomness, third-party APIs unavailable in the test environment). Testing through the public interface of the integrated system ensures the test validates actual behavior, not assumptions about internals.
+
+This rule is reinforced in [Phase B Execution Discipline](../phase-b/00-start-and-resume.md#phase-b-execution-discipline). Violations constitute a process failure.
+
 **Test anti-patterns to avoid:**
 
 | Pattern | Why it's wrong | Fix |

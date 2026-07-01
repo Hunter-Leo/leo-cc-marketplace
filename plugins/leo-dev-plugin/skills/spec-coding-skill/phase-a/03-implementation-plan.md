@@ -35,7 +35,7 @@ After Method Selection, proceed to the prerequisites below.
 Before writing `plan.md`:
 1. Read all completed prerequisite documents (`inspect.md`, `research.md`, `algorithm-design.md` — whichever exist)
 2. Read `init.md § Constitution` — the plan must respect the coding constraints defined there
-3. Read [../constitution/01-oop-principles.md](../constitution/01-oop-principles.md) — all class and module design must follow OOP & SOLID principles
+3. Read [../shared/01-oop-principles.md](../shared/01-oop-principles.md) — all class and module design must follow OOP & SOLID principles
 
 ## Output
 
@@ -78,7 +78,7 @@ Each step should be independently testable.
 ### Key Technical Points
 
 - Non-obvious design decisions and their reasoning
-- Class and module design must follow OOP & SOLID principles — see [../constitution/01-oop-principles.md](../constitution/01-oop-principles.md)
+- Class and module design must follow OOP & SOLID principles — see [../shared/01-oop-principles.md](../shared/01-oop-principles.md)
 - Integration points between modules
 - Error handling strategy
 - Data flow between components
@@ -110,4 +110,4 @@ If any check fails, revise the relevant section of `plan.md` before proceeding t
 
 ## After Completing Phase 04
 
-Update `.dev/blueprint.md`: advance this requirement's Phase to `04 Plan` and Status to `✅ done` for this phase. See [05-blueprint-management.md](05-blueprint-management.md) for the full update rules.
+Update `.dev/blueprint.md`: advance this requirement's Phase to `04 Plan` and Status to `✅ done` for this phase. See [../shared/05-blueprint-management.md](../shared/05-blueprint-management.md) for the full update rules.

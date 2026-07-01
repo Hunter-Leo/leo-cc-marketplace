@@ -1,31 +1,31 @@
 # References
 
-## Constitution — Must-read before execution
+## Shared — Must-read before execution
 
-Always read before writing any code. Located in `constitution/`:
+Always read before writing any code. Located in `shared/`:
 
-- [00-agent-execution.md](constitution/00-agent-execution.md) — Global agent behavior rules (all phases)
-- [01-oop-principles.md](constitution/01-oop-principles.md) — OOP & SOLID principles
-- [02-coding-standards.md](constitution/02-coding-standards.md) — Coding standards (universal + language-specific)
-- [03-git-workflow.md](constitution/03-git-workflow.md) — Git workflow
+- [shared/00-agent-execution.md](../shared/00-agent-execution.md) — Global agent behavior rules (all phases)
+- [shared/01-oop-principles.md](../shared/01-oop-principles.md) — OOP & SOLID principles
+- [shared/02-coding-standards.md](../shared/02-coding-standards.md) — Coding standards (universal + language-specific)
+- [shared/03-git-workflow.md](../shared/03-git-workflow.md) — Git workflow
 
 ## Round Execution — Enter the execution loop
 
-Read when entering Phase 07 or resuming after a round completes. Located in `execution/`:
+Read when entering Phase 07 or resuming after a round completes. Located in `phase-b/`:
 
-- [00-start-and-resume.md](execution/00-start-and-resume.md) — Execution loop + Deviation Protocol + Round History
-- [01-round-mechanism.md](execution/01-round-mechanism.md) — Dual-layer state machine + Agent decision matrix + issues.md format
+- [phase-b/00-start-and-resume.md](../phase-b/00-start-and-resume.md) — Execution loop + Deviation Protocol + Round History
+- [phase-b/01-round-mechanism.md](../phase-b/01-round-mechanism.md) — Dual-layer state machine + Agent decision matrix + issues.md format
 
 ## Phase Workflow — Read on demand
 
-Read when entering the corresponding phase. Located in `phases/`:
+Read when entering the corresponding phase. Located in `phase-a/` and `shared/`:
 
-- [00-initialization.md](phases/00-initialization.md) — Phase 01 initialization
-- [01-prerequisite-tasks.md](phases/01-prerequisite-tasks.md) — Phase 02 prerequisite tasks
-- [02-algorithm-design.md](phases/02-algorithm-design.md) — Phase 03 algorithm design
-- [03-implementation-plan.md](phases/03-implementation-plan.md) — Phase 04 implementation plan
-- [04-task-planning.md](phases/04-task-planning.md) — Phase 05 task planning
-- [05-blueprint-management.md](phases/05-blueprint-management.md) — Blueprint management
+- [phase-a/00-initialization.md](../phase-a/00-initialization.md) — Phase 01 initialization
+- [phase-a/01-prerequisite-tasks.md](../phase-a/01-prerequisite-tasks.md) — Phase 02 prerequisite tasks
+- [phase-a/02-algorithm-design.md](../phase-a/02-algorithm-design.md) — Phase 03 algorithm design
+- [phase-a/03-implementation-plan.md](../phase-a/03-implementation-plan.md) — Phase 04 implementation plan
+- [phase-a/04-task-planning.md](../phase-a/04-task-planning.md) — Phase 05 task planning
+- [shared/05-blueprint-management.md](../shared/05-blueprint-management.md) — Blueprint management
 
 ## Methods — Trigger-Driven Selection
 
@@ -42,7 +42,7 @@ These methods are **trigger-driven**: at the entry of each applicable phase, the
 ## Naming Convention
 
 All prefixes are unique within their directory:
-- **00-09** = constitution (`constitution/`)
+- **00-09** = shared (`shared/`)
 - **00-09** = extended methods (`methods/`) — same range, separate directory, no conflict
-- **00-01** = round execution (`execution/`) — numbered for reading order
-- **00-05** = phase workflow (`phases/`) — numbered for reading order
+- **00-01** = phase B execution (`phase-b/`) — numbered for reading order
+- **00-05** = phase A workflow (`phase-a/`) — numbered for reading order

@@ -15,6 +15,8 @@
 | 5 | When plan != reality: follow Deviation Protocol, do NOT silently fix | [§ Handling Uncertainty & Blockers](#handling-uncertainty--blockers) |
 | 6 | Update tasks.md status immediately on start and completion | [§ Document Update Discipline](#document-update-discipline) |
 | 7 | Out-of-scope discovery → log to TODO.md, do NOT act on it | [§ Out-of-Scope Discovery](#out-of-scope-discovery--todomd) |
+| 8 | Phase A→B Gate: submit docs + execution mode, user confirms → create branch automatically | [phase-b/00-start-and-resume.md § Phase A→B Gate](../phase-b/00-start-and-resume.md#phase-a-b-gate-user-confirmation-required) |
+| 9 | Phase B: all agents MUST read start-and-resume.md + spec-coding-skill before first task. NO implicit fallback. | [phase-b/00-start-and-resume.md § Phase B Execution Discipline](../phase-b/00-start-and-resume.md#phase-b-execution-discipline) |
 
 ---
 
@@ -96,11 +98,13 @@ git checkout -b <type>/<short-description>
 ```
 Never commit to main.
 
+**For M+:** feature branch creation is part of the [Phase A→B Gate](../phase-b/00-start-and-resume.md#phase-a-b-gate-user-confirmation-required). Branch is created automatically after user confirmation.
+
 **However, XS and S code must still comply with all standards.** Task size only affects document ceremony — code quality is not negotiable:
 
-- **OOP & SOLID principles** apply to every line of code, regardless of task size ([01-oop-principles.md](01-oop-principles.md))
-- **Coding standards** (type annotations, docstrings, naming, error handling) apply to all changes ([02-coding-standards.md](02-coding-standards.md))
-- **Self-check checklist** from [00-agent-execution.md](00-agent-execution.md#self-check-after-each-task) applies: tests, no regressions, no hardcoded secrets, no lint errors
+- **OOP & SOLID principles** apply to every line of code, regardless of task size ([shared/01-oop-principles.md](../shared/01-oop-principles.md))
+- **Coding standards** (type annotations, docstrings, naming, error handling) apply to all changes ([shared/02-coding-standards.md](../shared/02-coding-standards.md))
+- **Self-check checklist** from [shared/00-agent-execution.md](../shared/00-agent-execution.md#self-check-after-each-task) applies: tests, no regressions, no hardcoded secrets, no lint errors
 - **Comments and docstrings** are required for new public functions, regardless of task size
 
 > An XS task still needs a docstring on the modified function and tests for the new behavior. Sizing is about how many documents you write before coding, not about how thoroughly you code.
@@ -225,6 +229,17 @@ Before marking a task `done`, verify:
 | A task cannot proceed due to a dependency or error | Mark as `blocked`, record reason in `tasks.md` Notes, ask the user |
 | Existing code contradicts the plan | Follow § Deviation Protocol in 00-start-and-resume.md — assess severity, log to issues.md, present options to user |
 | Discovery of unplanned work during execution | Assess severity: low → adjust silently; medium → log to issues.md, continue; high → trigger Deviation Protocol, present options |
+
+## Prohibited: Implicit Fallback
+
+**This rule applies to ALL phases, not just Phase B.** Implicit fallback patterns are prohibited because they hide bugs and create latent defects that surface only in production:
+
+- Do not silently catch exceptions and return default values — let errors propagate or handle them explicitly with user-visible reporting
+- Do not add hidden retry logic that masks transient failures — if retry is needed, be explicit about the retry policy, logging, and eventual failure behavior
+- Do not "log and continue" when a real error occurs — if the execution cannot continue, stop and report. If it can continue, explain why in code.
+- Do not silently fall back to a less correct implementation when the planned approach fails — log the deviation to `issues.md` and follow the Deviation Protocol
+
+These rules are reinforced in [Phase B Execution Discipline](../phase-b/00-start-and-resume.md#phase-b-execution-discipline) for the execution phase. The Principle section in [02-coding-standards.md](02-coding-standards.md) provides the integration testing counterpart. Violations at any severity level constitute a process failure.
 
 ---
 
@@ -352,4 +367,4 @@ Round N+1: Phase 01* (incremental) -> Phase 02-05 -> Phase 06 -> Phase 07 -> Rev
 | Phase 07 tasks all done, no open issues | Declare requirement complete |
 | All tasks blocked, blocker depends on another requirement | Mark round blocked; re-enter when blocker resolved |
 
-See [01-round-mechanism.md](../execution/01-round-mechanism.md) for the full state machine, decision matrix, and issues.md format.
+See [phase-b/01-round-mechanism.md](../phase-b/01-round-mechanism.md) for the full state machine, decision matrix, and issues.md format.
