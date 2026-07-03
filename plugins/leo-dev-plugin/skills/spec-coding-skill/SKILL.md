@@ -1,6 +1,6 @@
 ---
 name: spec-coding-skill
-description: "Guides LLM agents through large-scale coding tasks using a two-phase methodology: Phase A (Requirements Construction Phase, initialization through planning) and Phase B (Execution Phase, execution through review), connected by a hard user-confirmation gate. Covers requirement definition, planning, algorithm design, implementation, deviation handling, and round-to-round issue tracking. Includes OOP/SOLID principles, language-specific coding standards, a dual-layer state machine for flow decisions, and trigger-driven extended methodologies for TDD, structured debugging, architecture deepening, terminology alignment, and dual-axis review. This skill should be used when the user asks to 'start a coding task', 'plan implementation', 'begin a new requirement', 'enter execution phase', 'resume a project', or mentions spec-driven development, round-based execution, or the spec-coding-skill flow. Keywords: spec-driven development, round-based execution, iterative development, deviation protocol, state machine, coding methodology, software engineering workflow, requirements-to-code pipeline, project blueprint, TDD, debugging, architecture review, method selection, phase-a, phase-b."
+description: "Guides LLM agents through large-scale coding tasks using a two-phase methodology: Phase A (Requirements Construction Phase, initialization through planning) and Phase B (Execution Phase, execution through review), connected by a hard user-confirmation gate. Covers requirement definition, planning, algorithm design, implementation, deviation handling, and round-to-round issue tracking. Includes OOP/SOLID principles, language-specific coding standards, a dual-layer state machine for flow decisions, and trigger-driven extended methodologies for TDD, structured debugging, architecture deepening, terminology alignment, and dual-axis review. This skill should be used when the user asks to 'start a coding task', 'plan implementation', 'begin a new requirement', 'enter execution phase', 'resume a project', 'fix a bug', 'refactor this', 'new feature', 'resume project', or mentions spec-driven development, round-based execution, or the spec-coding-skill flow. Keywords: spec-driven development, round-based execution, iterative development, deviation protocol, state machine, coding methodology, software engineering workflow, requirements-to-code pipeline, project blueprint, TDD, debugging, architecture review, method selection, phase-a, phase-b."
 triggers:
   - spec-driven
   - coding task
@@ -12,16 +12,14 @@ triggers:
   - phase-by-phase
   - OOP
   - SOLID
-  - round
-  - iteration
+  - execution round
+  - round-based development
   - deviation
   - state machine
-  - iterative
   - iterative development
   - tdd
   - debugging
   - architecture review
-  - code review
   - bug diagnosis
   - term alignment
   - ADR
@@ -184,7 +182,7 @@ Phases 02 and 03 are **independent** (parallel, not sequential) — both, one, o
 | Phase | Output | Reference |
 |---|---|---|
 | 06.5 Execution Planning | `execution-plan.md` | [phase-b/00-start-and-resume.md](phase-b/00-start-and-resume.md) § Phase 06.5 |
-| 07 Execution | code | [phase-b/00-start-and-resume.md](phase-b/00-start-and-resume.md) |
+| 07 Execution | code | [phase-b/02-execution-loop.md](phase-b/02-execution-loop.md) |
 | Round Review | `issues.md` + Round History + N+1 loop | [phase-b/01-round-mechanism.md](phase-b/01-round-mechanism.md) |
 
 > **Blueprint**: `.dev/blueprint.md` tracks all requirements, phases, and dependencies. Updated at every phase transition. See [shared/05-blueprint-management.md](shared/05-blueprint-management.md).
@@ -215,11 +213,11 @@ All scripts are read-only — run with `bash scripts/<name>.sh [args]`.
 
 | Method | Phase | When to Use | Reference |
 |--------|-------|-------------|-----------|
-| Term Grilling + ADR | 01 / 02 / 04 | Fuzzy terminology, hard-to-reverse decisions | [methods/00-term-grilling-and-adr.md](methods/00-term-grilling-and-adr.md) |
-| Vertical Slice TDD | 07 | Tasks with clear public interfaces | [methods/01-vertical-slice-tdd.md](methods/01-vertical-slice-tdd.md) |
-| Dual-Axis Review | Round Complete / PR | Significant code reviews | [methods/02-dual-axis-review.md](methods/02-dual-axis-review.md) |
-| Architecture Deepening | 02 | Modifying code with shallow modules | [methods/03-architecture-deepening.md](methods/03-architecture-deepening.md) |
-| Structured Debugging | 02 | Non-trivial bug fixes | [methods/04-structured-debugging.md](methods/04-structured-debugging.md) |
+| Term Grilling + ADR | 01 / 02 / 04 | Fuzzy terminology, hard-to-reverse decisions | [methods/00-term-grilling-and-adr.md](references/methods/00-term-grilling-and-adr.md) |
+| Vertical Slice TDD | 07 | Tasks with clear public interfaces | [methods/01-vertical-slice-tdd.md](references/methods/01-vertical-slice-tdd.md) |
+| Dual-Axis Review | Round Complete / PR | Significant code reviews | [methods/02-dual-axis-review.md](references/methods/02-dual-axis-review.md) |
+| Architecture Deepening | 02 | Modifying code with shallow modules | [methods/03-architecture-deepening.md](references/methods/03-architecture-deepening.md) |
+| Structured Debugging | 02 | Non-trivial bug fixes | [methods/04-structured-debugging.md](references/methods/04-structured-debugging.md) |
 
 ### Method Selection — Trigger-Driven
 
@@ -232,7 +230,12 @@ Methods are gate-checked by trigger conditions, not optional suggestions. At eac
 
 The Method Selection table is produced as a planning artifact at every applicable phase entry. Skipping without justification is not permitted. The trigger conditions are defined in each method's documentation — the phase docs do not duplicate them.
 
-## Core Rules
+When skipping a method, cite concrete artifacts in the justification:
+- Valid: "Term Grilling skipped because init.md § Terminology Check shows no ambiguous terms"
+- Valid: "TDD skipped because task has no stable public interface — plan.md § Approach confirms external API is undefined"
+- Invalid: "Not needed" or "Does not apply" (generic, unverifiable)
+
+Artifacts must reference document titles + section names, not just file paths.
 
 Rules unique to this skill. See `00-agent-execution.md` for: `§ File Reading Discipline` (read before edit), `§ Self-Check` (tests/quality), `§ Phase Transition Re-read Discipline` (always re-read phase doc before starting), `§ Round-based Execution Model` (issues.md gating), `§ Design Principle Compliance` (OOP/SOLID).
 

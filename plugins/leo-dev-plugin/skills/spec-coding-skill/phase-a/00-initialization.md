@@ -49,7 +49,7 @@ Before creating `init.md`, complete these two steps (each asked only once per re
 Before writing `init.md`, evaluate which methods apply to this phase.
 
 **Methods tagged for Phase 01:**
-- [Term Grilling + ADR](../methods/00-term-grilling-and-adr.md) — Term alignment and ADR creation
+- [Term Grilling + ADR](../references/methods/00-term-grilling-and-adr.md) — Term alignment and ADR creation
 
 **Evaluate:**
 
@@ -123,7 +123,7 @@ Copy the template from `templates/init.md` to `.dev/[NNN]-[req-name]/init.md`, t
 After creating init.md and its Action Items, proceed to Step 3 — Update Blueprint.
 
 1. **Read** `.dev/blueprint.md` if it exists
-2. **Create** `.dev/blueprint.md` if this is the first requirement — use the template from [05-blueprint-management.md](05-blueprint-management.md)
+2. **Create** `.dev/blueprint.md` if this is the first requirement — use the template from [05-blueprint-management.md](../shared/05-blueprint-management.md)
 3. **Add a row** for this new requirement with:
    - Phase: `01 Init`
    - Status: `⏳ pending`

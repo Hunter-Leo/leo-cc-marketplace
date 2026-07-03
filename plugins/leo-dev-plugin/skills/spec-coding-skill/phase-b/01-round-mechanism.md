@@ -256,12 +256,13 @@ Phase 01* entry
      5. For each open issue:
         - plan-deviation: update plan in new round's plan.md
         - discovered-bug: add task to new round's tasks.md
-        - scope-creep: update init.md + new round's plan.md + tasks.md
+        - scope-creep: update init.md (MUST present scope change to user for confirmation first), then new round's plan.md + tasks.md
      6. Update blueprint: Round += 1
      7. Update start-and-resume.md Round History:
         - Mark Round N as complete
         - Add Round N+1 entry with "Current Round: N+1"
      8. Proceed through Phase 02-05 (incremental only)
+     9. If init.md was modified: present scope changes to user. Wait for "confirmed" before proceeding beyond Phase 01*.
 ```
 
 **Key rules:**

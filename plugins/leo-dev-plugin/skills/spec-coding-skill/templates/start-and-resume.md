@@ -4,15 +4,15 @@
 ## Quick Start
 1. Read `.dev/blueprint.md` — project-wide status across all requirements
 2. Read `init.md` — this requirement's scope
-3. Read `rounds/round-[NNN]/plan.md` — technical approach (NNN = current round from above)
-4. Read `rounds/round-[NNN]/tasks.md` — find the next `not-started` task
+3. Read `generated/rounds/round-[NNN]/plan.md` — technical approach (NNN = current round from above)
+4. Read `generated/rounds/round-[NNN]/tasks.md` — find the next `not-started` task
 5. Review the standards sections below before writing any code
 
 ## Resuming After Interruption
 1. Read `00-agent-execution.md § Handling Project Overview Queries` for the status display format
 2. Read `.dev/blueprint.md` — see all requirements, phases, and overall project status
 3. Check `issues.md` for open issues from previous rounds
-4. Open `rounds/round-[NNN]/tasks.md` and find the first task not in `done`
+4. Open `generated/rounds/round-[NNN]/tasks.md` and find the first task not in `done`
 5. If a task is `in-progress`, read its Notes for context before continuing
 6. If a task is `blocked`, read the Notes and address the blocker first
 7. Review the standards sections below before continuing

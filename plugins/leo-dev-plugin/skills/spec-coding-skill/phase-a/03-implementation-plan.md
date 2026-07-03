@@ -12,7 +12,7 @@ Produce `plan.md` after all prerequisite and algorithm design documents are comp
 Before writing `plan.md`, evaluate which methods apply to this phase.
 
 **Methods tagged for Phase 04 / plan output:**
-- [Term Grilling + ADR](../methods/00-term-grilling-and-adr.md) — Plan stress test, ADRs for plan decisions
+- [Term Grilling + ADR](../references/methods/00-term-grilling-and-adr.md) — Plan stress test, ADRs for plan decisions
 
 **Evaluate:**
 
@@ -44,11 +44,6 @@ Before writing `plan.md`:
 ## Creating plan.md
 
 Read the template at `templates/plan.md`, then create the plan file at the path above. The template includes: Project Structure, Technology Decisions, Implementation Path, Key Technical Points, and Out of Scope sections.
-
-Before writing plan.md:
-1. Read all completed prerequisite documents (inspect.md, research.md, algorithm-design.md — whichever exist)
-2. Read `init.md § Constitution` — the plan must respect the coding constraints defined there
-3. Read [../shared/01-oop-principles.md](../shared/01-oop-principles.md) — all class and module design must follow OOP & SOLID principles
 
 ## Design Compliance Review
 

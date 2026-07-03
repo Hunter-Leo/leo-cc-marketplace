@@ -22,6 +22,8 @@ Method for sharpening terminology and documenting decisions. Adapted from the gr
 - Architectural shape (monorepo vs multi-repo, sync vs event-driven)
 - Deliberate deviations from the obvious path
 
+## When Not to Use
+
 Do **not** use this method when: the terminology is already well-defined (project has an existing glossary), decisions are trivially reversible, or the task is XS/S.
 
 ## Glossary (CONTEXT.md)

@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 # check-dev-structure.sh — Validate .dev/ documentation tree
+# Usage: check-dev-structure.sh [path]
+#   path: .dev directory to check (default: .dev)
 set -euo pipefail
 
-BASE=".dev"
+if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
+    echo "Usage: check-dev-structure.sh [path]"
+    echo "  Validate .dev/ documentation tree at the given path"
+    echo "  Default: .dev/"
+    exit 0
+fi
+
+BASE="${1:-.dev}"
 
 if [ ! -d "$BASE" ]; then
     echo "[FAIL] No .dev/ directory found"

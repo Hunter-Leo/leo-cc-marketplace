@@ -22,9 +22,9 @@ Only skip this phase if there are genuinely no information gaps.
 If Phase 02 is needed (information gaps exist), evaluate which methods apply before creating prerequisite documents.
 
 **Methods tagged for Phase 02:**
-- [Architecture Deepening](../methods/03-architecture-deepening.md) — Shallow module detection and refactoring
-- [Structured Debugging](../methods/04-structured-debugging.md) — Six-phase bug diagnosis
-- [Term Grilling + ADR](../methods/00-term-grilling-and-adr.md) — ADRs for decisions in prerequisite docs
+- [Architecture Deepening](../references/methods/03-architecture-deepening.md) — Shallow module detection and refactoring
+- [Structured Debugging](../references/methods/04-structured-debugging.md) — Six-phase bug diagnosis
+- [Term Grilling + ADR](../references/methods/00-term-grilling-and-adr.md) — ADRs for decisions in prerequisite docs
 
 **Evaluate:**
 

@@ -8,6 +8,20 @@ tags: [debugging, diagnosis, bug-fix, hypothesis, regression, phase-02]
 
 Six-phase process for hard bugs. Never skip phases — treat each one as mandatory unless you can explicitly justify why it doesn't apply. Adapted from the diagnose methodology.
 
+## When to Use
+
+- Bug repro is non-deterministic or environment-dependent
+- Root cause is not visible from the error message alone
+- Multiple hypotheses exist and need systematic elimination
+- The bug spans multiple modules or requires understanding the call graph
+- Regression was introduced and the change history is unclear
+
+## When NOT to Use
+
+- Trivial bug with immediately visible root cause (typo, wrong import, missing null check) — fix directly
+- The user explicitly says "this is a quick fix, just apply it"
+- Size is XS per Task Sizing
+
 ## Phase 1 — Build a Feedback Loop
 
 **This is the most important phase.** If you have a fast, deterministic, agent-runnable pass/fail signal for the bug, you will find the cause. If you don't, no amount of staring at code will save you.

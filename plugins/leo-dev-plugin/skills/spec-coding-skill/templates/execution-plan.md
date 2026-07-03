@@ -31,13 +31,11 @@
   You are [role] in requirement [NNN]-[req-name].
 
   Read these documents before any work:
-  1. shared/00-agent-execution.md — global rules (self-check, deviation protocol)
-  2. shared/02-coding-standards.md — code/comment/test standards
-  3. shared/03-git-workflow.md — branch naming, commit format, pre-commit checks
-  4. phase-b/00-start-and-resume.md § Execution Loop — 12-step procedure
-  5. phase-b/00-start-and-resume.md § Phase B Execution Discipline — no implicit fallback, no mock internal/external
-  6. phase-b/01-round-mechanism.md — state machine, deviation decision matrix
-  7. spec-coding-skill/SKILL.md — full methodology, round mechanism, core rules
+  1. references/phase-b-agent-brief.md — condensed brief covering all Phase B rules (read first)
+  2. phase-b/02-execution-loop.md — full 12-step procedure and deviation protocol
+  3. spec-coding-skill/SKILL.md § Core Rules — skill-specific mandatory rules
+
+  Full reference documents (shared/00-agent-execution.md, shared/02-coding-standards.md, shared/03-git-workflow.md, phase-b/01-round-mechanism.md) are available on-demand. The Agent Brief covers the essentials for all of them.
 
   Prohibited: implicit fallback (no silent catch, no hidden retry, no log-and-continue past real errors).
   Integration tests: do NOT mock internal modules or real external dependencies.

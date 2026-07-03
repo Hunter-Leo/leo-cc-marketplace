@@ -59,7 +59,7 @@ Once the requirement is clear enough, ask:
 | **XS** | 1 file, trivial change (typo, rename, default param) | Brief `init.md` (inline plan only), user review, implement, test. |
 | **S** | 1–3 files, well-defined, no design ambiguity | Lightweight `init.md` (Spec + Requirements + Plan), user review, implement, test. |
 | **M** | Multiple modules, moderate complexity | Full Phase 01–07 flow as documented. |
-| **L / XL** | Cross-requirement, multiple dependencies, high uncertainty | Full flow + Blueprint layer. Requires Phase 02 (research/inspect) before planning. |
+| **L / XL** | Cross-requirement, multiple dependencies, high uncertainty | Full flow + Blueprint layer. Requires Phase 02 (research/inspect) before planning. After Phase 02 completes, re-evaluate the task size. Research or inspection may reveal the task is simpler than initially assessed (downgrade to M) or more complex (confirm L/XL and proceed). Document the re-evaluation in plan.md. |
 
 **Bug fix sizing:** Non-trivial bugs (intermittent, root cause unknown, cross-module) default to **M** — root cause ambiguity satisfies the "moderate complexity" criterion and ensures Structured Debugging is reachable via Phase 02. Trivial one-line fixes with immediately visible root causes may still size as XS/S.
 
@@ -127,56 +127,9 @@ After announcing the size, ask briefly: `"Sound good?"` and proceed unless the u
 
 ## User Interaction
 
-### Language
-
-At the start of Phase 01, detect the language the user is communicating in:
-
-- If the user is writing in **English**: use English for all `.dev` documents (default).
-- If the user is writing in a **non-English language**: ask once:
-
-  > The `.dev` documents will be written in English by default. Would you like me to use [detected language] instead?
-
-  Use whichever language the user confirms. Apply it consistently to all generated documents for this requirement.
-
-### Interactive Mode
-
-At the start of Phase 01, ask the user once:
-
-> Would you like to proceed interactively? In interactive mode, I'll pause after each phase and after each task during execution for your review.
-> Reply **yes** for interactive mode, or **no** to run all phases automatically.
-
-**Interactive mode behavior:**
-- Phases 01–06: pause after completing each phase or document, show a summary and ask:
-  > ✅ [Phase/document name] complete. Review the output and reply **continue** to proceed, or tell me what to adjust.
-- Phase 07 (Execution loop): pause after each task reaches `done`, show a summary and ask:
-  > ✅ T-XXX complete. Summary: <what was done>. Continue to the next task? (reply 'continue' or tell me what to adjust)
-
-**Automatic mode behavior:** proceed through all phases without pausing, unless a blocker or ambiguity requires user input.
-
-### Progress Display
-
-At the start of execution and before each phase, display the current progress:
-
-```
-[NNN] req-name — Progress
-──────────────────────────────
-✅ Phase 01 — Initialization
-✅ Phase 02 — Prerequisite Tasks
-▶  Phase 04 — Implementation Plan   ← now
-   Phase 05 — Task Planning
-   Phase 06 — Create start-and-resume.md
-   Phase 07 — Execution
-──────────────────────────────
-```
-
-- `✅` = completed
-- `▶` = in progress
-- (blank) = not started
-- Omit optional phases that were skipped
+See [references/user-interaction.md](../references/user-interaction.md) for Language detection, Interactive/Automatic mode, and Progress Display rules.
 
 ---
-
-## File Reading Discipline
 
 - Read existing files before modifying them — never edit blind
 - Read no more than **3–5 files per action** — if more context is needed, read in batches across multiple steps
@@ -316,31 +269,7 @@ Any additional context or suggested approach.
 
 ## Handling Project Overview Queries
 
-When the user asks for a project-level overview — progress summary, status check, bird's-eye view, "where are we", or "what's next":
-
-1. **Read `.dev/blueprint.md`** — this is the single source of truth for project-wide status
-2. **For each requirement in `▶ in-progress` status**, also read its `tasks.md` for task-level detail
-3. **For each requirement in `⏸ blocked`**, read the `tasks.md` Notes and `init.md` to explain the blocker
-4. **Check `.dev/TODO.md`** for unresolved backlog items that may impact progress
-5. **Present** a structured summary:
-
-   ```
-   ## Project Status
-   
-   Blueprint: N requirements | ✅ Done: X | ▶ Active: Y | ⏳ Idle: Z
-   Backlog:   TODO.md has W unresolved items
-   
-   | Req | Phase | Status | Priority | Dependencies | Next Action |
-   |-----|-------|--------|----------|--------------|-------------|
-   | 001 user-auth | 07 Execution | ▶ in-progress | P0 | - | T-003: implement login |
-   | 002 task-crud | 04 Plan | ⏳ pending | P1 | 001 | ready to start Phase 05 |
-   
-   **Recommended focus**: 001-user-auth (highest priority, actively in progress)
-   ```
-
-6. If the user then asks about a specific requirement, follow the normal per-requirement flow from the relevant phase document.
-
-Do not answer a project overview query by describing only one requirement — always read the blueprint first. If the blueprint is missing, scan `.dev/` directories for `init.md` files and reconstruct it.
+See [references/project-overview-query.md](../references/project-overview-query.md) for the full protocol on status checks, progress summaries, and bird's-eye-view queries.
 
 ---
 

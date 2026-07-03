@@ -1,5 +1,7 @@
 # Blueprint Management
 
+> Note: `shared/04-` numbering is reserved for future use. The gap from `03-git-workflow.md` to `05-blueprint-management.md` is intentional.
+
 The blueprint is the project-level document that provides a bird's-eye view of all requirements, their current phases, dependencies, and overall status.
 
 The blueprint exists at `.dev/blueprint.md`, sitting alongside `TODO.md` at the top level of `.dev/`.
