@@ -110,75 +110,17 @@ Determine `NNN` by listing `.dev/` and using the next available three-digit numb
 - Lowercase letters and hyphens only
 - Concise and descriptive: `api-analysis`, `code-refactor`, `user-auth`
 
-## init.md Structure
+## Creating init.md
 
-### # Project Stage
+Copy the template from `templates/init.md` to `.dev/[NNN]-[req-name]/init.md`, then fill in each section:
 
-Declare the current stage of the project.
+- **Project Stage** — declare `pre-launch` or `live`. See `phase-b/00-start-and-resume.md § Breaking Changes Policy`.
+- **Spec** — background, motivation, core problem, usage scenarios
+- **Requirements** — functional and technical requirements, interface descriptions
+- **Action Items** — prerequisite docs, round artifacts, required docs. Read available skills/agents first (see Skill & Agent Discovery above), then fill the optional tools section.
+- **Constitution** — include applicable OOP/SOLID rules from `shared/01-oop-principles.md` and language-specific standards from `shared/02-coding-standards.md`. Keep only the languages and rules that apply.
 
-```
-project_stage: pre-launch   # or: live
-```
-
-See `phase-b/00-start-and-resume.md § Breaking Changes Policy` for how this value affects execution.
-
-### # Spec
-
-High-level description of the requirement:
-
-- Background and motivation
-- Core problem being solved
-- Overall goal and vision
-- Business value
-- Usage scenarios
-
-### # Requirements
-
-Detailed specification:
-
-- Core objectives
-- Functional requirements
-- Technical requirements
-- Interface or module descriptions
-- Expected outputs
-
-### # Action Items
-
-Ordered list of documents to produce. Use this template:
-
-```
-**Prerequisite documents** (if needed — see Phase 02 & 03):
-- [ ] `generated/inspect.md` — existing code analysis
-- [ ] `generated/research.md` — technology research
-- [ ] `generated/profiling.md` — performance analysis
-- [ ] `generated/diagnosis.md` — bug diagnosis
-- [ ] `generated/algorithm-design.md` — algorithm design
-
-Complete all checked prerequisite documents before proceeding to the required documents below.
-
-**Round artifacts** (maintained across rounds):
-- [ ] `issues.md`                     — Round-to-round issue log (created in Phase 07, read on re-entry)
-
-**Required documents** (always, in order):
-- [ ] `generated/rounds/round-001/plan.md`     — Phase 04 (Round 1). Subsequent rounds: `round-NNN/plan.md`
-- [ ] `generated/rounds/round-001/tasks.md`    — Phase 05. Each round gets its own tasks.md
-- [ ] `generated/start-and-resume.md`          — Phase 06 (must exist before any task execution)
-```
-
-All generated documents go under `.dev/[NNN]-[req-name]/generated/`. Requirement-level files (`init.md`, `issues.md`) live under `.dev/[NNN]-[req-name]/`. Round-specific docs (plan, tasks, issues) live under `generated/rounds/round-NNN/`.
-
-### # Constitution
-
-Mandatory coding standards for this requirement. Read the following documents and include applicable rules in this section of `init.md`:
-
-- [../shared/01-oop-principles.md](../shared/01-oop-principles.md) — OOP & SOLID principles (**all code must comply; this section must include the relevant rules**)
-- [../shared/02-coding-standards.md](../shared/02-coding-standards.md) — language-specific standards
-
-Keep only the languages and rules that apply to this requirement. Document any project-specific extensions (e.g., team conventions not covered by the reference documents).
-
-## Step 3 — Update Blueprint
-
-After creating `init.md` and its Action Items, register this requirement in the project blueprint.
+After creating init.md and its Action Items, proceed to Step 3 — Update Blueprint.
 
 1. **Read** `.dev/blueprint.md` if it exists
 2. **Create** `.dev/blueprint.md` if this is the first requirement — use the template from [05-blueprint-management.md](05-blueprint-management.md)
@@ -189,21 +131,7 @@ After creating `init.md` and its Action Items, register this requirement in the 
    - Dependencies: inferred from the requirement context
 4. **Update** the Progress Summary section to reflect the new total
 
-If `.dev/TODO.md` does not exist, create it now with the following skeleton:
-
-```markdown
-# Project TODO
-
-Tracks out-of-scope bugs and features discovered during task execution.
-Do not act on these during an active task — log and continue.
-
-## Backlog
-
-| ID | Type | Priority | Summary | Source | Status |
-|---|---|---|---|---|---|
-
-## Details
-```
+If `.dev/TODO.md` does not exist, copy it from `templates/TODO.md`.
 
 Then inform the user:
 

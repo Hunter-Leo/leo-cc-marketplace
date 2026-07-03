@@ -1,6 +1,6 @@
 ---
 name: spec-coding-skill
-description: "Guides LLM agents through large-scale coding tasks using a two-phase methodology: Phase A (需求构建阶段, initialization through planning) and Phase B (需求执行阶段, execution through review), connected by a hard user-confirmation gate. Covers requirement definition, planning, algorithm design, implementation, deviation handling, and round-to-round issue tracking. Includes OOP/SOLID principles, language-specific coding standards, a dual-layer state machine for flow decisions, and trigger-driven extended methodologies for TDD, structured debugging, architecture deepening, terminology alignment, and dual-axis review. This skill should be used when the user asks to 'start a coding task', 'plan implementation', 'begin a new requirement', 'enter execution phase', 'resume a project', or mentions spec-driven development, round-based execution, or the spec-coding-skill flow. Keywords: spec-driven development, round-based execution, iterative development, deviation protocol, state machine, coding methodology, software engineering workflow, requirements-to-code pipeline, project blueprint, TDD, debugging, architecture review, method selection, phase-a, phase-b."
+description: "Guides LLM agents through large-scale coding tasks using a two-phase methodology: Phase A (Requirements Construction Phase, initialization through planning) and Phase B (Execution Phase, execution through review), connected by a hard user-confirmation gate. Covers requirement definition, planning, algorithm design, implementation, deviation handling, and round-to-round issue tracking. Includes OOP/SOLID principles, language-specific coding standards, a dual-layer state machine for flow decisions, and trigger-driven extended methodologies for TDD, structured debugging, architecture deepening, terminology alignment, and dual-axis review. This skill should be used when the user asks to 'start a coding task', 'plan implementation', 'begin a new requirement', 'enter execution phase', 'resume a project', or mentions spec-driven development, round-based execution, or the spec-coding-skill flow. Keywords: spec-driven development, round-based execution, iterative development, deviation protocol, state machine, coding methodology, software engineering workflow, requirements-to-code pipeline, project blueprint, TDD, debugging, architecture review, method selection, phase-a, phase-b."
 triggers:
   - spec-driven
   - coding task
@@ -72,32 +72,31 @@ Before entering ANY phase, you MUST:
 
 Follow [phase-a/00-initialization.md](phase-a/00-initialization.md). XS/S: Pre-flight Checks then lightweight init.md. M+: full init.md with Spec, Requirements, Action Items, Constitution.
 
-### Step 6a — Phase A: 需求构建阶段
+### Step 6a — Phase A: Requirements Construction Phase
 
 Proceed through Phase 02–06. At each phase entry, repeat Step 4 (re-read phase doc + run Method Selection).
 
 After Phase 06 completes, proceed to the Phase A→B Gate below.
 
-### Step 6b — Phase A→B Gate: 用户确认门 (HARD GATE)
+### Step 6b — Phase A→B Gate: User Confirmation Gate (HARD GATE)
 
-DO NOT enter Phase 07 until the user explicitly confirms the Phase A→B proposal.
+DO NOT enter Phase 06.5 or Phase 07 until the user explicitly confirms the Phase A→B proposal.
 The proposal MUST include the following in **one message**:
 
 1. **Phase A documents summary** — what docs were produced, key highlights
-2. **Execution mode** — recommended mode (default: 执行 Agent + Review Agent, auto-advance; see [phase-b/00-start-and-resume.md](phase-b/00-start-and-resume.md) § Execution Mode Recommendation)
-3. **Branch name** — auto-generated from requirement name `<type>/[NNN]-[req-name]`
+2. **Branch name** — auto-generated from requirement name `<type>/[NNN]-[req-name]`
+3. **Execution mode preview** — brief recommendation (default: Dual Agent); the full plan with prompts comes in Phase 06.5
 
-User confirms once → Agent creates branch automatically → enters Phase B.
+User confirms once → Agent creates branch automatically → proceeds to Phase 06.5 Execution Planning.
 User asks for changes → iterate all items, re-present.
-After user confirmation, update `.dev/blueprint.md`: set Phase to `07 Execution`, Status to `▶ in-progress`.
+After user confirmation, update `.dev/blueprint.md`: set Status to `▶ in-progress`.
 
 GATE RULE: "Looks good" without explicit confirmation of all items is NOT sufficient.
-Ask: "Do you confirm the docs, branch name, and execution mode? Reply **confirmed** to proceed."
+Ask: "Do you confirm the docs and branch name? Reply **confirmed** to proceed to Execution Planning."
 
-### Step 6c — Phase B: 需求执行阶段
+### Step 6c — Phase 06.5: Execution Planning Phase
 
-After the gate is passed, enter Phase 07. Phase B execution is governed
-by [Phase B Execution Discipline](phase-b/00-start-and-resume.md#phase-b-execution-discipline).
+Run [Phase 06.5 Execution Planning](phase-b/00-start-and-resume.md#phase-065--execution-planning) — scan available agent types, draft `execution-plan.md` with sub-agent prompts, present to user for confirmation. Only after user confirms the execution plan, enter Phase 07.
 
 ### Step 7 — Round Review (MANDATORY after Phase 07)
 
@@ -121,7 +120,7 @@ All generated documents go under `.dev/[NNN]-[req-name]/` in the project root.
 Phase 01 — Initialization              (required for M+)          ─┐
               ↓                                                    │
 Phase 02 — Prerequisite Tasks          (optional, LLM judges)      │ Phase A
-Phase 03 — Algorithm Design            (optional, LLM judges)      │ 需求构建阶段
+Phase 03 — Algorithm Design            (optional, LLM judges)      │ Requirements Construction
               ↓                                                    │
 Phase 04 — Implementation Plan         (required for M+)           │
               ↓                                                    │
@@ -131,14 +130,22 @@ Phase 06 — Create start-and-resume.md  (required for M+)          ─┘
               │
 ═══════════════════════════════════════════════════════
 ▲  Phase A → B GATE — USER CONFIRMATION REQUIRED    │
-│  Agent submits: doc summary + execution mode       │
-│  User confirms → Agent creates branch → enters B   │
+│  1. Agent submits: doc summary + branch name        │
+│  2. User confirms                                   │
+│  3. Agent creates branch                            │
 ═══════════════════════════════════════════════════════
               │
               ▼
-Phase 07 — Execution                   (required for M+)          ─┐
-              │                                                    │ Phase B
-              ▼                                                    │ 需求执行阶段
+Phase 06.5 — Execution Planning         (new, required for M+)   ─┐
+  ├── Scan available agent types                                   │ Execution Phase
+  ├── Draft execution-plan.md (round dir, per round)                │
+  ├── Draft sub-agent startup prompts (must read shared rules)      │
+  └── User confirms execution plan                                  │
+              │                                                    │
+              ▼                                                    │
+Phase 07 — Execution                   (required for M+)           │
+              │                                                    │
+              ▼                                                    │
      Round Review                      (check issues.md)          ─┘
          │
     ┌────┴────────┐
@@ -158,7 +165,7 @@ Phases 02 and 03 are **independent** (parallel, not sequential) — both, one, o
 
 ## Phase Reference
 
-**Phase A — 需求构建阶段**
+**Phase A — Requirements Construction**
 
 | Phase | Output | Reference |
 |---|---|---|
@@ -170,12 +177,13 @@ Phases 02 and 03 are **independent** (parallel, not sequential) — both, one, o
 | 05 Task Planning | `tasks.md` | [phase-a/04-task-planning.md](phase-a/04-task-planning.md) |
 | 06 Create start-and-resume.md | `start-and-resume.md` | [phase-b/00-start-and-resume.md](phase-b/00-start-and-resume.md) § Step 0 |
 
-**Phase A→B Gate — 用户确认门** (see Step 6b above)
+**Phase A→B Gate — User Confirmation Gate** (see Step 6b above)
 
-**Phase B — 需求执行阶段**
+**Phase B — Execution Phase**
 
 | Phase | Output | Reference |
 |---|---|---|
+| 06.5 Execution Planning | `execution-plan.md` | [phase-b/00-start-and-resume.md](phase-b/00-start-and-resume.md) § Phase 06.5 |
 | 07 Execution | code | [phase-b/00-start-and-resume.md](phase-b/00-start-and-resume.md) |
 | Round Review | `issues.md` + Round History + N+1 loop | [phase-b/01-round-mechanism.md](phase-b/01-round-mechanism.md) |
 

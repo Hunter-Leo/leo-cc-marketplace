@@ -2,215 +2,80 @@
 
 > ## STOP — Are You Resuming an Interrupted Session?
 >
-> If you are returning to work after any interruption (new conversation, session restart, context switch), you MUST run the [Session Bootstrap](#session-bootstrap-new-agent-session-on-existing-project) before doing anything else. **Do not skip straight to a task — you will miss critical context.**
+> If returning after any interruption, run the [Session Bootstrap](#session-bootstrap) before doing anything else. Do not skip straight to a task.
 >
 > Quick self-check:
-> - [ ] Read `.dev/blueprint.md` — what's the overall project status?
-> - [ ] Read `issues.md` — any open issues from previous rounds?
-> - [ ] Read `tasks.md` — which task is next? Any `in-progress` or `blocked` tasks?
-> - [ ] Read `init.md § Constitution` — what design rules apply?
+> - [ ] Read `.dev/blueprint.md` — overall project status
+> - [ ] Read `issues.md` — any open issues from previous rounds
+> - [ ] Read `tasks.md` — which task is next?
+> - [ ] Read `init.md § Constitution` — design rules
 
 **Entry (Phase 06):** `tasks.md` exists at `.dev/[NNN]-[req-name]/generated/tasks.md`.
-**Exit (Phase 06):** `start-and-resume.md` created, execution mode confirmed.
-**Entry (Phase 07):** `start-and-resume.md` exists (mandatory gate).
-**Exit (Phase 07):** All tasks in `tasks.md` reach `done`, `.dev/blueprint.md` updated.
+**Exit (Phase 06):** `start-and-resume.md` created.
+**Entry (Phase 06.5):** Phase A→B Gate confirmed.
+**Exit (Phase 06.5):** `execution-plan.md` created at `generated/rounds/round-NNN/execution-plan.md`, user confirmed.
+**Entry (Phase 07):** `start-and-resume.md` + `execution-plan.md` exist.
+**Exit (Phase 07):** All tasks reach `done`, `.dev/blueprint.md` updated.
 
-## Step 0 — Phase 06: Create start-and-resume.md (mandatory gate)
-**Do not begin the execution loop until this file exists.**
+---
 
-Create `.dev/[NNN]-[req-name]/generated/start-and-resume.md`:
+## Session Bootstrap
 
-```markdown
+**When:** Entering an existing project with `.dev/` content (resuming after interruption).
+**Action:** Bootstrap the session before any work.
 
-# Start and Resume Guide — [NNN]-[req-name]
-**Current Round:** 1
-
-## Quick Start
-1. Read `.dev/blueprint.md` — project-wide status across all requirements
-2. Read `init.md` — this requirement's scope
-3. Read `rounds/round-[NNN]/plan.md` — technical approach (NNN = current round from above)
-4. Read `rounds/round-[NNN]/tasks.md` — find the next `not-started` task
-5. Review the standards sections below before writing any code
-
-## Resuming After Interruption
-1. Read `00-agent-execution.md § Handling Project Overview Queries` — use this format to present the full project status when asked
-2. Read `.dev/blueprint.md` — see all requirements, their phases, and overall project status
-3. Check `issues.md` for open issues from previous rounds
-4. Open `rounds/round-[NNN]/tasks.md` for the active requirement and find the first task not in `done`
-5. If a task is `in-progress`, read its Notes for context before continuing
-6. If a task is `blocked`, read the Notes and address the blocker first
-7. Review the standards sections below before continuing
-
-## Session Bootstrap (new agent session on existing project)
-When entering an existing project that already has `.dev/` content, bootstrap the session before any work:
-
-1. **Check `.dev/blueprint.md`** — if missing, scan `.dev/` directories to reconstruct it from existing `init.md` files, then inform the user
-
-2. **Read** the blueprint and for each ▶ active or ⏸ blocked requirement, read `tasks.md` for current task detail
-
-3. **Present** the full status to the user proactively (don't wait to be asked):
+1. **Check `.dev/blueprint.md`** — if missing, scan `.dev/` directories to reconstruct from existing `init.md` files, then inform the user
+2. **Read** the blueprint and for each active or blocked requirement, read `tasks.md` for current task detail
+3. **Present** full status to the user proactively:
 
    ```
    ## Project Status
-   
+
    Blueprint: 3 requirements | ✅ Done: 1 | ▶ Active: 1 | ⏳ Idle: 1
    Backlog:   .dev/TODO.md has 2 unresolved items
-   
+
    | Req | Phase | Status | Priority | Next Action |
    |-----|-------|--------|----------|-------------|
    | 001 user-auth | 07 Execution | ▶ in-progress | P0 | T-003: implement login |
    | 002 task-crud | 04 Plan | ⏳ pending | P1 | wait for 001 |
    | 003 collab    | 07 Done     | ✅ done    | P2 | shipped |
-   
+
    **Recommended**: continue with 001-user-auth (T-003 is in-progress)
-   **Active requirement**: 001-user-auth
-   **Next task**: T-003 — implement login
    ```
 
    Edge cases:
-   - **All done**: "🎉 All requirements complete! Check `.dev/TODO.md` for backlog items."
-   - **All blocked**: "⚠ All active requirements are blocked. See blocker notes below."
+   - **All done**: "All requirements complete. Check `.dev/TODO.md` for backlog items."
+   - **All blocked**: "All active requirements are blocked. See blocker notes below."
    - **Blueprint missing**: "No blueprint found. Scanned `.dev/` and found N requirements. Reconstructing blueprint..."
 
 4. **Ask** the user which requirement to focus on, or proceed with the active one
 5. **Open** `issues.md` for open issues (if round > 1)
-6. **Open** `generated/rounds/round-[NNN]/tasks.md` for the chosen requirement and find the next unstarted task
+6. **Open** `generated/rounds/round-[NNN]/tasks.md` and find the next unstarted task
 
-> This applies whenever `.dev/blueprint.md` exists, regardless of whether the user explicitly asked for an overview. Do not skip to task execution without first showing the blueprint.
-
-## Key Documents
-- Requirement: `.dev/[NNN]-[req-name]/init.md`
-- Issues (cross-round): `.dev/[NNN]-[req-name]/issues.md`
-- Current plan: `.dev/[NNN]-[req-name]/generated/rounds/round-[NNN]/plan.md`
-- Current tasks: `.dev/[NNN]-[req-name]/generated/rounds/round-[NNN]/tasks.md`
+> Do not skip to task execution without first showing the blueprint.
 
 ---
 
-## Round History
-Tracked in this document's own `## Round History` section (see template below). Each round adds an entry here when it completes. See [01-round-mechanism.md](01-round-mechanism.md) for the full round-based execution model, state machine definitions, and agent decision matrix.
+## Part 1: Phase 06 — Create start-and-resume.md
 
-```markdown
+**Do not begin the execution loop until this file exists.**
 
-## Round History
-**Current Round:** [N]
+Copy the template from `templates/start-and-resume.md` to `.dev/[NNN]-[req-name]/generated/start-and-resume.md`:
 
-### Round [N] (complete)
-- **Status:** [completed / blocked]
-- **Location:** `generated/rounds/round-NNN/`
-- **Tasks:** X planned, Y completed, Z deferred
-- **New issues:** ISS-NNN, ISS-MMM
-- **Open issues:** W remaining
-- **Summary:** One or two sentences about what this round achieved.
+```bash
+cp templates/start-and-resume.md .dev/[NNN]-[req-name]/generated/start-and-resume.md
 ```
 
----
-
-## Constitution
-See `init.md § Constitution` for this requirement's design rules, and [../shared/01-oop-principles.md](../shared/01-oop-principles.md) / [../shared/02-coding-standards.md](../shared/02-coding-standards.md) for the full standards.
-
-Key principles that apply to every task:
-- **OOP & SOLID** — encapsulation, SRP, OCP (no if/elif chains), DIP (depend on abstractions)
-- **Type annotations** — all function/method parameters and return types
-- **Docstrings** — every public class, function, and file
-- **Testing** — normal cases + edge cases + error cases
-- **No hardcoded secrets** — use environment variables
-- **Import rules** — no lazy imports; restructure to avoid circular deps before using `TYPE_CHECKING`
+The template includes: Quick Start, Resuming After Interruption, Session Bootstrap, Key Documents, Round History, Constitution, Git Workflow, and Phase B Discipline Reminder.
 
 ---
 
-## Git Workflow
-See [../shared/03-git-workflow.md](../shared/03-git-workflow.md) for the full rules — this section only summarizes what you need during execution.
-
-Branch: `<type>/[NNN]-[req-name]`
-
-Commit format:
-```
-[NNN] T-XXX <type>: <imperative summary ≤ 72 chars>
-```
-Types: `feat` · `fix` · `refactor` · `test` · `docs` · `style` · `perf` · `ci` · `build` · `chore`
-```
-
----
-
-## Phase B Discipline Reminder
-
-Every agent entering Phase B (execution) MUST follow these rules:
-
-1. **Read this document** — especially Constitution, Git Workflow, and Phase B Execution Discipline
-2. **Read spec-coding-skill SKILL.md** — full methodology, state machine, deviation protocol
-3. **No implicit fallback** — do not silently catch errors, add hidden retry logic, or log-and-continue past real failures. Always use the Deviation Protocol.
-4. **Integration tests: no mocking internal code or external dependencies** — mock only at system boundaries
-5. **Follow the execution loop step by step** — never skip steps or batch tasks
-6. **Update tasks.md on every status change** — not-started → in-progress → done/blocked, with Notes
-
----
-
-## Step 0.5 — Execution Mode Recommendation
-Before starting the Execution Loop, recommend the best execution mode for this requirement. The default recommendation depends on the tasks.md analysis:
-
-### Default Mode — Dual Agent (recommended for most projects)
-
-When tasks.md shows a **sequential dependency chain** (most tasks depend on previous ones):
-
-1. **Execution Agent** (execution-capable model, e.g. Opus) — executes all tasks in sequence, may batch multiple tasks when simple
-2. **Review Agent** — reviews after each execution agent's batch
-3. **Auto-advance** — the execution loop proceeds without pauses, updating tasks.md at each step. Blockers and deviations still pause for input (per Deviation Protocol).
-
-**OMC execution skills:** If oh-my-claudecode is available, consider leveraging execution-class skills like `oh-my-claudecode:ralph` (self-referential loop until completion) or `oh-my-claudecode:ultrawork` (parallel execution engine) to automate Phase B advancement. The Agent driving Phase B should evaluate these skills against the task structure and recommend the best fit.
-
-**Every Agent entering Phase B MUST:**
-- Read `start-and-resume.md` § Phase B Execution Discipline before any work
-- Read the spec-coding-skill `SKILL.md` to understand the full methodology
-- Follow all Git Workflow, Coding Standards, and Comment Standards in the Constitution
-- Never implement implicit fallback — problems go through Deviation Protocol, not silent recovery
-- Scan local environment for tools/skills/methods that could assist execution
-
-### Alternative Modes
-
-**Step 1 — Check available execution skills from session context:**
-- Read the list of available skills provided by the system at session start (visible in the session context / system-reminder)
-- Find all execution-class skills — look for skills whose `description` mentions: autonomous execution, parallel agents, task completion, workflow automation, or persistent loops
-- For each candidate skill, invoke it via the Skill tool to read its `Use_When` / `Do_Not_Use_When` descriptions
-- If no execution-class skills are found, proceed directly to the Execution Loop below
-
-**Step 2 — Analyze `tasks.md`:**
-- Total task count, type distribution (feature / test / UI / architecture / etc.)
-- Dependency structure (sequential chain vs. parallelizable)
-
-**Step 3 — Match against `Use_When` conditions** and recommend the best-fit execution mode to the user.
-
-**Step 4 — If a multi-agent mode is recommended (e.g. `/team`):**
-
-a. Read the list of available agent types from the session context (system-reminder)
-
-b. Map `tasks.md` task types to roles. Naming convention:
-   ```
-   <omc-role-type>-<index>
-   ```
-   Examples: `executor-1`, `executor-2`, `designer-1`, `test-engineer-1`
-   **Forbidden:** `worker-1`, `agent-2`, or any non-semantic names.
-
-c. Present the team configuration to the user:
-   > Based on `tasks.md` analysis (N tasks: X feature + Y test + Z UI), I recommend `/team`:
-   > - `executor-1`, `executor-2` — T-001 ~ T-004
-   > - `test-engineer-1` — T-005 ~ T-006
-   > - `designer-1` — T-007
-   >
-   > Each worker will read `start-and-resume.md` on startup for Constitution and coding standards.
-   >
-   > Confirm this configuration, or tell me what to adjust?
-
-d. After user confirmation, **agent directly invokes** the chosen execution mode using the Skill tool (e.g. `Skill(skill='oh-my-claudecode:team', args='3:executor "<task description>"')`), and instructs each worker to read `start-and-resume.md` at startup for Constitution and coding standards.
-
-> Rules: Agent role types are read from OMC in real time — never hardcoded. When OMC adds new execution modes, this step picks them up automatically on next run.
-
-## Phase A→B Gate: User Confirmation Required
+## Part 2: Phase A→B Gate — User Confirmation
 
 > HARD GATE — Agent MUST NOT bypass or treat as advisory.
-> The items below are presented in ONE message.
-> User confirms ONCE; Agent creates branch and enters Phase B automatically.
+> Present all items in ONE message. User confirms ONCE; Agent creates branch and proceeds to Phase 06.5.
 
-### Step 1 — Present Proposal (ONE message to user)
+### Step 1 — Present Proposal
 
 Template:
 ```
@@ -222,15 +87,11 @@ All requirements documents are ready. Here's the summary:
 - ✅ `init.md` — scope, requirements, constitution
 - ✅ `plan.md` — technical approach
 - ✅ `tasks.md` — X tasks identified
-- ✅ `start-and-resume.md` — execution guide
+- ✅ `start-and-resume.md` — execution guide (template copied)
 
-**Branch:** `<type>/[NNN]-[req-name>` (auto-generated from requirement name)
+**Branch:** `<type>/[NNN]-[req-name]` (auto-generated from requirement name)
 
-**Recommended execution mode:**
-执行 Agent + Review Agent. Tasks will be batched (executed sequentially by the execution agent, reviewed by the reviewer after each batch). Auto-advance mode — the execution loop proceeds without pauses, updating tasks.md at each step. Blockers and deviations still pause for input.
-
-**Phase B Discipline:**
-All agents read start-and-resume.md + spec-coding-skill before execution. No implicit fallback — every issue goes through Deviation Protocol.
+**Next:** After confirmation, I will create the branch and proceed to Phase 06.5 Execution Planning — where I'll scan available agent types, draft an execution plan, and present sub-agent prompts for your review.
 
 Reply **confirmed** to proceed, or tell me what to adjust.
 ```
@@ -238,278 +99,369 @@ Reply **confirmed** to proceed, or tell me what to adjust.
 ### Step 2 — Process Confirmation
 
 On user confirmation:
-1. Create the branch:
-   ```bash
-   git checkout -b <type>/[NNN]-[req-name]
-   ```
-2. Update `.dev/blueprint.md`: set Phase to `07 Execution`, Status to `▶ in-progress`
-3. Enter Execution Loop (Phase 07)
+1. `git checkout -b <type>/[NNN]-[req-name]`
+2. Update `.dev/blueprint.md`: set Status to `▶ in-progress`
+3. Proceed to Phase 06.5
 
-### Step 3 — Handle Change Requests (if user doesn't confirm)
+### Step 3 — Handle Change Requests
 
-If user asks for changes to docs, branch name, or execution mode:
-- Apply the change
-- Re-present the updated proposal (complete template above)
-- Wait for confirmation again
+If changes requested: adjust, re-present the full proposal, wait for confirmation again.
 
-GATE RULE: "Looks good" without explicit confirmation of the full proposal is NOT sufficient.
-The model MUST explicitly ask: "Do you confirm? Reply **confirmed** to proceed."
+> GATE RULE: "Looks good" without explicit confirmation is NOT sufficient. Ask: "Do you confirm? Reply **confirmed** to proceed."
 
 ---
 
-## Phase B Execution Discipline
+## Part 3: Phase 06.5 — Execution Planning
 
-> These rules apply to ALL agents entering Phase B — whether a single execution agent, a team of agents, or any other execution mode. Every agent MUST read this section before starting the first task.
+> This phase runs AFTER the A→B Gate and BEFORE Phase 07. It produces `generated/rounds/round-[NNN]/execution-plan.md` — a per-round document defining execution mode, agent setup, and sub-agent startup prompts.
 
-### Hard Rules
+**Entry:** A→B Gate confirmed, branch created.
+**Exit:** `execution-plan.md` created, user confirmed, Phase 07 ready.
 
-1. **Read start-and-resume.md before execution** — every agent entering Phase B MUST read this document's Constitution, Coding Reference, Git Workflow, and this Phase B Execution Discipline before writing any code. If resuming an interrupted session: run the Session Bootstrap first.
+### Step 0.5 — Execution Mode Recommendation
 
-2. **Read spec-coding-skill SKILL.md** — every agent MUST read the master SKILL.md file to understand the full methodology, state machine, and deviation protocol. Do not rely on memory or partial context.
+#### Default Mode (recommended for most projects)
 
-3. **Follow the execution loop** — the 12-step loop (step 0-12) below must be followed for each task. Do not skip steps or merge multiple tasks into one pass.
+When tasks.md shows a **sequential dependency chain**, the plan should follow this pattern:
 
-4. **Follow code standards** — OOP/SOLID principles, type annotations on all function parameters and return values, consistent naming conventions (see [../shared/01-oop-principles.md](../shared/01-oop-principles.md) and [../shared/02-coding-standards.md](../shared/02-coding-standards.md)).
+1. **Execution Agent** (execution-capable model, e.g. Opus) — executes tasks in sequence, may batch simple tasks
+2. **Review Agent** — reviews after each execution agent's batch
+3. **Auto-advance** — proceeds without interactive pauses; blockers pause per Deviation Protocol
 
-5. **Follow comment standards** — every public class, function, and file must have a docstring. Module-level docstrings for every new file. See [../shared/02-coding-standards.md](../shared/02-coding-standards.md) Documentation.
+**OMC execution skills:** If oh-my-claudecode is available, consider using `oh-my-claudecode:ralph` or `oh-my-claudecode:ultrawork` to automate Phase B advancement.
 
-6. **Follow Git standards** — branch naming (`<type>/[NNN]-[req-name]`), commit format, pre-commit checks, PR/local merge format. See [../shared/03-git-workflow.md](../shared/03-git-workflow.md).
+#### Alternative Modes
 
-7. **Never implement implicit fallback** — this is prohibited at ALL severity levels:
-   - Do not silently catch exceptions and return default values
-   - Do not add hidden retry logic that masks transient failures
-   - Do not "log and continue" when a real error occurs
-   - Do not silently fall back to a less correct implementation when the planned approach fails
-   - When a problem occurs: ALWAYS follow the Deviation Protocol below. Log to issues.md, assess severity, present to user.
+**Step 1 — Check available execution skills from session context:**
+- Read the list of available skills from the session context (system-reminder)
+- Find execution-class skills (description mentions: autonomous execution, parallel agents, workflow automation, persistent loops)
+- For each candidate, invoke the Skill tool to read its `Use_When` / `Do_Not_Use_When`
 
-8. **Integration tests must not mock internal code or external dependencies** — integration tests MUST test real interactions between modules. Mock only at system boundaries (network, time, randomness, third-party APIs unavailable in the test environment). See [../shared/02-coding-standards.md](../shared/02-coding-standards.md) Testing Philosophy (Mock discipline).
+**Step 2 — Analyze `tasks.md`:**
+- Total task count, type distribution
+- Dependency structure (sequential vs parallel)
 
-9. **Scan local environment for tools, skills, and methods** — before starting execution, check the available skills, MCP tools, and agent types from the session context (system-reminder). During each task's step 2 (read plan.md and generated docs), match available tools against the current task type. Apply relevant [methods](../methods/) via Method Selection at Phase 07 entry.
+**Step 3 — Match** against `Use_When` conditions and recommend the best mode.
 
-### Execution Loop Reminder
-When executing the loop below, the agent has already:
-- [x] Passed the Phase A-B Gate (docs confirmed, branch created, mode confirmed)
+**Step 4 — If multi-agent mode (e.g. `/team`):**
+
+a. Read available agent types from session context
+b. Map tasks to roles with semantic naming: `executor-1`, `executor-2`, `designer-1`, `test-engineer-1` (forbidden: `worker-1`, `agent-2`)
+c. Present team configuration:
+   > Based on tasks.md (N tasks: X feature + Y test + Z UI), I recommend `/team`:
+   > - `executor-1`, `executor-2` — T-001 ~ T-004
+   > - `test-engineer-1` — T-005 ~ T-006
+   > - `designer-1` — T-007
+   >
+   > Each worker reads `execution-plan.md` before their assigned tasks.
+d. After Phase 06.5 execution-plan.md is confirmed, invoke the execution mode (e.g. `Skill(skill='oh-my-claudecode:team', ...)`) and instruct workers to read `execution-plan.md`.
+
+> Rules: Agent role types come from session context — never hardcoded.
+
+### Step 1 — Scan Available Agent Types
+
+Read available agent types from session context (system-reminder). Identify candidates:
+
+| Role | Search For |
+|------|-----------|
+| Execution agent | `executor`, `sonnet`, `opus`, or general-purpose types |
+| Review agent | `code-reviewer`, `verifier`, or similar review-focused types |
+| Specialists | `designer`, `test-engineer`, `debugger`, `scientist`, `security-reviewer` |
+
+> Do not hardcode types. If no relevant types exist, fall back to single-agent mode.
+
+### Step 2 — Analyze tasks.md
+
+Read `generated/rounds/round-[NNN]/tasks.md`:
+- Total task count, type distribution
+- Dependency structure (sequential vs parallel groups)
+- Determine optimal batching
+
+### Step 3 — Draft Execution Plan
+
+Read the template at `templates/execution-plan.md`, then create `.dev/[NNN]-[req-name]/generated/rounds/round-[NNN]/execution-plan.md` with:
+- Selected agent types and roles
+- Phase/milestone breakdown
+- Full startup prompt text for EACH agent (must include the 7 document reading list)
+- Review agent prompts must include "verify against execution loop and standards"
+
+### Step 4 — Present to User
+
+Show the execution plan with full startup prompt text for each agent, not just a summary.
+
+Template:
+```
+> ## Execution Plan Draft — Ready for Review
+>
+> Created `execution-plan.md` at `.dev/[NNN]-[req-name]/generated/rounds/round-[NNN]/execution-plan.md`.
+>
+> **Mode:** [Dual Agent / Team / etc.]
+> **Agent 1:** [type] — tasks T-001 ~ T-00X
+> **Agent 2:** [type] — tasks T-00Y ~ T-00Z
+> **Review checkpoints:** [after each stage / after all tasks]
+>
+> Each sub-agent's startup prompt instructs reading: shared/00-agent-execution.md, shared/02-coding-standards.md, shared/03-git-workflow.md, phase-b/00-start-and-resume.md § Execution Loop + § Phase B Execution Discipline, phase-b/01-round-mechanism.md, spec-coding-skill/SKILL.md
+>
+> Full prompts are in execution-plan.md. Reply **confirmed** to deploy, or tell me what to adjust.
+```
+
+### Step 5 — On Confirmation
+
+1. Mark `execution-plan.md` status as `confirmed`
+2. Update `.dev/blueprint.md`: set Phase `06.5 Execution Plan` → `done`, Phase `07 Execution` → `▶ in-progress`
+3. Spawn sub-agents with their startup prompts (Skill tool for OMC modes, Agent tool for direct sub-agents)
+4. Instruct each spawned agent to read `execution-plan.md` before their tasks
+5. Enter Phase 07 Execution Loop
+
+### Step 6 — On Change Requests
+
+Adjust `execution-plan.md`, re-present the full proposal, wait for confirmation again.
+
+### Edge Cases
+
+- **XS/S sizing:** Skip Phase 06.5 entirely. No `execution-plan.md`. Main agent proceeds to Execution Loop after A→B Gate.
+- **Round N+1:** Phase 06.5 runs again. Create new `execution-plan.md` under `generated/rounds/round-(N+1)/`. Read `issues.md` and the previous round's plan for context.
+
+---
+
+## Part 4: Phase 07 — Execution
+
+### 4.1 Phase B Execution Discipline
+
+> These rules apply to ALL agents entering Phase B. Every agent MUST read this before starting the first task.
+
+#### Hard Rules
+
+1. **Read start-and-resume.md before execution** — every agent MUST read its Constitution, Coding Reference, Git Workflow, and this Phase B Execution Discipline before any work. If resuming: run Session Bootstrap first.
+
+2. **Read spec-coding-skill SKILL.md** — every agent MUST read the master SKILL.md for full methodology, state machine, and deviation protocol.
+
+3. **Follow the execution loop** — the 12-step loop below must be followed for each task. No skipping or merging.
+
+4. **Follow code standards** — OOP/SOLID, type annotations, consistent naming. See [../shared/01-oop-principles.md](../shared/01-oop-principles.md) and [../shared/02-coding-standards.md](../shared/02-coding-standards.md).
+
+5. **Follow comment standards** — every public class, function, and file must have a docstring. See [../shared/02-coding-standards.md](../shared/02-coding-standards.md) § Documentation.
+
+6. **Follow Git standards** — branch naming, commit format, pre-commit checks. See [../shared/03-git-workflow.md](../shared/03-git-workflow.md).
+
+7. **Never implement implicit fallback** — prohibited at ALL levels:
+   - No silent catch and return default
+   - No hidden retry masking transient failures
+   - No log-and-continue past real errors
+   - No silent fallback to a less correct implementation
+   - Always follow the Deviation Protocol: log to issues.md, assess severity, present to user
+
+8. **Integration tests must not mock internal code or external dependencies** — mock only at system boundaries (network, time, randomness, third-party APIs unavailable in test env). See [../shared/02-coding-standards.md](../shared/02-coding-standards.md) § Testing Philosophy.
+
+9. **Scan local environment for tools, skills, and methods** — check available skills, MCP tools, and agent types from session context. Apply relevant [methods](../methods/) via Method Selection at Phase 07 entry.
+
+#### Execution Loop Reminder
+
+Before starting the loop, the agent has:
+- [x] Passed the A→B Gate (docs confirmed, branch created)
+- [x] Created and confirmed `execution-plan.md`
 - [x] Read this file's full content including Phase B Execution Discipline
 - [x] Read spec-coding-skill SKILL.md
 
 ---
 
-## Execution Loop
+### 4.2 Execution Loop
 
 > ## STOP — Before You Write Any Code
 >
-> For **every task**, you MUST complete these checks before writing a single line:
+> For **every task**, complete these checks before writing a single line:
 >
 > | # | Check | Skip Consequence |
 > |---|-------|------------------|
-> | 1 | Read `plan.md` for this task's approach | Implement the wrong design |
-> | 2 | Read `init.md § Constitution` for design rules | Violate OOP/SOLID requirements |
-> | 3 | Read affected source files (in sections if large) | Reimplement existing code or break callers |
-> | 4 | Evaluate [Vertical Slice TDD](../methods/01-vertical-slice-tdd.md) trigger for this task | Miss TDD when it applies |
-> | 5 | Confirm you are on the correct feature branch (`git branch --show-current`) | Commit to wrong branch |
+> | 1 | Read `plan.md` for this task's approach | Wrong design |
+> | 2 | Read `init.md § Constitution` | Violate OOP/SOLID |
+> | 3 | Read affected source files (in sections if large) | Reimplement or break callers |
+> | 4 | Evaluate [Vertical Slice TDD](../methods/01-vertical-slice-tdd.md) trigger | Miss TDD when applicable |
+> | 5 | Confirm correct feature branch (`git branch --show-current`) | Commit to wrong branch |
 >
-> **After implementing**, you MUST complete the [Self-Check](../shared/00-agent-execution.md#self-check-after-each-task) before marking the task `done`.
+> **After implementing**, complete the [Self-Check](../shared/00-agent-execution.md#self-check-after-each-task) before marking done.
 
-Repeat for each task in the current round's `tasks.md` (at `generated/rounds/round-[NNN]/tasks.md`) — **never skip a step, never batch tasks**:
+Repeat for each task in `generated/rounds/round-[NNN]/tasks.md` — never skip steps or batch tasks.
 
-**Pre-loop:** Determine the current round number from `§ Round History` above, then:
-- Read [01-round-mechanism.md](01-round-mechanism.md) for the state machine, decision matrix, and issues.md format
-- Read `generated/rounds/round-[NNN]/tasks.md` for the current round's task list
+**Pre-loop:** Determine round number from Round History, then:
+- Read [01-round-mechanism.md](01-round-mechanism.md) for state machine and decision matrix
+- Read `generated/rounds/round-[NNN]/tasks.md` for the current task list
 - Read `issues.md` for any open issues from previous rounds
-- When resuming a round, re-read this document's § Deviation Protocol and § Round History.
+- When resuming a round, re-read Deviation Protocol and Round History
 
 ```
 0.  Confirm feature branch exists:
       git branch --show-current
-      If NOT on the feature branch (should not happen after Phase A→B Gate):
-      → STOP. Branch was not created in the gate. Return to Phase A→B Gate.
+      If not on feature branch (should not happen after A→B Gate):
+      → STOP. Return to Phase A→B Gate.
 
-1.  Mark task as `in-progress` in `generated/rounds/round-[NNN]/tasks.md`
+1.  Mark task as `in-progress` in tasks.md
 
-2.  Read the current round's `plan.md` and relevant generated docs to confirm the approach for this task
+2.  Read the current round's `plan.md` and relevant generated docs
 
-3.  Read all affected existing source files (in sections if large)
+3.  Read all affected source files (in sections if large)
 
-4.  Read standards before writing any code:
-      a. init.md § Constitution — design rules for this requirement
-      b. § OOP & SOLID Principles above — key OOP/SOLID rules
-      c. § Coding Standards above — key coding rules
-      d. ../shared/03-git-workflow.md § Branch — confirm branch naming and type
-
-4a. **Method Selection — Vertical Slice TDD:** Evaluate whether [Vertical Slice TDD](../methods/01-vertical-slice-tdd.md) applies to this task:
-
-    **Triggers Present?** Does this task have a clear, stable public interface?
-    - **Yes**: Apply TDD. Replace steps 5-10 below with RED → GREEN → REFACTOR micro-cycles per behavior. See the method doc for integration details.
-    - **No**: Record justification (e.g. "Required interface is undefined", "Migration task with no new behavior") and proceed with the standard sequence.
-
-    This evaluation repeats for **each task** — some tasks in the same requirement may use TDD while others do not.
+4.  Read standards + Method Selection:
+      a. init.md § Constitution
+      b. Vertical Slice TDD evaluation — does this task have a clear,
+         stable public interface?
+         - Yes: Use RED → GREEN → REFACTOR micro-cycles per behavior.
+           Replace steps 5-9 below with the TDD cycle.
+         - No: Record justification and proceed.
+      c. OOP/SOLID, coding standards, git conventions
 
 5.  Implement the minimal change needed
 
     ---
+    ⚠ DEVIATION CHECK (run after EVERY implementation step)
+    Did anything differ from plan.md or tasks.md?
 
-    ## ⚠ DEVIATION CHECK (run after EVERY implementation step)
+    | Severity | Action |
+    |----------|--------|
+    | Low (variable rename, helper extraction) | Continue. Note in commit. |
+    | Medium (bug in unrelated code, new tool needed) | Log to issues.md (open). Continue. |
+    | High (plan infeasible, interface must change) | STOP. Log to issues.md. Set task blocked. Present options to user. |
 
-    > **Before you move on to verification, ask yourself:** did anything in this implementation differ from what `plan.md` or `tasks.md` described?
-
-    | You just... | Severity | Action |
-    |-------------|----------|--------|
-    | Renamed a variable, extracted a helper, adjusted an internal detail | **Low** | Continue. Note in commit message. |
-    | Found a bug in unrelated code, needed a small new class/tool not in plan | **Medium** | **Log to `issues.md` NOW** (status: `open`). Then continue. |
-    | plan.md design won't work, interface contract must change, dependency incompatible | **High** | **STOP immediately.** Do not write another line. Log to `issues.md`. Set task to `blocked`. Present options to user (see [§ High Severity Protocol](#high-severity-protocol-complete)). |
-
-    **If you're unsure about severity, treat it as HIGH.** Presenting options to the user is always safer than silently changing the plan.
-
-    **Forbidden at all severity levels:** silently modifying `plan.md`, adding files not in `plan.md`, or changing public interfaces without logging the deviation.
-
+    Forbidden: silently modifying plan.md, adding unplanned files, changing interfaces without logging.
     ---
 
 6.  Verify code against standards:
-      [ ] Design follows SOLID principles defined in Constitution
-      [ ] All function/method parameters and return types annotated
-      [ ] Every new file has a module-level docstring
-      [ ] Every new class has a class-level docstring
-      [ ] Every new public function has a full docstring (Args / Returns / Raises)
-      [ ] No hardcoded secrets or environment-specific values
-      [ ] No linting errors introduced
-      [ ] Import rules followed — no lazy imports, no circular deps
+      [ ] SOLID principles followed
+      [ ] Type annotations on all parameters/returns
+      [ ] New file has module-level docstring
+      [ ] New class has class-level docstring
+      [ ] New public function has full docstring
+      [ ] No hardcoded secrets
+      [ ] No linting errors
+      [ ] No circular imports
 
-7.  Run existing tests — must pass (no regressions)
-
-8.  Read ../shared/02-coding-standards.md § Testing to confirm test file naming and coverage
-    requirements, then write unit tests:
-
-    > If using [Vertical Slice TDD](../methods/01-vertical-slice-tdd.md), the test-writing step is folded into the RED phase of each RED-GREEN-REFACTOR cycle. Verify that the micro-cycle has produced sufficient coverage instead.
+7.  Write tests:
       [ ] Normal cases covered
       [ ] Edge cases covered
-      [ ] Error / exception cases covered
+      [ ] Error/exception cases covered
 
-9. Run new tests — all must pass before continuing
+8.  Run all tests — existing + new — all must pass
 
-10. Update tasks.md:
+9.  Update tasks.md:
       a. Set status to `done`
-      b. Write implementation summary in Notes (include any deviation from plan.md)
+      b. Write implementation summary in Notes (note any deviation)
 
-11. Pre-commit check:
-      [ ] All tests pass (existing + new)
-      [ ] No linting errors introduced
-      [ ] No hardcoded secrets or environment-specific values
-      [ ] Docstrings complete on all new public items
-      [ ] Unnecessary files (.pyc, .DS_Store, logs) are not staged
-      [ ] On the correct feature branch (not main)
-      [ ] Commit message follows Google style: ≤72 chars, imperative, English
+10. Pre-commit check:
+      [ ] All tests pass
+      [ ] No linting errors
+      [ ] No hardcoded secrets
+      [ ] Docstrings complete
+      [ ] Unnecessary files not staged
+      [ ] On correct feature branch
+      [ ] Commit message: ≤72 chars, imperative, English
 
-12. Commit following the [Git Workflow](../shared/03-git-workflow.md):
+11. Commit:
       git add <specific files>
       git commit -m "[NNN] T-XXX <type>: <imperative summary ≤ 72 chars>"
 
-13. If interactive mode: show a task summary and ask before proceeding:
-      "✅ T-XXX complete. Summary: <what was done>. Continue to the next task?
-      (reply 'continue' or tell me what to adjust)"
+12. If interactive mode: show summary, ask before proceeding.
 ```
 
-**Mandatory flow: check branch → review docs → implement (with deviation check) → verify → test → update tasks.md → pre-commit check → commit → (interactive pause)**
-
-> After task 12 (commit), the loop repeats from step 0 for the next task.
-> If the branch was already created in a previous task's step 0, step 0 will confirm it exists and do nothing.
+> After step 11, repeat from step 0 for the next task.
 
 ---
 
-## STOP — Deviation Protocol
+### 4.3 Deviation Protocol
 
-> **The most common process violation is silently fixing problems instead of logging them. Read this section before you start coding — when a deviation happens mid-implementation, you won't have time to read it then.**
+> The most common violation is silently fixing problems instead of logging them. Read this before starting.
 
-**This section is the authority for handling execution deviations.** The state machine and decision matrix in [01-round-mechanism.md](01-round-mechanism.md) tell you *which* state to transition to; this section tells you *how* to handle the deviation itself.
+**Authority:** This section handles *how* to handle deviations. The state machine in [01-round-mechanism.md](01-round-mechanism.md) tells *which* state to transition to.
 
-**Rule: never silently modify plan.md, add files not in plan.md, or change interfaces without going through this protocol.**
+**Rule: never silently modify plan.md, add unplanned files, or change interfaces without going through this protocol.**
 
-When a deviation is discovered during execution (plan doesn't match reality, new bug found, scope creep), follow the protocol below instead of silently modifying course. Deviations are logged to `issues.md` and resolved either within the current round or deferred to Round N+1.
+#### Severity Levels
 
-### Severity Levels
 | Severity | When | Action |
 |----------|------|--------|
-| **Low** | Implementation detail differs (variable naming, helper extraction, minor refactor) | Adjust directly. Note deviation in commit message. No round impact. |
-| **Medium** | Bug in unrelated code, need small new tool/class not in plan | Log to `issues.md` (open). Continue current task. |
-| **High** | `plan.md` module design infeasible, interface contract must change, core dependency incompatible | **STOP** current task at clean checkpoint. Log to `issues.md` (open). Set task to `blocked` if it cannot continue. Present options to user. |
+| **Low** | Detail differs (variable naming, helper extraction, minor refactor) | Adjust directly. Note in commit. No round impact. |
+| **Medium** | Bug in unrelated code, small new tool not in plan | Log to issues.md (open). Continue current task. |
+| **High** | plan.md design infeasible, interface contract must change, dependency incompatible | STOP. Log to issues.md. Set task blocked. Present options. |
 
-### High Severity Protocol (complete)
-1. **STOP** — do not continue writing code until decision is made
-2. **Record** — write to both `issues.md` and `generated/rounds/round-[NNN]/issues.md` with type, severity, description, evidence, suggested fix
-3. **Generate options** — use the template below for the deviation's type. Always include your recommendation.
+If unsure about severity, treat as HIGH.
 
-   **Template: plan-deviation** (plan.md design infeasible):
-   ```
-   Option A: Update plan.md with revised design, fix within current round
-       → Use when: deviation scope is contained, fix doesn't ripple across modules
-       → Cost: restart current task, update plan.md, adjust tasks.md
-   Option B: Log issue, defer to Round N+1 (recommended)
-       → Use when: deviation requires significant design or cross-module changes
-       → Cost: current task stays blocked; rest of round continues
-   Option C: Rollback to last checkpoint, restart task with different approach
-       → Use when: current approach is fundamentally wrong and no clear path forward
-       → Cost: lost work on current task, but clean slate for replanning
-   ```
+#### High Severity Protocol
 
-   **Template: discovered-bug** (bug in unrelated code):
-   ```
-   Option A: Log to TODO.md, continue current task (recommended)
-       → Use when: bug doesn't affect current task or requirement scope
-       → Cost: none to current round; bug tracked cross-requirement
-   Option B: Fix in current round — add fix task to tasks.md
-       → Use when: bug blocks current task or is trivially small
-       → Cost: extends current round by 1-2 tasks
-   ```
+1. **STOP** — do not continue until decision is made
+2. **Record** — write to both `issues.md` and `generated/rounds/round-[NNN]/issues.md` with type, severity, evidence, suggested fix
+3. **Generate options** — use the appropriate template. Always include a recommendation.
 
-   **Template: scope-creep** (work discovered that wasn't planned):
-   ```
-   Option A: Add to current round's tasks.md (recommended)
-       → Use when: work is small (< 1 task) and user has confirmed priority
-       → Cost: extends current round slightly
-   Option B: Log to issues.md, plan for Round N+1
-       → Use when: work is significant or user hasn't confirmed priority
-       → Cost: deferred, no impact on current round
-   ```
+**Template: plan-deviation** (plan.md design infeasible):
+```
+Option A: Update plan.md, fix within current round
+    → Use: contained change, no cross-module ripple
+    → Cost: restart task, update plan.md, adjust tasks.md
+Option B: Log issue, defer to Round N+1 (recommended)
+    → Use: significant design or cross-module changes needed
+    → Cost: current task blocked; rest of round continues
+Option C: Rollback, restart with different approach
+    → Use: current approach fundamentally wrong, no clear path
+    → Cost: lost work on task, clean slate
+```
 
-4. **Present to user** — show the finding, options, and your recommendation. Format:
+**Template: discovered-bug** (bug in unrelated code):
+```
+Option A: Log to TODO.md, continue (recommended)
+    → Use: bug doesn't affect current requirement
+    → Cost: none; tracked cross-requirement
+Option B: Fix in current round
+    → Use: bug blocks task or is trivially small
+    → Cost: extends round by 1-2 tasks
+```
+
+**Template: scope-creep** (unplanned work discovered):
+```
+Option A: Add to current tasks.md (recommended)
+    → Use: small, user confirmed priority
+    → Cost: slightly extends round
+Option B: Log to issues.md, plan for Round N+1
+    → Use: significant work, priority unconfirmed
+    → Cost: deferred
+```
+
+4. **Present to user**:
    ```
-   ⚠ [deviation-type] — [one-line summary]
+   ⚠ [type] — [one-line summary]
 
    **Found in:** T-XXX — [task name]
    **Description:** [what was discovered]
 
    **Options:**
-   1. Option A: [title] (recommended) — [one-line rationale]
-   2. Option B: [title] — [one-line rationale]
-   3. Option C: [title] — [one-line rationale]
+   1. Option A: [title] (recommended) — [rationale]
+   2. Option B: [title] — [rationale]
 
    Please choose, or suggest another approach.
    ```
 5. **Wait for decision** — user picks one; if no response after 5 min, execute recommended option as default
-6. **Execute** — implement the decision, update `tasks.md` / `plan.md` if needed
+6. **Execute** — implement decision, update tasks.md / plan.md
 
-### Mid-Round New Tasks
+#### Mid-Round New Tasks
+
 If a small new task is needed within the current round (user confirms, or low severity):
+1. Stop current task at a clean checkpoint
+2. Add the new task to tasks.md (status: `not-started`, Notes explaining why)
+3. Resume current task or switch to new based on dependencies
 
-1. **Stop** current task at a clean checkpoint
-2. **Add the new task** to `tasks.md` (status: `not-started`, with Notes explaining why)
-3. **Resume** the current task or switch to the new based on dependency order
+Do not execute an unplanned task without recording it in tasks.md first.
 
-Do not execute an unplanned task without first recording it in `tasks.md`.
+#### Issues vs TODO.md
 
-### Issues vs TODO.md
-- `issues.md` — execution problems within the current requirement that affect plan/task fidelity
-- `.dev/TODO.md` — cross-requirement out-of-scope discoveries (bugs, features, improvements)
+- `issues.md` — execution problems within the requirement that affect plan/task fidelity
+- `.dev/TODO.md` — cross-requirement out-of-scope discoveries
 
 ---
 
-## tasks.md Update Rules
-Every update to `tasks.md` must include **two things**:
+### 4.4 tasks.md Update Rules
 
-1. **Status change** — update the status column (`not-started` → `in-progress` → `done` / `blocked`)
-2. **Implementation summary** — update the task's Notes with what was actually done, especially if the implementation deviated from `plan.md`
+Every update to tasks.md must include:
+1. **Status change** — not-started → in-progress → done / blocked
+2. **Implementation summary** in Notes — what was actually done, especially if it deviated from plan.md
 
-Example Notes entry for a completed task:
-
+Example for a completed task:
 ```
 Implemented using Strategy pattern instead of planned if/elif chain.
 Added UserScoreCache class not in original plan — required for performance.
@@ -518,10 +470,11 @@ All 12 tests pass.
 
 ---
 
-## Requirement Complete — Round End
-When all tasks in `tasks.md` reach `done` (or all runnable tasks are `blocked`):
+### 4.5 Requirement Complete — Round End
 
-1. **Finalize round issues** — update `generated/rounds/round-NNN/issues.md`: set status of all entries to their final state (resolved / open / wontfix). Open entries remain in `issues.md` for cross-round tracking.
+When all tasks reach `done` (or runnable tasks are `blocked`):
+
+1. **Finalize round issues** — update `generated/rounds/round-NNN/issues.md`: set each entry to resolved / open / wontfix. Open entries remain in `issues.md` for cross-round tracking.
 
 2. **Check `issues.md`** — read all open issues and summarize for the user
 
@@ -534,75 +487,62 @@ When all tasks in `tasks.md` reach `done` (or all runnable tasks are `blocked`):
    - **Summary:** What this round achieved.
    ```
 
-4. **Update `.dev/blueprint.md`** — set Round, Phase, Status. Read [../shared/05-blueprint-management.md](../shared/05-blueprint-management.md).
+4. **Update `.dev/blueprint.md`** — set Round, Phase, Status. See [../shared/05-blueprint-management.md](../shared/05-blueprint-management.md).
 
-5. **Method Selection — Dual-Axis Review:** Before declaring Round Complete, evaluate whether this method applies.
+5. **Method Selection — Dual-Axis Review:** Significant round with substantial new code?
+   - **Yes**: Apply [Dual-Axis Review](../methods/02-dual-axis-review.md). Two parallel reviews (standards + spec). Both must pass.
+   - **No**: Record justification. Step 11 self-check checklist suffices.
 
-    **Triggers Present?** Is this a significant round with substantial new code (not XS/S)?
-    - **Yes**: Apply [Dual-Axis Review](../methods/02-dual-axis-review.md). Spawn two parallel reviews (standards axis + spec axis). If both pass, proceed. If either flags issues, follow the reconciliation process in the method doc.
-    - **No**: Record justification. The standard self-check checklist (step 12) suffices for trivial rounds.
+6. **If no open issues:** declare complete, create PR/merge (step 8):
+   > ✅ All tasks complete for [NNN]-[req-name]. Summary: X tasks, Y deviations. No open issues.
 
-6. **If no open issues remain:** declare requirement complete, create PR/merge (step 8), and notify:
-   > ✅ All tasks complete for requirement [NNN]-[req-name].
-   > Summary: X tasks completed, Y deviations from plan recorded in tasks.md.
-   > No open issues. Development complete.
+7. **If open issues remain:** notify user:
+   > ✅ Round N complete. X/Y tasks done. Open: ISS-NNN, ISS-MMM.
+   > Start Round N+1? I'll read issues.md, update plan.md and tasks.md incrementally.
+   > Or reply **no** to finish.
 
-7. **If open issues remain,** notify the user with:
-   > ✅ Round N complete for requirement [NNN]-[req-name].
-   > X/Y tasks done. Open issues: ISS-NNN, ISS-MMM.
-   >
-   > **Start Round N+1?** I'll re-read issues.md, update plan.md and tasks.md incrementally,
-   > and resolve the open issues in a new execution round.
-   > Or reply **no** to finish for now.
+   If user confirms Round N+1, proceed to Phase 01* (see [01-round-mechanism.md](01-round-mechanism.md) § Phase 01*).
 
-   If user confirms Round N+1, proceed to Phase 01* (see [01-round-mechanism.md](01-round-mechanism.md) § Phase 01* — Round N+1 Re-entry Flow).
-
-8. **Create a pull request or local merge** using the format in [§ Pull Request / Local Merge](#pull-request--local-merge). For PRs: `gh pr create --title "<type>(<scope>): <summary>" --body "$(cat <<'EOF'\n...\nEOF\n)"`. For local merge: `git checkout main && git merge --no-ff <type>/[NNN]-[req-name] -m "$(cat <<'EOF'\n<type>(<scope>): <imperative summary>\n\n## Summary\n...\nEOF\n)"`
+8. **Create a pull request or local merge** using the format in [../shared/03-git-workflow.md](../shared/03-git-workflow.md). For PRs: `gh pr create --title "..." --body "..."`. For local merge: `git checkout main && git merge --no-ff ...`.
 
 ---
 
-## Breaking Changes Policy
-Read `project_stage` from `init.md` before modifying existing code:
+## Part 5: Appendix — Supporting Rules
 
-- **`pre-launch` + adding a new module**: breaking changes to existing structure are **allowed**. Prioritize a clean, unambiguous project and code structure over compatibility with the current state.
-- **`live`** or **modifying an existing module**: breaking changes are **not allowed**. Make the smallest change that satisfies the requirement. Ask the user before any structural refactor.
+### Breaking Changes Policy
 
----
+Read `project_stage` from `init.md`:
+- **`pre-launch` + new module**: breaking changes allowed. Prioritize clean structure over compatibility.
+- **`live`** or **modifying existing module**: breaking changes **not allowed**. Smallest change possible. Ask before structural refactor.
 
-## Reading Before Writing
+### Reading Before Writing
+
 Before modifying any existing file:
+- Read the file (in sections if large — never load entire file)
+- Identify reusable functions — do not reimplement
+- Understand the call graph
+- Make the smallest change that satisfies the requirement
 
-- Read the file (in sections if large — never load the entire file at once)
-- Identify reusable functions — do not reimplement what already exists
-- Understand the call graph: who calls this, what does this call
-- Make the smallest change that satisfies the task requirement
+### Handling Blockers
 
----
-
-## Handling Blockers
 When a task cannot proceed:
+1. Record in tasks.md Notes: what was attempted, what failed, what is needed
+2. Set status to `blocked`
+3. Ask the user for guidance
 
-1. Record in `tasks.md` Notes: what was attempted, what failed, what is needed
-2. Set task status to `blocked`
-3. Ask the user for guidance before continuing
+### Git Workflow
 
----
+See [../shared/03-git-workflow.md](../shared/03-git-workflow.md) for full rules. This section only summarizes execution-loop-specific reminders.
 
-## Git Workflow
-See [../shared/03-git-workflow.md](../shared/03-git-workflow.md) — all git rules live there (branch naming, commit format, pre-commit checks, PR/local merge, release tagging). This section contains only the execution-loop-specific reminders.
-
-### In the Execution Loop
-Step 11 of the execution loop commits following the format defined in [../shared/03-git-workflow.md § Commit Messages](../shared/03-git-workflow.md#commit-messages):
+In the Execution Loop — step 11 commits with:
 ```
 git commit -m "[NNN] T-XXX <type>: <imperative summary ≤ 72 chars>"
 ```
 
-### At Requirement Complete
-Step 4 of [§ Requirement Complete](#requirement-complete) creates a PR or local merge using the format in [../shared/03-git-workflow.md § Pull Request / Local Merge](../shared/03-git-workflow.md#pull-request--local-merge).
+At Requirement Complete — step 8 creates a PR or local merge using the format in ../shared/03-git-workflow.md.
 
----
+### File Reading and Writing Discipline
 
-## File Reading and Writing Discipline
 - Read files in sections if large — never load an entire large file at once
 - Write one file at a time; do not exceed ~200 lines in a single write
 - Do not rewrite an entire file when only a small change is needed — use targeted edits

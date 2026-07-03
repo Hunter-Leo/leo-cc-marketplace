@@ -18,86 +18,11 @@ Activate this phase if the requirement involves any of the following:
 
 If the requirement only involves straightforward CRUD, simple data transformation, or calling existing library APIs, skip this phase.
 
-## algorithm-design.md Structure
+## algorithm-design.md Template
 
-### Problem Analysis
+Read the template at `templates/algorithm-design.md`, then create `.dev/[NNN]-[req-name]/generated/algorithm-design.md`.
 
-- Restate the problem in precise terms
-- Identify inputs, outputs, and constraints
-- Clarify edge cases and boundary conditions
-
-### Approach Options
-
-For each candidate approach:
-
-- Description of the approach
-- Time complexity: O(?)
-- Space complexity: O(?)
-- Trade-offs and limitations
-
-### Selected Approach
-
-- Chosen approach and justification
-- Why alternatives were rejected
-
-### Data Structures
-
-- Data structures required and why each was chosen
-- Key invariants that must be maintained
-
-### Diagrams
-
-For every non-trivial algorithm or data structure, include at least one ASCII diagram illustrating the structure or flow:
-
-```
-Example — linked list traversal:
-
-head → [A] → [B] → [C] → null
-        ↑
-     current
-```
-
-For state machines or multi-step flows, include a state/flow diagram:
-
-```
-[idle] --start--> [processing] --done--> [complete]
-                       |
-                    --error--> [failed]
-```
-
-### Use Cases & Examples
-
-Provide at least two concrete examples that walk through the algorithm with real input/output values:
-
-```
-Example 1 — normal case:
-  Input:  [3, 1, 4, 1, 5]
-  Steps:  ...
-  Output: [1, 1, 3, 4, 5]
-
-Example 2 — edge case (empty input):
-  Input:  []
-  Output: []
-```
-
-### Pseudocode
-
-Write clear pseudocode before any implementation:
-
-```
-function solve(input):
-    // step 1: ...
-    // step 2: ...
-    return result
-```
-
-### Complexity Summary
-
-| Metric | Value |
-|---|---|
-| Time complexity | O(?) |
-| Space complexity | O(?) |
-| Known bottlenecks | ... |
+The template includes: Problem Analysis, Approach Options, Selected Approach, Data Structures, Diagrams, Use Cases & Examples, Pseudocode, and Complexity Summary.
 
 ## Rules
 

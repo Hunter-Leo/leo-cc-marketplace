@@ -17,6 +17,7 @@
 | 7 | Out-of-scope discovery → log to TODO.md, do NOT act on it | [§ Out-of-Scope Discovery](#out-of-scope-discovery--todomd) |
 | 8 | Phase A→B Gate: submit docs + execution mode, user confirms → create branch automatically | [phase-b/00-start-and-resume.md § Phase A→B Gate](../phase-b/00-start-and-resume.md#phase-a-b-gate-user-confirmation-required) |
 | 9 | Phase B: all agents MUST read start-and-resume.md + spec-coding-skill before first task. NO implicit fallback. | [phase-b/00-start-and-resume.md § Phase B Execution Discipline](../phase-b/00-start-and-resume.md#phase-b-execution-discipline) |
+| 10 | Phase 06.5 Execution Planning: after A→B Gate, scan agent types, draft execution-plan.md with sub-agent prompts, present for user confirmation. | [phase-b/00-start-and-resume.md § Phase 06.5](../phase-b/00-start-and-resume.md#phase-065--execution-planning) |
 
 ---
 
