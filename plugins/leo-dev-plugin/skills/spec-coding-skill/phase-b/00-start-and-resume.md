@@ -194,7 +194,7 @@ Read `generated/rounds/round-[NNN]/tasks.md`:
 Read the template at `templates/execution-plan.md`, then create `.dev/[NNN]-[req-name]/generated/rounds/round-[NNN]/execution-plan.md` with:
 - Selected agent types and roles
 - Phase/milestone breakdown
-- Full startup prompt text for EACH agent (must include the 7 document reading list)
+- Full startup prompt text for EACH agent (must include the condensed reading list from the execution-plan.md template — references/phase-b-agent-brief.md as primary, with full docs on-demand)
 - Review agent prompts must include "verify against execution loop and standards"
 
 ### Step 4 — Present to User
@@ -212,7 +212,7 @@ Template:
 > **Agent 2:** [type] — tasks T-00Y ~ T-00Z
 > **Review checkpoints:** [after each stage / after all tasks]
 >
-> Each sub-agent's startup prompt instructs reading: shared/00-agent-execution.md, shared/02-coding-standards.md, shared/03-git-workflow.md, phase-b/00-start-and-resume.md § Execution Loop + § Phase B Execution Discipline, phase-b/01-round-mechanism.md, spec-coding-skill/SKILL.md
+> Each sub-agent's startup prompt instructs reading: references/phase-b-agent-brief.md (condensed brief — read first), phase-b/02-execution-loop.md § Execution Loop + Deviation Protocol, spec-coding-skill/SKILL.md § Core Rules. Full reference docs are available on-demand.
 >
 > Full prompts are in execution-plan.md. Reply **confirmed** to deploy, or tell me what to adjust.
 ```

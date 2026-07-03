@@ -44,5 +44,5 @@ At the start of execution and before each phase, display the current progress:
 
 - `✅` = completed
 - `▶` = in progress
-- (blank) = not started
+- (blank) = not-started
 - Omit optional phases that were skipped

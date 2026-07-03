@@ -71,4 +71,4 @@ Every agent entering Phase B MUST follow these rules:
 3. **No implicit fallback** — do not silently catch errors, add hidden retry logic, or log-and-continue past real failures. Always use the Deviation Protocol.
 4. **Integration tests: no mocking internal code or external dependencies** — mock only at system boundaries
 5. **Follow the execution loop step by step** — never skip steps or batch tasks
-6. **Update tasks.md on every status change** — not-started → in-progress → done/blocked, with Notes
+6. **Update tasks.md on every status change** — not-started → in-progress → done / blocked, with Notes
