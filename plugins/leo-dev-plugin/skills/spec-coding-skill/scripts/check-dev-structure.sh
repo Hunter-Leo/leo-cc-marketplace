@@ -4,6 +4,9 @@
 #   path: .dev directory to check (default: .dev)
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/lib/common.sh"
+
 if [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
     echo "Usage: check-dev-structure.sh [path]"
     echo "  Validate .dev/ documentation tree at the given path"
@@ -14,19 +17,16 @@ fi
 BASE="${1:-.dev}"
 
 if [ ! -d "$BASE" ]; then
-    echo "[FAIL] No .dev/ directory found"
-    echo "[INFO] Run spec-coding-skill Phase 01 to initialize"
+    log_fail "No .dev/ directory found"
+    log_info "Run spec-coding-skill Phase 01 to initialize"
     exit 1
 fi
 
 echo "=== .dev/ Structure Check ==="
 echo ""
 
-if [ -f "$BASE/blueprint.md" ]; then
-    echo "[PASS] blueprint.md exists"
-else
-    echo "[FAIL] blueprint.md missing — project-level overview document"
-fi
+check_file "$BASE/blueprint.md" "blueprint.md exists" \
+    FAIL "blueprint.md missing — project-level overview document" || true
 
 for req in "$BASE"/[0-9][0-9][0-9]-*/; do
     [ -d "$req" ] || continue
@@ -34,16 +34,18 @@ for req in "$BASE"/[0-9][0-9][0-9]-*/; do
     echo ""
     echo "--- $NAME ---"
 
-    [ -f "${req}init.md" ] && echo "  [PASS] init.md" || echo "  [FAIL] init.md missing"
-    [ -f "${req}issues.md" ] && echo "  [PASS] issues.md" || echo "  [INFO] issues.md missing (created during execution)"
-    [ -f "${req}generated/start-and-resume.md" ] && echo "  [PASS] start-and-resume.md" || echo "  [INFO] start-and-resume.md missing (created in Phase 06)"
+    check_file "${req}init.md" "init.md" FAIL "init.md missing" "  " || true
+    check_file "${req}issues.md" "issues.md" \
+        INFO "issues.md missing (created during execution)" "  " || true
+    check_file "${req}generated/start-and-resume.md" "start-and-resume.md" \
+        INFO "start-and-resume.md missing (created in Phase 06)" "  " || true
 
     for round in "${req}generated/rounds/round-"*/; do
         [ -d "$round" ] || continue
         RNAME=$(basename "$round")
         echo "  $RNAME:"
-        [ -f "${round}plan.md" ] && echo "    [PASS] plan.md" || echo "    [FAIL] plan.md missing"
-        [ -f "${round}tasks.md" ] && echo "    [PASS] tasks.md" || echo "    [FAIL] tasks.md missing"
+        check_file "${round}plan.md" "plan.md" FAIL "plan.md missing" "    " || true
+        check_file "${round}tasks.md" "tasks.md" FAIL "tasks.md missing" "    " || true
     done
 done
 
