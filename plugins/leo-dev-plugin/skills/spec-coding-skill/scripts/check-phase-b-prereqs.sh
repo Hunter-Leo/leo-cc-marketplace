@@ -15,7 +15,10 @@ echo "=== Phase B Prerequisites Check ==="
 echo "Requirement: $REQ_NAME"
 echo ""
 
-CURRENT=$(git branch --show-current 2>/dev/null)
+if ! CURRENT=$(git branch --show-current 2>/dev/null) || [ -z "$CURRENT" ]; then
+    echo "[FAIL] Not in a git repository (or unable to determine current branch)"
+    exit 1
+fi
 if [ "$CURRENT" = "main" ] || [ "$CURRENT" = "master" ]; then
     echo "[FAIL] Still on $CURRENT — feature branch was not created in Phase A→B Gate"
     exit 1
@@ -40,8 +43,18 @@ GEN="$BASE/generated"
 LATEST_ROUND=$(ls -d "$GEN/rounds/round-"*/ 2>/dev/null | sort -t- -k2 -n | tail -1)
 if [ -n "$LATEST_ROUND" ]; then
     RNAME=$(basename "$LATEST_ROUND")
-    [ -f "${LATEST_ROUND}plan.md" ] && echo "[PASS] $RNAME/plan.md" || echo "[FAIL] $RNAME/plan.md missing"
-    [ -f "${LATEST_ROUND}tasks.md" ] && echo "[PASS] $RNAME/tasks.md" || echo "[FAIL] $RNAME/tasks.md missing"
+    if [ -f "${LATEST_ROUND}plan.md" ]; then
+        echo "[PASS] $RNAME/plan.md"
+    else
+        echo "[FAIL] $RNAME/plan.md missing"
+        exit 1
+    fi
+    if [ -f "${LATEST_ROUND}tasks.md" ]; then
+        echo "[PASS] $RNAME/tasks.md"
+    else
+        echo "[FAIL] $RNAME/tasks.md missing"
+        exit 1
+    fi
 else
     echo "[FAIL] No rounds directory found — Phase 04/05 not completed"
     exit 1

@@ -22,10 +22,13 @@ fi
 echo "=== .dev/ Structure Check ==="
 echo ""
 
+FAILED=0
+
 if [ -f "$BASE/blueprint.md" ]; then
     echo "[PASS] blueprint.md exists"
 else
     echo "[FAIL] blueprint.md missing — project-level overview document"
+    FAILED=1
 fi
 
 for req in "$BASE"/[0-9][0-9][0-9]-*/; do
@@ -34,7 +37,7 @@ for req in "$BASE"/[0-9][0-9][0-9]-*/; do
     echo ""
     echo "--- $NAME ---"
 
-    [ -f "${req}init.md" ] && echo "  [PASS] init.md" || echo "  [FAIL] init.md missing"
+    [ -f "${req}init.md" ] && echo "  [PASS] init.md" || { echo "  [FAIL] init.md missing"; FAILED=1; }
     [ -f "${req}issues.md" ] && echo "  [PASS] issues.md" || echo "  [INFO] issues.md missing (created during execution)"
     [ -f "${req}generated/start-and-resume.md" ] && echo "  [PASS] start-and-resume.md" || echo "  [INFO] start-and-resume.md missing (created in Phase 06)"
 
@@ -42,10 +45,14 @@ for req in "$BASE"/[0-9][0-9][0-9]-*/; do
         [ -d "$round" ] || continue
         RNAME=$(basename "$round")
         echo "  $RNAME:"
-        [ -f "${round}plan.md" ] && echo "    [PASS] plan.md" || echo "    [FAIL] plan.md missing"
-        [ -f "${round}tasks.md" ] && echo "    [PASS] tasks.md" || echo "    [FAIL] tasks.md missing"
+        [ -f "${round}plan.md" ] && echo "    [PASS] plan.md" || { echo "    [FAIL] plan.md missing"; FAILED=1; }
+        [ -f "${round}tasks.md" ] && echo "    [PASS] tasks.md" || { echo "    [FAIL] tasks.md missing"; FAILED=1; }
     done
 done
 
 echo ""
+if [ "$FAILED" -ne 0 ]; then
+    echo "=== Check Complete — issues found ==="
+    exit 1
+fi
 echo "=== Check Complete ==="

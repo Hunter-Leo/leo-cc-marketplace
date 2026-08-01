@@ -2,10 +2,8 @@
 # validate-branch.sh — Check feature branch status for spec-coding-skill
 set -euo pipefail
 
-CURRENT=$(git branch --show-current 2>/dev/null)
-
-if [ -z "$CURRENT" ]; then
-    echo "[FAIL] Not in a git repository"
+if ! CURRENT=$(git branch --show-current 2>/dev/null) || [ -z "$CURRENT" ]; then
+    echo "[FAIL] Not in a git repository (or unable to determine current branch)"
     exit 1
 fi
 
