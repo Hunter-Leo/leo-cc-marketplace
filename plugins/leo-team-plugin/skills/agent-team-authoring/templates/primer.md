@@ -1,81 +1,81 @@
-# Primer 模板（团队启动卷宗）
+# Primer Template (Team Startup Dossier)
 
 <!--
-使用方式
-- 本文件内容必须复制进 spawn prompt，或作为 spawn prompt 明确引用的唯一文件。
-- Claude Code 没有 SubagentStart 事件：teammate 不会自动读取任何卷宗。
-- 预算：全文 ≤ 6000 字符。
-- 外部内容（网页/issue/搜索结果）禁止写入本文件。
+How to use
+- The content of this file must be copied into the spawn prompt, or be the only file explicitly referenced by the spawn prompt.
+- Claude Code has no SubagentStart event: teammates do not automatically read any dossier.
+- Budget: ≤ 6000 characters total.
+- External content (web pages/issues/search results) must not be written into this file.
 -->
 
-## 1. 组织上下文
+## 1. Organizational Context
 
-- 当前 mission 状态：`<planning | gate | executing | reviewing | verified>`
-- 本团队在流程中的位置：<一句话，例如"Phase B 执行阶段，负责 3 个工作单元（串行执行）">
-- 上游已定事实（只列路径）：
-  - 计划：`<path>`
-  - 验收标准：`<path>`
-  - 已排除方案：`<path to DEAD_ENDS>`
+- Current mission state: `<planning | gate | executing | reviewing | verified | blocked>`
+- Where this team sits in the process: <one sentence, e.g. "Phase B execution phase, responsible for 3 work units (executed serially)">
+- Upstream established facts (paths only):
+  - Plan: `<path>`
+  - Acceptance criteria: `<path>`
+  - Excluded approaches: `<path to DEAD_ENDS>`
 
-## 2. 团队
+## 2. Team
 
-| 角色 | archetype | Lane（可写） |
+| Role | archetype | Lane (writable) |
 |---|---|---|
-| `<name>` | 只协调 | —（计划文件） |
-| `<name>` | 能跑 | `<glob>` |
-| `<name>` | 可反驳/能用 | `<glob>` |
+| `<name>` | Coordinator | — (plan files) |
+| `<name>` | Builder | `<glob>` |
+| `<name>` | Verifier | `<glob>` |
 
-<!-- 只写 name / archetype / lane；不写履历，不写性格。 -->
+<!-- Write only name / archetype / lane; no résumé, no personality. -->
 
-## 3. 你的技能摘要（仅针对当前角色）
+## 3. Your Skill Summary (For the Current Role Only)
 
-- **必读**：`<path 1>`、`<path 2>`
-- **不要读**：<例如"其他实现者的过程记录"——避免污染判断>
-- **你的角色卡**：`<path>`
-- **你的产物路径**：`<path>`
+- **Must read**: `<path 1>`, `<path 2>`
+- **Do not read**: <e.g. "other implementers' process records" — avoid contaminating judgment>
+- **Your role card**: `<path>`
+- **Your artifact path**: `<path>`
 
-> 只读与你当前 work unit 相关的文件；单次不超过 3–5 个。
+> Read only files relevant to your current work unit; no more than 3–5 at a time.
 
-## 4. 目标与验收标准
+## 4. Goals and Acceptance Criteria
 
-**目标**：<一句话，可被判定>
+**Goal**: <one sentence, judgeable>
 
-**验收标准**（逐条可执行）：
+**Acceptance criteria** (item by item, executable):
 
-1. `<命令>` 退出码 0，且输出包含 `<片段>`
-2. <数值阈值>
-3. <负向用例：构造应当失败的输入，确认确实失败>
+1. `<command>` exits with code 0, and output contains `<fragment>`
+2. <numeric threshold>
+3. <negative case: construct input that should fail, confirm it indeed fails>
 
-## 5. 部署步骤
+## 5. Deployment Steps
 
-1. 读 `<plan path>` 与 `<your role card>`。
-2. 读 DEAD_ENDS，确认当前方案不在其中。
-3. 读你的 Inputs 路径；任一缺失 → 回传 `BLOCKED` 并停止。
-4. 按角色卡 Procedure 执行。
-5. 结束时按 Output contract 回传；写入你自己的快照。
+1. Read `<plan path>` and `<your role card>`.
+2. Read DEAD_ENDS and confirm the current approach is not in it.
+3. Read your Inputs paths; if any is missing → return `BLOCKED` and stop.
+4. Execute according to the role card Procedure.
+5. At the end, return according to the Output contract; write your own snapshot.
 
-## 6. 不变量
+## 6. Invariants
 
-- **文件即状态**：没有落盘 = 没有发生；消息里说过的结论必须随后落盘。
-- **只传路径**：回传与 mailbox 只放路径 + 一句话结论，不贴全文。
-- **写边界**：只写自己 Lane 内的路径；越界会被 `PreToolUse` hook 拒绝。
-- **完成即验证**：`approved ≠ merged ≠ verified`；没有命令 + 输出 + `file:line` 的 PASS 视为未完成。
-- **停止条件**：同一单元第 3 次失败、需要越界、输入缺失 → 停止并上报，不自动重试。
+- **Files are state**: no persisted file = it never happened; conclusions stated in messages must be persisted afterward.
+- **Pass paths only**: returns and the mailbox contain only paths + a one-sentence conclusion, no full text.
+- **Write boundaries**: the role-card `## Lane` is documentation; enforcement requires the lead to register the same globs as the work unit (`flow.sh add-unit --files`) and you to take the claim (`flow.sh claim --files`). The `PreToolUse` hook denies writes outside the active `claim.files`.
+- **Completion means verification**: `approved ≠ merged ≠ verified`; a PASS without command + output + `file:line` counts as incomplete. While a claim is active, persist `.team/<run>/verdicts/<unit-id>.json` with at least `{verdict, artifacts, stop_reason}`; the `SubagentStop` hook blocks conversation-only returns.
+- **Stop conditions**: third failure of the same unit, need to go out of bounds, input missing → stop and report, do not retry automatically.
 
 ---
 
 <!--
-预算检查（提交前执行）
-  wc -m primer.md     # 必须 ≤ 6000
+Budget check (run before submitting)
+  wc -m primer.md     # must be ≤ 6000
 
-超预算删减顺序：
-  1. 组织上下文里的叙述性内容（保留一行 mission 状态）
-  2. 团队表的说明列（保留 name / archetype / lane）
-  不删：验收标准、不变量、部署步骤
+Trim order when over budget:
+  1. narrative content in the organizational context (keep one line of mission state)
+  2. the description column of the team table (keep name / archetype / lane)
+  Do not delete: acceptance criteria, invariants, deployment steps
 
-禁止项：
-  - 不贴外部网页/issue 原文
-  - 不写"我们之前讨论过……"（teammate 没有该历史）
-  - 不写长 persona
-  - 不写"仅供参考"式的软性要求
+Prohibited:
+  - do not paste original external web page/issue text
+  - do not write "we discussed before..." (teammates don't have that history)
+  - do not write a long persona
+  - do not write "for reference only"-style soft requirements
 -->

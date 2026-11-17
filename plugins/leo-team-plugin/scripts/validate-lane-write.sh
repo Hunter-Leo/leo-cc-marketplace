@@ -26,14 +26,32 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-SPECIAL_ALLOWS = [
-    "**/findings.md",          # 全员：各自 section
-    "**/progress.md",          # 全员：只追加
-    "**/inspect.md",           # spec-explorer 独占
-    "**/architecture-review.md",  # spec-architect 独占
-    "**/research.md",          # spec-science-researcher 独占
-    "**/science-audit.md",     # spec-science-auditor 独占
+COMMON_ALLOWS = [
+    "**/findings.md",          # every role: own section only
+    "**/progress.md",          # every role: append only
 ]
+
+# Exclusive artifacts, scoped to the role that owns them.
+ROLE_ARTIFACTS = {
+    "spec-explorer": ["**/inspect.md"],
+    "spec-architect": ["**/architecture-review.md"],
+    "spec-science-researcher": ["**/research.md"],
+    "spec-science-auditor": ["**/science-audit.md"],
+}
+
+
+def special_allows(claim):
+    """A teammate holding its own claim may only write its own artifact.
+
+    When the claim is held by the orchestrator (PM or any unknown actor), all
+    shared artifact paths stay writable so the PM can persist results on the
+    team's behalf.
+    """
+    by = ((claim or {}).get("by") or "").strip()
+    scoped = ROLE_ARTIFACTS.get(by)
+    if scoped:
+        return COMMON_ALLOWS + scoped
+    return COMMON_ALLOWS + [g for globs in ROLE_ARTIFACTS.values() for g in globs]
 
 
 def out(payload):
@@ -161,8 +179,8 @@ def path_matches(rel, pattern):
     return bool(glob_regex(pattern).match(rel))
 
 
-def allowed_paths(rel, globs):
-    for pattern in list(globs) + SPECIAL_ALLOWS:
+def allowed_paths(rel, globs, specials):
+    for pattern in list(globs) + list(specials):
         if path_matches(rel, pattern):
             return True
     return False
@@ -181,9 +199,10 @@ def handle_write(data, base):
         allow()
     rel = norm_rel(file_path, base)
     globs = claim.get("files") or []
-    if allowed_paths(rel, globs):
+    specials = special_allows(claim)
+    if allowed_paths(rel, globs, specials):
         allow()
-    deny(f"写入 {rel} 超出当前工作单元范围；允许：{', '.join(globs + SPECIAL_ALLOWS)}")
+    deny(f"Write to {rel} is outside the current work unit scope; allowed: {', '.join(globs + specials)}")
 
 
 GIT_VALUE_OPTS = {"-C", "-c", "--git-dir", "--work-tree", "--namespace",
@@ -236,7 +255,7 @@ SHELL_SPLIT = re.compile(r"(?:\|\||&&|[;&|\n])")
 
 
 def _safe_target(target):
-    """无法静态解析或明确无害的目标不拦截（best-effort，不是沙箱）。"""
+    """Targets that cannot be statically resolved or are clearly harmless are not blocked (best-effort, not a sandbox)."""
     t = target.strip("'\"")
     if not t:
         return True
@@ -245,9 +264,9 @@ def _safe_target(target):
     if t.startswith(SAFE_PREFIXES):
         return True
     if t.startswith("$") or t.startswith("/dev/fd/"):
-        return True          # 变量展开、进程替换：无法静态判定
+        return True          # variable expansion, process substitution: cannot decide statically
     if t.isdigit():
-        return True          # [ 1 > 0 ] / ((1>0)) 之类的比较表达式
+        return True          # comparison expressions like [ 1 > 0 ] / ((1>0))
     return False
 
 
@@ -259,7 +278,7 @@ def _tokens(segment):
 
 
 def _args_after_cmd(tokens):
-    """跳过 sudo/env/变量赋值 与前导选项，返回 (cmd_name, 参数列表)。"""
+    """Skip sudo/env/variable assignments and leading options; return (cmd_name, args)."""
     i = 0
     while i < len(tokens) and (tokens[i] in ("sudo", "command", "env", "nohup", "time")
                                or re.match(r"^[A-Za-z_]\w*=", tokens[i])):
@@ -285,7 +304,7 @@ def _non_option(args):
 def bash_write_targets(command):
     """Best-effort extraction of files a Bash command writes to. NOT a sandbox."""
     targets = []
-    # 重定向在整条命令上匹配：按 | 分片会把 `>|` 拆坏
+    # Redirects are matched on the whole command; splitting on | would break `>|`
     for m in re.finditer(r">>?\|?\s*([^\s;&|)]+)", command):
         targets.append(m.group(1))
     for segment in SHELL_SPLIT.split(command):
@@ -329,23 +348,24 @@ def handle_bash(data, base):
         allow()
     subcommands = list(git_subcommands(command))
     if "push" in subcommands:
-        deny("禁止 git push：本流程要求由 PM 合并到集成分支（rails R-8）")
+        deny("git push is forbidden: this workflow requires the PM to merge into the integration branch (rails R-8)")
     if RM_ROOT_RE.search(command):
-        deny("禁止高危命令：递归删除根目录")
+        deny("Dangerous command blocked: recursive delete of the root directory")
     if CHMOD_ROOT_RE.search(command):
-        deny("禁止高危命令：chmod 777 根目录")
+        deny("Dangerous command blocked: chmod 777 on the root directory")
     if "commit" in subcommands:
         branch = current_branch()
         if branch in ("main", "master"):
-            deny(f"禁止在 {branch} 分支 commit：请先切到工作分支（rails R-8）")
+            deny(f"Committing on branch {branch} is forbidden: switch to a work branch first (rails R-8)")
     claim = flow.get("claim")
     if claim:
         globs = claim.get("files") or []
+        specials = special_allows(claim)
         for target in bash_write_targets(command):
             rel = norm_rel(target, base)
-            if not allowed_paths(rel, globs):
-                deny(f"Bash 写入 {rel} 超出当前工作单元范围"
-                     f"（claim: {claim.get('unit', '?')}）。请改用 Write/Edit 或先释放 claim。")
+            if not allowed_paths(rel, globs, specials):
+                deny(f"Bash write to {rel} is outside the current work unit scope"
+                     f" (claim: {claim.get('unit', '?')}). Use Write/Edit instead, or release the claim first.")
     allow()
 
 
@@ -383,7 +403,7 @@ def handle_subagent_stop(data, base):
                 break
     if found:
         allow()
-    block("回传缺少 verdict，请按 rails.md R-10 输出回传契约")
+    block("Handoff is missing a verdict; follow the handoff contract in rails.md R-10")
 
 
 def next_suggestion(flow):
@@ -391,35 +411,35 @@ def next_suggestion(flow):
     units = flow.get("units", [])
     claim = flow.get("claim")
     if mission == "blocked" or any(u.get("lane") == "blocked" for u in units):
-        return "人工裁决"
+        return "Human decision required"
     if mission == "planning":
-        return "N1 Phase A：写 init.md"
+        return "N1 Phase A: write init.md"
     if mission == "gate":
-        return "N2 硬门禁：等待用户 confirmed"
+        return "N2 hard gate: waiting for user confirmed"
     for unit in units:
         if unit.get("lane") == "changes_requested" and unit.get("failures", 0) >= 3:
-            return "人工裁决"
+            return "Human decision required"
     for unit in units:
         if unit.get("lane") == "for_review":
-            return f"评审 {unit.get('id')}"
+            return f"Review {unit.get('id')}"
     for unit in units:
         if unit.get("lane") == "approved":
-            return f"合并 {unit.get('id')} 到集成分支"
+            return f"Merge {unit.get('id')} into the integration branch"
     for unit in units:
         if unit.get("lane") == "merged":
-            return f"验收 {unit.get('id')}"
+            return f"Verify {unit.get('id')}"
     if claim:
-        return f"执行中：{claim.get('unit')}（claim 已持有）"
+        return f"Executing: {claim.get('unit')} (claim held)"
     for unit in units:
         if unit.get("lane") == "pending":
-            return f"claim 并执行 {unit.get('id')}"
+            return f"claim and execute {unit.get('id')}"
     if units and all(u.get("lane") == "verified" for u in units):
-        return "进入 N6 集成验收"
+        return "Enter N6 integration verification"
     return "N5 Round Review"
 
 
 def find_audit(path, flow):
-    """只认本 run 的产物目录，与 check-team-complete.sh 保持一致。"""
+    """Only accept this run's artifact directory, consistent with check-team-complete.sh."""
     run = flow.get("run") or path.parent.name
     candidates = [
         Path.cwd() / ".dev" / run / "generated" / "science-audit.md",
@@ -441,10 +461,10 @@ def handle_stop(data, base):
     reasons = []
     mission = flow.get("mission", "planning")
     if mission != "verified":
-        reasons.append(f"mission 当前为 {mission}，尚未 verified；flow.sh next 建议：{next_suggestion(flow)}")
+        reasons.append(f"mission is currently {mission}, not verified; flow.sh next suggests: {next_suggestion(flow)}")
     gate = flow.get("science_gate") or {}
     if gate.get("auditor") and find_audit(path, flow) is None:
-        reasons.append("science_gate.auditor=true 但 science-audit.md 不存在")
+        reasons.append("science_gate.auditor=true but science-audit.md does not exist")
     if mission == "verified" and not reasons:
         script_dir = os.environ.get("LEO_SCRIPT_DIR")
         if script_dir:
@@ -455,13 +475,13 @@ def handle_stop(data, base):
                 )
                 report = (proc.stdout or "").strip()
                 if "NOT COMPLETE" in report:
-                    reasons.append("完成检查未通过：\n" + report)
+                    reasons.append("Completion check failed:\n" + report)
                 elif "OK" not in report.split():
-                    reasons.append("完成检查未返回明确结论：\n" + report)
+                    reasons.append("Completion check returned no clear conclusion:\n" + report)
             except (OSError, subprocess.SubprocessError):
-                reasons.append("无法运行 check-team-complete.sh，完成状态未验证")
+                reasons.append("Cannot run check-team-complete.sh; completion status unverified")
     if reasons:
-        block("；".join(reasons))
+        block("; ".join(reasons))
     allow()
 
 
@@ -474,13 +494,13 @@ def handle_precompact(data, base):
     snap_dir = path.parent / "snapshots"
     snaps = list(snap_dir.glob("*.json")) if snap_dir.is_dir() else []
     if not snaps:
-        block(f"mission={flow.get('mission')} 且 snapshots/ 为空，请先执行 "
-              f'flow.sh checkpoint --note "..." 再压缩上下文')
+        block(f"mission={flow.get('mission')} and snapshots/ is empty; run "
+              f'flow.sh checkpoint --note "..." before compacting context')
     latest = max(s.stat().st_mtime for s in snaps)
     age_min = (now_ts() - latest) / 60
     if age_min > 30:
-        block(f"mission={flow.get('mission')} 且最新检查点已 {int(age_min)} 分钟未更新，"
-              f'请先执行 flow.sh checkpoint --note "..." 再压缩上下文')
+        block(f"mission={flow.get('mission')} and the latest checkpoint is {int(age_min)} minutes old; "
+              f'run flow.sh checkpoint --note "..." before compacting context')
     allow()
 
 

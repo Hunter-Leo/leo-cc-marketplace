@@ -1,117 +1,139 @@
-# 双层状态机
+# Two-Layer State Machine
 
-> 两层：mission（任务整体）与 work unit（最小可验证单元）。
-> 两层都必须由**脚本**判定，不得由 LLM 自行判断"现在到哪一步了"。
+> Two layers: mission (the overall task) and work unit (the smallest verifiable unit).
+> Both layers must be judged by **scripts**, not by the LLM deciding "which step we are at now" on its own.
+> This table mirrors `scripts/flow.sh`; when the two disagree, the script is authoritative.
 
-## 1. Mission 层
+## 1. Mission Layer
 
 ```text
 planning → gate → executing → reviewing → verified
+    any state ───────────────────────────→ blocked   (terminal)
 ```
 
-| 状态 | 含义 | 退出条件 |
+| State | Meaning | Exit condition |
 |---|---|---|
-| `planning` | 需求、分级、切分、角色卡 | 计划与验收标准落盘 |
-| `gate` | 等待用户确认（essence.md I-3 硬门禁） | 用户明确给出 `confirmed`；只能由 lead 对用户发起 |
-| `executing` | work unit 并行执行 | 所有单元到达 `merged` 或明确 `blocked` |
-| `reviewing` | 集成评审 + 验收 | 验收标准逐条有证据 |
-| `verified` | 完成 | 终态 |
+| `planning` | requirements, grading, decomposition, role cards | plan and acceptance criteria persisted |
+| `gate` | waiting for user confirmation (`../../spec-coding-team-skill/references/essence.md` I-3 hard gate) | user explicitly gives `confirmed`; can only be initiated by the lead to the user |
+| `executing` | work units execute in parallel | every unit is `approved`, `merged`, `verified`, or `blocked` |
+| `reviewing` | integration verification + acceptance | every acceptance criterion has evidence |
+| `verified` | success terminal | `blocked` only if a later human decision invalidates the run |
+| `blocked` | terminal; a human decision is required | `flow.sh recover` moves it to `planning` or `executing` |
 
-不允许的转移：
+Disallowed transitions (rejected by `flow.sh transition`):
 
-- `planning → executing`（跳过 gate）
-- `gate → verified`（无执行）
-- `reviewing → executing` 只能经由 work unit 的 `changes_requested` 触发，不得整体回退重做
+- `planning → executing` (skipping the gate)
+- `gate → verified` (no execution)
+- `gate → planning` (rework happens inside `planning` before the gate, not by rolling back)
+- Any backward move not listed below, and anything out of `blocked` (terminal)
 
-## 2. Work unit 层
+## 2. Work Unit Layer
 
 ```text
 pending → in_progress → for_review → approved → merged → verified
-                              ↑            │
-                              └────────────┘  changes_requested
+                ↑             │
+                │             └→ changes_requested
+                └──────────────────┘   only while failures < 3
+
+any state → blocked   (terminal; recover with flow.sh reopen)
 ```
 
-| 状态 | 判定标准 | 谁可以置位 |
+| State | Criterion | Who can set it |
 |---|---|---|
-| `pending` | 已声明 lane、输入路径存在、无写冲突 | lead |
-| `in_progress` | 有 liveness 回执（见 team-invariants T-3） | 执行者 |
-| `for_review` | 产物落盘 + 回传含 verdict | 执行者 |
-| `approved` | reviewer 给出 PASS，findings 无 blocker | reviewer |
-| `merged` | 产物已进入集成分支，且构建/全量测试通过 | lead 或集成脚本 |
-| `verified` | 验收标准逐条有证据，且由**非作者**执行 | verifier |
-| `changes_requested` | reviewer 给出 FAIL，findings 至少一条 severity ≥ major | reviewer |
+| `pending` | lane declared, owner assigned, input paths exist, no write conflict | lead |
+| `in_progress` | a claim is held (see team-invariants T-3) | executor |
+| `for_review` | artifact persisted + return contains a verdict; the transition releases the claim | executor |
+| `approved` | Adversary gives PASS, no blocker in findings | Adversary |
+| `merged` | artifact has entered the integration branch, and build/full test suite passes | lead or integration script |
+| `verified` | every acceptance criterion has evidence, executed by a **non-author** | Verifier |
+| `changes_requested` | Adversary gives FAIL, at least one finding with severity ≥ major; increments `failures` | Adversary |
+| `blocked` | a human decision is required | lead or human |
 
 ## 3. approved ≠ merged ≠ verified
 
-这三者被混同是团队流程里最贵的错误：它让"评审过了"看起来像"做完了"。
+Conflating these three is the most expensive mistake in a team process: it makes "review passed" look like "done".
 
-| 状态 | 证据要求 | 产物在哪里 | 谁能推翻 |
+| State | Evidence requirement | Where the artifact is | Who can overturn |
 |---|---|---|---|
-| **approved** | reviewer 的 PASS + 零 blocker findings | 仍在作者分支/工作区 | reviewer 自己（发现新证据） |
-| **merged** | 集成分支包含该变更 + 构建与全量测试通过 | 集成分支 | 集成测试失败 |
-| **verified** | 每条验收标准映射到命令 + 输出 + `file:line`，由非作者执行 | 集成分支 | 验收标准变更 |
+| **approved** | Adversary's PASS + zero blocker findings | still on the author's branch/workspace | the Adversary itself (upon discovering new evidence) |
+| **merged** | integration branch contains the change + build and full test suite pass | integration branch | integration test failure |
+| **verified** | every acceptance criterion mapped to command + output + `file:line`, executed by a non-author | integration branch | change of acceptance criteria |
 
-三个独立门槛：
+Three independent gates:
 
-- approved 只说明"方案与实现对评审者成立"，不说明能合并。
-- merged 只说明"技术上合进去了"，不说明满足用户需求。
-- verified 只说明"验收标准被满足"，不说明长期质量。
+- approved only means "the approach and implementation hold for the Adversary", not that it can be merged.
+- merged only means "technically merged in", not that it meets the user's needs.
+- verified only means "the acceptance criteria are met", not long-term quality.
 
-**任何把三者合并成一个 `done` 的状态设计，都会在某一处静默丢证据。**
+**Any state design that merges these three into a single `done` will silently lose evidence somewhere.**
 
-## 4. 转移表
+## 4. Transition Tables
 
 ### Mission
 
-| 当前 | 允许下一步 | 前置条件 |
+| Current | Allowed next | Precondition |
 |---|---|---|
-| `planning` | `gate` | `plan.md` 与验收标准存在 |
-| `planning` | `planning` | 切分不合法（lane 相交等），重做 |
-| `gate` | `executing` | 用户 `confirmed` 已落盘，且记录问询者=lead |
-| `gate` | `planning` | 用户拒绝或要求修改 |
-| `executing` | `reviewing` | 所有 unit ∈ {merged, blocked} |
-| `executing` | `executing` | 有 unit 处于 for_review/changes_requested |
-| `reviewing` | `verified` | 验收标准全部有证据 |
-| `reviewing` | `executing` | 存在 `changes_requested` 的 unit |
-| `verified` | — | 终态 |
+| `planning` | `gate` | `plan.md` and acceptance criteria exist |
+| `planning` | `blocked` | human decision required |
+| `gate` | `executing` | user `confirmed` persisted, and records the inquirer = lead |
+| `gate` | `blocked` | user declines, or a human decision is required |
+| `executing` | `reviewing` | every unit ∈ {approved, merged, verified} or blocked |
+| `executing` | `blocked` | human decision required |
+| `reviewing` | `verified` | all acceptance criteria have evidence |
+| `reviewing` | `blocked` | a human decision is required |
+| `verified` | `blocked` | a later human decision invalidates the run |
+| `blocked` | — | terminal; only `flow.sh recover` moves out |
 
 ### Work unit
 
-| 当前 | 允许下一步 | 前置条件 |
+| Current | Allowed next | Precondition |
 |---|---|---|
-| `pending` | `in_progress` | liveness 回执；lane 无冲突 |
-| `in_progress` | `for_review` | 产物路径存在且非空；回传含 verdict |
-| `in_progress` | `pending` | 第 3 次失败 / blocked（不得第 4 次自动重试） |
-| `for_review` | `approved` | verdict=PASS 且 findings 无 blocker |
-| `for_review` | `changes_requested` | verdict=FAIL 或存在 blocker |
-| `changes_requested` | `in_progress` | 有对应的 finding 被指派给执行者 |
-| `approved` | `merged` | 集成分支构建 + 全量测试通过 |
-| `merged` | `verified` | 非作者执行验收，证据完整 |
-| `merged` | `changes_requested` | 验收发现不满足标准 |
-| `verified` | — | 终态 |
+| `pending` | `in_progress` | the unit has an owner; claim taken |
+| `pending` | `blocked` | human decision required |
+| `in_progress` | `for_review` | artifact path exists and is non-empty; return contains a verdict; the transition releases the claim |
+| `in_progress` | `blocked` | human decision required |
+| `for_review` | `approved` | verdict=PASS and no blocker in findings |
+| `for_review` | `changes_requested` | verdict=FAIL or a blocker exists; increments `failures` |
+| `for_review` | `blocked` | human decision required |
+| `changes_requested` | `in_progress` | `failures < 3`; a corresponding finding has been assigned to the executor |
+| `changes_requested` | `blocked` | `failures >= 3` or human decision required |
+| `approved` | `merged` | integration branch build + full test suite pass |
+| `approved` | `blocked` | human decision required |
+| `merged` | `verified` | non-author executes acceptance, evidence complete |
+| `merged` | `blocked` | human decision required |
+| `verified` | `blocked` | a later human decision invalidates the unit |
+| `blocked` | — | terminal; only `flow.sh reopen` moves out |
 
-非法示例（必须被脚本拒绝）：`pending → approved`、`in_progress → merged`、`approved → verified`。
+Illegal examples (must be rejected by the script): a `pending` unit cannot jump straight to `approved`; an `in_progress` unit cannot jump straight to `merged`; an `approved` unit cannot jump straight to `verified`; a `merged` unit cannot roll back to `changes_requested`; an `in_progress` unit cannot roll back to `pending`.
 
-## 5. 为什么用脚本而不是 LLM
+## 5. Recovery
 
-| 风险 | LLM 的行为 | 脚本的行为 |
+- `flow.sh reopen --unit <id> --reason <text>` moves **any** unit state back to `pending`. It refuses when `unit.failures >= 3` unless `--force true` is given after a recorded user decision.
+- `flow.sh recover` releases a stale claim and moves `mission=blocked` to `planning` (no units) or `executing` (units exist). It does not reopen units; use `reopen` for that.
+- Neither subcommand is available to teammates as an escape hatch: recovery follows a human decision and is recorded in the event log.
+
+## 6. Why Scripts Rather Than an LLM
+
+| Risk | LLM behavior | Script behavior |
 |---|---|---|
-| 状态判断 | 会依据"感觉快完成了"提前推进 | 只认前置条件 |
-| 跳步 | 会为跳步编造合理理由 | 无此能力 |
-| 同一输入 | 不同轮次可能给出不同判断 | 确定性 |
-| 审计 | 事后无法证明判定过程 | 可重放 |
-| 并发 | 两个 agent 可能同时认为自己是当前推进者 | 文件锁 / 单写者 |
+| state judgment | advances early based on "feels almost done" | only recognizes preconditions |
+| step skipping | fabricates reasonable justification for skipping | no such ability |
+| same input | may give different judgments across rounds | deterministic |
+| audit | cannot prove the judgment process afterward | replayable |
+| concurrency | two agents may both think they are the current advancer | file lock / single writer |
 
-LLM 可以**建议**下一步（`next_action`），但**置位**只能由脚本做。这条边界划清之后，状态机才有可能被信任。
+The LLM may **suggest** the next step (`next_action`), but **setting** can only be done by scripts. Only after this boundary is drawn can the state machine be trusted.
 
-## 6. 与回传契约的连接
+## 7. Connection with the Return Contract
 
-每次回传的 `verdict` 直接驱动转移：
+Each return's `verdict` directly drives the transition:
 
 ```text
-verdict=PASS    → for_review → approved（还需 findings 检查）
+verdict=PASS    → for_review → approved (still needs findings check)
 verdict=FAIL    → for_review → changes_requested
-verdict=BLOCKED → in_progress → pending（并记录 stop_reason）
+verdict=BLOCKED → current state → blocked (then recover or reopen)
 ```
 
-因此：**没有 verdict 的回传不允许进入任何转移**。这是 L3 层约束（enforcement-ladder.md），不是建议。
+The verdict must also be persisted to `.team/<run>/verdicts/<unit-id>.json` with at least `{verdict, artifacts, stop_reason}`; the `SubagentStop` hook blocks conversation-only returns.
+
+Therefore: **a return without a verdict is not allowed to enter any transition**. This is an L3-layer constraint (enforcement-ladder.md), not a suggestion.

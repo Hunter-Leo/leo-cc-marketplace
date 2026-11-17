@@ -32,14 +32,26 @@ def find_flow(base):
     return None
 
 
-def generated_dir(flow, flow_path):
-    """只认本 run 的产物目录，禁止跨 run 回退。"""
+def repo_root(base):
+    """Anchor to the repository root so the script works from any cwd.
+
+    Prefers LEO_TEAM_DIR's ancestors (looking for .dev or .git), then cwd.
+    """
+    for start in (base.resolve(), Path.cwd().resolve()):
+        for parent in [start, *start.parents]:
+            if (parent / ".dev").is_dir() or (parent / ".git").exists():
+                return parent
+    return Path.cwd()
+
+
+def generated_dir(flow, flow_path, base):
+    """Only accept this run's artifact directory; never fall back across runs."""
     run = flow.get("run") or flow_path.parent.name
-    return Path.cwd() / ".dev" / run / "generated"
+    return repo_root(base) / ".dev" / run / "generated"
 
 
 def find_artifact(name, gen_dir):
-    """只认 .dev/<run>/generated/<name>，不做任何回退。"""
+    """Only accept .dev/<run>/generated/<name>; never fall back."""
     candidate = gen_dir / name
     return candidate if candidate.is_file() else None
 
@@ -55,7 +67,7 @@ def _cells(line):
 
 
 def check_audit(content):
-    """只读「最终结论」的第一条 Verdict 与「检查矩阵」的结果列。"""
+    """Read only the first Verdict in the final conclusion and the result column of the check matrix."""
     blockers = []
     section = ""
     verdict = None
@@ -70,28 +82,28 @@ def check_audit(content):
             if m:
                 verdict = m.group(1).upper()
         if section.startswith("2") and line.lstrip().startswith("|"):
-            # 每行只取第一个 PASS/FAIL/UNVERIFIABLE，避免证据列里的同名字样被计入
+            # Take only the first PASS/FAIL/UNVERIFIABLE per line so identical words in the evidence column are not counted
             for cell in _cells(line):
                 if RESULT_CELL_RE.match(cell):
                     matrix_results.append(cell.upper())
                     break
 
     if verdict is None:
-        blockers.append("science-audit.md 缺少可解析的最终 Verdict（PASS/FAIL/UNVERIFIABLE）")
+        blockers.append("science-audit.md has no parseable final Verdict (PASS/FAIL/UNVERIFIABLE)")
     elif verdict != "PASS":
-        blockers.append(f"science-audit.md 最终结论为 {verdict}")
+        blockers.append(f"science-audit.md final verdict is {verdict}")
     elif len(matrix_results) < 5:
-        blockers.append(f"science-audit.md 检查矩阵不完整（仅 {len(matrix_results)} 项结果，需 5 项）")
+        blockers.append(f"science-audit.md check matrix is incomplete ({len(matrix_results)} results, 5 required)")
     elif matrix_results.count("PASS") != 5:
-        blockers.append(f"science-audit.md Verdict=PASS 但检查矩阵仅 {matrix_results.count('PASS')}/5 项 PASS")
+        blockers.append(f"science-audit.md Verdict=PASS but only {matrix_results.count('PASS')}/5 matrix results are PASS")
 
     if matrix_results.count("FAIL"):
-        blockers.append(f"science-audit.md 检查矩阵有 {matrix_results.count('FAIL')} 项 FAIL")
+        blockers.append(f"science-audit.md check matrix has {matrix_results.count('FAIL')} FAIL items")
     return blockers
 
 
 def check_findings(content):
-    """open 的 blocker/critical/major 阻塞完成；fixed/wontfix 不阻塞。"""
+    """Open blocker/critical/major items block completion; fixed/wontfix do not."""
     blockers = []
     for line in content.splitlines():
         stripped = line.lstrip()
@@ -107,12 +119,10 @@ def check_findings(content):
         if severity is None:
             continue
         status = cells[-1].lower()
-        if severity == "blocker" and status not in ("fixed", "wontfix"):
-            blockers.append(f"findings.md {fid}：blocker 未关闭（{status or 'unknown'}）")
-        elif severity == "critical" and status in OPEN_STATUSES:
-            blockers.append(f"findings.md {fid}：critical 未关闭（{status}）")
+        if severity in ("blocker", "critical") and status != "fixed":
+            blockers.append(f"findings.md {fid}: {severity} not closed (status={status or 'unknown'}); only 'fixed' clears it")
         elif severity == "major" and status in ("open", "deferred"):
-            blockers.append(f"findings.md {fid}：major 未关闭（{status}）")
+            blockers.append(f"findings.md {fid}: major not closed ({status}); use 'fixed' or 'accepted' with an ADR")
     return blockers
 
 
@@ -126,7 +136,7 @@ def main():
         flow = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         print("NOT COMPLETE")
-        print(f"- 无法读取 flow.json：{exc}")
+        print(f"- Cannot read flow.json: {exc}")
         return 0
 
     units = flow.get("units", [])
@@ -142,35 +152,35 @@ def main():
 
     blockers = []
     if not units:
-        blockers.append("flow.json.units 为空：没有任何实现单元")
+        blockers.append("flow.json.units is empty: no implementation units")
     if flow.get("mission") != "verified":
-        blockers.append(f"mission={flow.get('mission', '?')}（需要 verified）")
+        blockers.append(f"mission={flow.get('mission', '?')} (verified required)")
     if flow.get("claim") is not None:
-        blockers.append(f"仍有未释放的 claim：{flow['claim'].get('unit', '?')}")
+        blockers.append(f"claim still held: {flow['claim'].get('unit', '?')}")
     for unit in units:
         lane = unit.get("lane", "pending")
         if lane != "verified":
-            blockers.append(f"{unit.get('id', '?')} 处于 {lane}")
+            blockers.append(f"{unit.get('id', '?')} is in {lane}")
 
-    gen_dir = generated_dir(flow, path)
+    gen_dir = generated_dir(flow, path, base)
     findings = find_artifact("findings.md", gen_dir)
     if findings is not None:
         try:
             blockers.extend(check_findings(findings.read_text(encoding="utf-8")))
         except OSError as exc:
-            blockers.append(f"无法读取 findings.md：{exc}")
+            blockers.append(f"Cannot read findings.md: {exc}")
 
     if gate.get("researcher") and find_artifact("research.md", gen_dir) is None:
-        blockers.append(f"science_gate.researcher=true 但 {gen_dir}/research.md 不存在")
+        blockers.append(f"science_gate.researcher=true but {gen_dir}/research.md does not exist")
     if gate.get("auditor"):
         audit = find_artifact("science-audit.md", gen_dir)
         if audit is None:
-            blockers.append(f"science_gate.auditor=true 但 {gen_dir}/science-audit.md 不存在")
+            blockers.append(f"science_gate.auditor=true but {gen_dir}/science-audit.md does not exist")
         else:
             try:
                 blockers.extend(check_audit(audit.read_text(encoding="utf-8")))
             except OSError as exc:
-                blockers.append(f"无法读取 science-audit.md：{exc}")
+                blockers.append(f"Cannot read science-audit.md: {exc}")
 
     if blockers:
         print("NOT COMPLETE")

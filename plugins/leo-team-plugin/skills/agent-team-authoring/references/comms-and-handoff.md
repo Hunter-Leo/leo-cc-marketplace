@@ -1,125 +1,126 @@
-# 通信与交接
+# Communication and Handoff
 
-> Agent 之间不共享历史。所有"协作"最终都落在三条通道上，选错通道就会丢信息或丢可审计性。
+> Agents do not share history. All "collaboration" ultimately lands on three channels; choosing the wrong channel loses information or auditability.
 
-## 1. 通信三形式
+## 1. Three Forms of Communication
 
-| 形式 | 机制 | 适用面 | 不适用 |
+| Form | Mechanism | Applies to | Not suitable for |
 |---|---|---|---|
-| **自然语言** | SendMessage 自由文本 | 澄清、协商、探索性讨论 | 交接产物、状态转移、可审计决策 |
-| **结构化调用** | 带固定字段的 SendMessage / 脚本调用 | 派发任务、回执、状态转移、ping | 复杂解释、开放式讨论 |
-| **共享文件** | 磁盘路径 | 产物、决策、研究、快照、死路记录 | 短时同步、门禁确认 |
+| **Natural language** | SendMessage free text | clarification, negotiation, exploratory discussion | handoff artifacts, state transitions, auditable decisions |
+| **Structured call** | SendMessage with fixed fields / script call | dispatching tasks, receipts, state transitions, ping | complex explanations, open-ended discussion |
+| **Shared files** | disk paths | artifacts, decisions, research, snapshots, dead-end records | short-term sync, gate confirmation |
 
-选择规则：
+Selection rule:
 
 ```text
-要留证据的     → 共享文件
-要驱动流程的   → 结构化调用
-只是要问一句的 → 自然语言（且必须随后落盘）
+need evidence          → shared files
+need to drive the flow → structured call
+just asking one thing  → natural language (and must be persisted afterward)
 ```
 
-**所有自然语言里达成的结论，必须在结束前落到文件**，否则视为未发生（team-invariants T-1）。
+**Every conclusion reached in natural language must land in a file before the end**, otherwise it is treated as never happened (team-invariants T-1).
 
-## 2. 回传契约（固定格式）
+## 2. Return Contract (Fixed Format)
 
-每次任务结束都必须返回，字段名与 rails.md R-10 完全一致，不得增删：
+Must be returned at the end of every task; field names exactly match `../../spec-coding-team-skill/references/rails.md` R-10, no additions or removals:
 
 ```yaml
 verdict: PASS | FAIL | BLOCKED
-artifacts: [路径...]          # 只列路径，不贴内容
+artifacts: [paths...]          # paths only, do not paste content
 findings:
   - severity: blocker | critical | major | minor | nit
     file: path:line
-    evidence: <命令输出 / 现象>
-    fix: <建议>
-contract_for_next: <下游需要知道的接口/假设，一句话>
-next_action: <建议的下一步>
-stop_reason: <为什么结束>
+    evidence: <command output / phenomenon>
+    fix: <suggestion>
+contract_for_next: <interface/assumption downstream needs to know, one sentence>
+next_action: <suggested next step>
+stop_reason: <why it ended>
 ```
 
-要点：
+Key points:
 
-- `verdict` 缺失 → 回传不可消费，状态机不允许转移（`SubagentStop` hook 拒绝）。
-- `artifacts` 只放路径。贴全文会让下游上下文被上游内容污染，且无法版本化。
-- `contract_for_next` 是唯一允许携带"未落盘信息"的字段，因此必须短、必须是一句话、必须只包含下游无法从产物中读出的假设。
-- `stop_reason` 用于区分"做完了"与"放弃了"——两者都可能是 PASS/FAIL，但处置不同。
+- Missing `verdict` → the return is not consumable and the state machine disallows transitions (the `SubagentStop` hook rejects it).
+- While a claim is active, `verdict`, `artifacts`, and `stop_reason` must also be persisted to `.team/<run>/verdicts/<unit-id>.json`. A conversation-only return is blocked by the `SubagentStop` hook, even when the text itself contains a verdict.
+- `artifacts` holds paths only. Pasting full text contaminates downstream context with upstream content and cannot be versioned.
+- `contract_for_next` is the only field allowed to carry "non-persisted information", so it must be short, must be one sentence, and must contain only assumptions downstream cannot read from the artifacts.
+- `stop_reason` distinguishes "finished" from "gave up" — both may be PASS/FAIL, but the handling differs.
 
-## 3. Primer 卷宗
+## 3. Primer Dossier
 
-Spawn 之前必须准备好的自包含启动包。**Claude Code 没有 SubagentStart 事件**，不存在"teammate 启动时自动读取"的机制——primer 必须在 **spawn prompt 里显式给出**。
+A self-contained startup package that must be prepared before spawn. **Claude Code has no SubagentStart event**; there is no mechanism for "teammates to read automatically on startup" — the primer must be **given explicitly in the spawn prompt**.
 
-必须包含六项：
+Must contain six items:
 
-| # | 内容 | 为什么必须 |
+| # | Content | Why required |
 |---|---|---|
-| 1 | 组织上下文：本团队在整个流程中的位置、当前 mission 状态 | 否则角色不知道自己在第几步 |
-| 2 | 团队成员：谁是谁、各自的 lane | 否则不知道找谁、不知道谁在写同一片 |
-| 3 | 每个角色的技能摘要：**该角色**该读哪些文件、不要读哪些 | 控制上下文预算；防止读到被污染的过程记录 |
-| 4 | 目标与验收标准 | 没有验收标准的角色会自定标准 |
-| 5 | 部署步骤：先读什么、再做什么、何时回报 | 冷启动时唯一的行为依据 |
-| 6 | 不变量：文件即状态、只传路径、写边界、完成即验证 | 团队运行时纪律 |
+| 1 | Organizational context: where this team sits in the overall process, current mission state | otherwise the role doesn't know which step it is on |
+| 2 | Team members: who is who, each one's lane | otherwise it doesn't know whom to ask, or who is writing the same area |
+| 3 | Skill summary per role: which files **this role** should read, which not to read | control the context budget; prevent reading contaminated process records |
+| 4 | Goals and acceptance criteria | a role without acceptance criteria will invent its own |
+| 5 | Deployment steps: what to read first, what to do next, when to report back | the only basis for behavior on cold start |
+| 6 | Invariants: files are state, pass paths only, write boundaries, completion means verification | team runtime discipline |
 
-**预算：6000 字符。** 超出时按以下顺序删减：
+**Budget: 6000 characters.** When exceeded, trim in the following order:
 
 ```text
-先删 组织背景的叙述性内容（保留一行状态）
-再删 团队成员的履历式描述（保留 lane 与 archetype）
-不删 验收标准
-不删 不变量
-不删 部署步骤
+first delete narrative content of the organizational background (keep one line of state)
+then delete résumé-style descriptions of team members (keep lane and archetype)
+do not delete acceptance criteria
+do not delete invariants
+do not delete deployment steps
 ```
 
-primer 是会被反复注入 teammate 上下文的文件。**外部内容绝不能进 primer**（rails.md R-7）——它是 prompt injection 的高价值目标。
+The primer is a file repeatedly injected into teammate contexts. **External content must never enter the primer** (`../../spec-coding-team-skill/references/rails.md` R-7) — it is a high-value target for prompt injection.
 
 ## 4. DEAD_ENDS
 
-记录**已排除的方案及理由**，格式：
+Records **excluded approaches and the reasons**, format:
 
 ```markdown
-## 已排除
-- <方案> — 排除于 <日期> — 理由: <一句话> — 证据: <path:line / 命令输出>
+## Excluded
+- <approach> — excluded on <date> — reason: <one sentence> — evidence: <path:line / command output>
 ```
 
-规则：
+Rules:
 
-- 任何被否决的方案都进 DEAD_ENDS，不只进对话。
-- **恢复后第一件事就是读它**。否则恢复的 agent 会重新走一遍已被证明走不通的路，代价是双倍 token。
-- 没有理由的排除项不得写入——"感觉不行"不是死路记录，是噪音。
+- Any rejected approach goes into DEAD_ENDS, not just into the conversation.
+- **The first thing to do after resuming is to read it.** Otherwise the resumed agent re-walks a path already proven impassable, at double the token cost.
+- Exclusions without reasons must not be written — "feels wrong" is not a dead-end record, it is noise.
 
-## 5. 跨 session 恢复协议
+## 5. Cross-Session Resume Protocol
 
-固定五步，不得跳步：
+Five fixed steps, no skipping:
 
 ```text
-1. 校验 registry
-   - 角色是否仍存在
-   - lane 是否与当前计划一致
-   - 是否有角色已被移除但仍在 state 中
+1. Validate the registry
+   - do the roles still exist
+   - does the lane match the current plan
+   - are there roles that have been removed but are still in state
 
-2. 筛唤醒集
-   - 只唤醒处于非终态（in_progress / for_review / changes_requested / pending）的 unit
-   - 已 merged/verified 的不唤醒
+2. Filter the wake set
+   - only wake units in non-terminal states (in_progress / for_review / changes_requested / pending)
+   - do not wake merged/verified ones
 
 3. spawn
-   - 在 spawn prompt 中显式附带 primer（无 SubagentStart 事件）
+   - explicitly attach the primer in the spawn prompt (no SubagentStart event)
 
-4. 读三件套
-   - primer（纪律与目标）
-   - snapshot（该 unit 上次停在哪）
-   - DEAD_ENDS（不要再走的路）
+4. Read the trio
+   - primer (discipline and goals)
+   - snapshot (where this unit stopped last time)
+   - DEAD_ENDS (paths not to walk again)
 
-5. 回执固定为 Resumed
-   - 内容：unit / 上次状态 / 本次将做的第一件事
+5. Receipt fixed as Resumed
+   - content: unit / last state / the first thing to do this time
 ```
 
-恢复协议失败的最常见原因：跳过了第 1 步。registry 陈旧会让系统唤醒一个 lane 已被重新分配的角色，导致两个 agent 写同一文件。
+The most common cause of resume protocol failure: skipping step 1. A stale registry makes the system wake a role whose lane has been reassigned, causing two agents to write the same file.
 
-## 6. 通道选择的代价对照
+## 6. Channel Cost Comparison
 
-| 通道 | 延迟 | 可审计 | 上下文成本 |
+| Channel | Latency | Auditable | Context cost |
 |---|---|---|---|
-| 自然语言 | 低 | 无 | 中（全文进上下文） |
-| 结构化调用 | 低 | 字段级 | 低 |
-| 共享文件 | 中（写盘） | 完整 | 读时按需 |
+| natural language | low | none | medium (full text enters context) |
+| structured call | low | field-level | low |
+| shared files | medium (disk write) | complete | on demand at read time |
 
-结论：**默认用结构化调用驱动流程，用共享文件承载事实，用自然语言处理例外。** 反过来做（默认自由文本、事后补文件）是团队协作退化的起点。
+Conclusion: **by default use structured calls to drive the process, shared files to carry facts, and natural language for exceptions.** Doing it in reverse (free text by default, files patched afterward) is the starting point of team collaboration degradation.

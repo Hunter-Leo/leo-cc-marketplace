@@ -1,72 +1,72 @@
-# 团队设计自检清单
+# Team Design Self-Check Checklist
 
-> 12 条。每条的"证据"必须是**可被第三方复核的产物**，不是"是否考虑过"。
-> 任一条拿不出证据 → 设计未完成，不要进入 spawn。
+> 12 items. The "evidence" for each must be **an artifact a third party can review**, not "whether it was considered".
+> If any item cannot produce evidence → the design is not complete; do not enter spawn.
 
-- [ ] **1. 已写出组队判定，且含理由**
-  - 检查：设计文档里存在一行 `结论: agent_teams | workflow | single_session — 理由: <一句话>`
-  - 证据：该行原文
-  - 不合格示例：只写"需要组队"，没有理由
+- [ ] **1. The team verdict is written out, with a reason**
+  - Check: one line `Conclusion: agent_teams | workflow | single_session — reason: <one sentence>` exists in the design document
+  - Evidence: the original text of that line
+  - Failing example: only "need a team", no reason
 
-- [ ] **2. 每个角色恰好属于一个 archetype**
-  - 检查：角色表中 archetype 列无空缺、无复合值（如"能跑+可反驳"）
-  - 证据：角色表原文
-  - 不合格示例：某角色同时"实现并评审自己的代码"
+- [ ] **2. Each role belongs to exactly one archetype**
+  - Check: no empty or composite values in the archetype column of the role table (e.g. "Builder+Adversary")
+  - Evidence: original text of the role table
+  - Failing example: a role that "implements and reviews its own code"
 
-- [ ] **3. 没有任何角色按技术层命名或切分**
-  - 检查：角色名与职责中不出现"前端/后端/测试/运维/DBA"作为切分依据
-  - 证据：角色名列表 + 每个角色的 archetype
-  - 不合格示例：`frontend-agent`、`test-agent`
+- [ ] **3. No role is named or split by technical layer**
+  - Check: role names and responsibilities do not use "frontend/backend/test/ops/DBA" as the basis of decomposition
+  - Evidence: role name list + archetype of each role
+  - Failing example: `frontend-agent`, `test-agent`
 
-- [ ] **4. Lane 是可解析的 glob，且两两不相交**
-  - 检查：并行角色之间可写路径集合无交集
-  - 证据：`bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-lanes.sh"` 输出（`exit 0` 且无潜在重叠，或对 WARN 逐条给出人工确认）
-  - 不合格示例："负责订单模块"（无法机器解析）
+- [ ] **4. Lanes are parsable globs and pairwise disjoint**
+  - Check: the sets of writable paths of parallel roles do not intersect
+  - Evidence: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-lanes.sh"` output (`exit 0` and no potential overlap, or manual confirmation for each WARN)
+  - Failing example: "responsible for the order module" (not machine-parsable)
 
-- [ ] **5. 每个角色有 Output contract，且含固定回传格式**
-  - 检查：落盘路径存在声明；回传字段为 verdict / artifacts / findings / contract_for_next / next_action / stop_reason
-  - 证据：角色卡 `## Output contract` 段落
-  - 不合格示例：只写"完成后汇报"
+- [ ] **5. Every role has an Output contract containing the fixed return format**
+  - Check: the persistence path is declared; return fields are verdict / artifacts / findings / contract_for_next / next_action / stop_reason; while a claim is active, `.team/<run>/verdicts/<unit-id>.json` is persisted with at least `{verdict, artifacts, stop_reason}` (conversation-only returns are blocked by the `SubagentStop` hook)
+  - Evidence: the `## Output contract` section of the role card + the verdict-file path
+  - Failing example: only "report when done", or a verdict that exists only in the conversation
 
-- [ ] **6. 每个角色有可执行的 Done criteria**
-  - 检查：每条判定含一个命令或数值阈值，第三方可重跑
-  - 证据：命令清单（可用 `grep -c '`'` 粗检）
-  - 不合格示例："功能正常、代码整洁"
+- [ ] **6. Every role has executable Done criteria**
+  - Check: each judgment contains a command or numeric threshold, re-runnable by a third party
+  - Evidence: command list (a rough check is possible with `grep -c '`'`)
+  - Failing example: "functionality normal, code clean"
 
-- [ ] **7. 团队规模在 2–4 之间（协调者不计）**
-  - 检查：实现/评审/验证角色计数 ≤ 4；超限时必须记录删减理由
-  - 证据：角色计数
-  - 不合格示例：6 个角色且无规模理由
+- [ ] **7. Team size is between 2–4 (coordinators excluded)**
+  - Check: implementation/review/verification role count ≤ 4; when over the limit, the reason for reduction must be recorded
+  - Evidence: role count
+  - Failing example: 6 roles with no scale rationale
 
-- [ ] **8. 阶段门禁只能由 lead 对用户发起**
-  - 检查：只有一个角色的 Escalation 段包含"向用户询问确认"；其他角色只能向 lead 上报
-  - 证据：各角色 `## Escalation` 段
-  - 不合格示例：verifier 可直接向用户宣布完成
+- [ ] **8. Phase gates can only be initiated by the lead to the user**
+  - Check: only one role's Escalation section contains "ask the user for confirmation"; other roles can only report to the lead
+  - Evidence: each role's `## Escalation` section
+  - Failing example: the verifier can directly announce completion to the user
 
-- [ ] **9. primer 存在且 ≤ 6000 字符，含六要素**
-  - 检查：组织上下文 / 团队 / 技能摘要 / 目标与验收 / 部署步骤 / 不变量
-  - 证据：`wc -m` 输出 + 六个小节标题
-  - 不合格示例：3200 字但缺"部署步骤"
+- [ ] **9. A primer exists, ≤ 6000 characters, with six elements**
+  - Check: [templates/primer.md](../templates/primer.md) was used; organizational context / team / skill summary / goals and acceptance / deployment steps / invariants
+  - Evidence: `wc -m` output + the six subsection headings
+  - Failing example: 3200 characters but missing "deployment steps"
 
-- [ ] **10. DEAD_ENDS 文件存在且格式合规**
-  - 检查：每条含 `方案 / 日期 / 理由 / 证据`
-  - 证据：文件路径 + 一条样例
-  - 不合格示例：只有"暂不考虑 X"没有理由
+- [ ] **10. The DEAD_ENDS file exists and its format is compliant**
+  - Check: each entry contains `approach / date / reason / evidence`
+  - Evidence: file path + one sample entry
+  - Failing example: only "not considering X for now" with no reason
 
-- [ ] **11. 状态转移由脚本校验，且能拒绝非法转移**
-  - 检查：存在状态机脚本；有"非法转移被 exit 1"的实测输出
-  - 证据：脚本路径 + 一次 `pending → approved` 被拒绝的命令输出
-  - 不合格示例：状态只写在文档里，由 agent 自行判断
+- [ ] **11. State transitions are validated by a script, which can reject illegal transitions**
+  - Check: `scripts/flow.sh` exists and its `transition` subcommand rejects an illegal target with exit 1; there is measured output of one rejected transition
+  - Evidence: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --unit <id> --to approved` on a `pending` unit, plus the exit code and stderr
+  - Failing example: states only in a document, judged by the agent itself
 
-- [ ] **12. 外部内容有路径白名单，且关键约束标注了层级**
-  - 检查：外部内容只允许写入 research/findings；每条硬约束标注 L1/L2/L3
-  - 证据：路径白名单 + 约束-层级对照表
-  - 不合格示例：把网页摘要贴进 primer 或 team-plan
+- [ ] **12. External content has a path whitelist, and key constraints are labeled by layer**
+  - Check: external content may only be written to research/findings; each hard constraint is labeled L1/L2/L3
+  - Evidence: path whitelist + constraint-layer mapping table
+  - Failing example: pasting web page summaries into the primer or team-plan
 
 ---
 
-## 使用说明
+## Usage Notes
 
-- 逐条勾选时，**在条目后写下证据路径或命令**；只打勾不算完成。
-- 第 4、9、11 条可直接脚本化，建议把命令固化进 CI 或 hook。
-- 12 条全过仍不保证设计正确，只保证**设计没有结构性缺口**；正确性仍需一次真实任务的验证。
+- When checking item by item, **write the evidence path or command after the item**; a checkmark alone does not count as done.
+- Items 4, 9, and 11 can be scripted directly; it is recommended to codify the commands into CI or hooks.
+- Passing all 12 still does not guarantee the design is correct; it only guarantees **the design has no structural gaps**; correctness still needs validation by one real task.

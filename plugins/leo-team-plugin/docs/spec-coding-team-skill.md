@@ -1,34 +1,34 @@
 # spec-coding-team-skill
 
-> **状态：experimental。** 依赖 Claude Code 的 Agent Teams 实验能力，接口与行为可能随版本变化。
+> **Status: experimental.** Depends on Claude Code's experimental Agent Teams capability; interfaces and behavior may change between versions.
 >
-> 一句话：把 M 级以上的编码需求交给一个 PM 带队的多 agent 团队，用文件与状态机保证「计划 → 用户确认 → 协作执行 → 独立评审 → 集成验收」不靠记忆、不靠自觉。
+> In one sentence: hand M-level and larger coding requirements to a PM-led multi-agent team, using files and a state machine to guarantee that "plan → user confirmation → collaborative execution → independent review → integration acceptance" relies on neither memory nor good intentions.
 
-## 1. 它解决什么问题
+## 1. What problem does it solve
 
-单个上下文装不下大型需求时，模型会静默丢失约束、把「写完」当成「验证完」、把计划偏离当成效率优化。本技能用**落盘产物 + 机械门禁 + 独立验证上下文**把这三件事变成可检查的流程。
+When a single context cannot hold a large requirement, the model silently drops constraints, treats "finished writing" as "verified", and treats plan deviation as efficiency optimization. This skill turns those three failure modes into an inspectable process using **persisted artifacts + mechanical gates + independent verification contexts**.
 
-## 2. 与单人版的分工
+## 2. Division of labor with the single-agent version
 
-| 需求规模 | 判据（任一命中取最高档） | 使用 |
-|----------|--------------------------|------|
-| XS | ≤1 个文件、≤30 行、单一行为 | `spec-coding-skill` 单人版 |
-| S | 2–5 个文件或 ≤150 行，不跨模块接口 | `spec-coding-skill` 单人版 |
-| M | 6–20 个文件或 151–800 行或跨 2–3 个模块 | 本技能（团队版） |
-| L | >20 个文件或 >800 行或跨 ≥4 个模块/仓库 | 本技能（团队版，N3 可分波次） |
+| Requirement size | Criterion (if any applies, take the highest tier) | Use |
+|------------------|--------------------------------------------------|-----|
+| XS | ≤1 file, ≤30 lines, a single behavior | `spec-coding-skill` single-agent |
+| S | 2–5 files or ≤150 lines, does not cross module interfaces | `spec-coding-skill` single-agent |
+| M | 6–20 files or 151–800 lines or spans 2–3 modules | this skill (team edition) |
+| L | >20 files or >800 lines or spans ≥4 modules/repositories | this skill (team edition, N3 may split into waves) |
 
-团队版还要求 `T1 && (T2 || T3 || T4)`：规模达 M/L，且存在并行收益、独立验证需求或用户明示组队。规模不够或触发不成立时会**显式退回**单人模式，不会硬组队。
+The team edition additionally requires `T1 && (T2 || T3 || T4)`: size reaches M/L, and there is parallel benefit, an independent-verification need, or the user explicitly asks for a team. When the size is insufficient or the triggers do not hold, it **explicitly falls back** to single-agent mode and will not force a team.
 
-组队成本是多 agent 比单 agent 多消耗 **3–10× token**；默认团队规模 2–3 人，上限 4 人。
+The cost of teaming is that multi-agent consumes **3–10× more tokens** than single-agent; the default team size is 2–3 people, with a maximum of 4.
 
-## 3. 安装与启用
+## 3. Installation and enabling
 
 ```bash
 /plugin marketplace add Hunter-Leo/leo-cc-marketplace
 /plugin install leo-team-plugin@leo-cc-marketplace
 ```
 
-Agent Teams 需要显式开启。在 `~/.claude/settings.json` 或项目 `.claude/settings.json` 中加入：
+Agent Teams must be explicitly enabled. Add the following to `~/.claude/settings.json` or the project's `.claude/settings.json`:
 
 ```json
 {
@@ -38,97 +38,97 @@ Agent Teams 需要显式开启。在 `~/.claude/settings.json` 或项目 `.claud
 }
 ```
 
-也可以在当前 shell 中 `export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`。设置后需要**重启 Claude Code 会话**。
+You can also `export CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` in the current shell. After setting it, you must **restart the Claude Code session**.
 
-限制：仅在**交互式终端 Claude Code** 中有效。`claude -p` 与 Agent SDK 不会 spawn teammate，即使变量为 1。
+Limitation: it works only in **interactive terminal Claude Code**. `claude -p` and the Agent SDK will not spawn teammates even if the variable is 1.
 
-验证：
+Verification:
 
 ```bash
 [ "${CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS:-0}" = "1" ] && echo teams || echo subagent
 ```
 
-## 4. 六个角色
+## 4. Six roles
 
-PM 是主会话，不计入角色数；其余六个由 PM spawn。
+The PM is the main session and is not counted among the roles; the other six are spawned by the PM.
 
-| 角色 | agent 文件 | 生命周期 | 独占产物 | 写权限 |
-|------|-----------|----------|----------|--------|
-| explorer | `agents/spec-explorer.md` | N1 一次性 | `inspect.md` | 只读代码 |
-| architect | `agents/spec-architect.md` | N1 一次性 | `architecture-review.md` | 只读代码 |
-| science-researcher | `agents/spec-science-researcher.md` | N1；science gate 开启时 | `research.md`、`fixtures/` | 只写研究产物 |
-| executor | `agents/spec-executor.md` | N4–N6，可跨轮 | `owned_files` 内代码与测试 | 仅自己 lane |
-| reviewer | `agents/spec-reviewer.md` | N4 首个检查点起–N6 | `findings.md` 中自己那一段 | 只读代码，禁改 |
-| science-auditor | `agents/spec-science-auditor.md` | N5 每轮；auditor 开启时强制 | `science-audit.md` | 只读，禁改代码与研究 |
+| Role | agent file | Lifecycle | Exclusive artifacts | Write permission |
+|------|-----------|-----------|---------------------|------------------|
+| explorer | `agents/spec-explorer.md` | N1, one-shot | `inspect.md` | read-only on code |
+| architect | `agents/spec-architect.md` | N1, one-shot | `architecture-review.md` | read-only on code |
+| science-researcher | `agents/spec-science-researcher.md` | N1; when science gate is on | `research.md`, `fixtures/` | write research artifacts only |
+| executor | `agents/spec-executor.md` | N4–N6, may span rounds | code and tests within `owned_files` | own lane only |
+| reviewer | `agents/spec-reviewer.md` | from N4's first checkpoint to N6 | its own section in `findings.md` | read-only on code, no edits |
+| science-auditor | `agents/spec-science-auditor.md` | every round at N5; mandatory when auditor is enabled | `science-audit.md` | read-only, no edits to code or research |
 
-角色只写自己 `Lane` 声明的路径；越界写入由 `PreToolUse` hook 拒绝。每个角色必须按 rails R-10 回传 `verdict`，缺 verdict 视为未完成。
+Roles write only the paths declared in their own `Lane`; out-of-bounds writes are rejected by the `PreToolUse` hook. Every role must return a `verdict` per rails R-10; a missing verdict counts as incomplete.
 
-## 5. 一次典型运行
+## 5. A typical run
 
-| 阶段 | 做什么 | 关键门禁 |
-|------|--------|----------|
-| **N0 Precheck** | Task Sizing、四触发条件判定、science gate 询问、写 `init.md` | 判定非 M/L → 退回单人 |
-| **N1 Phase A** | PM 写 `init.md` / `plan.md` / `tasks.md` / `decisions.md`；按需并行 explorer / architect / researcher | 上游产物必须落盘 |
-| **N2 Hard Gate** | PM 亲自向用户提交计划、分支名与验收标准 | 用户显式 `confirmed` 前不得建分支 |
-| **N3 Formation** | 按 `owned_files` 切工作单元、写 `team-plan.md` 与启动 prompt、判定调度 | 用户再次 `confirmed`；写集合相交必须合并或串行 |
-| **N4 Execution** | claim 单元，executor 实现与自测，每 3 个单元一个检查点 | 单元未完成不得进入评审 |
-| **N5 Round Review** | reviewer 双轴评审；auditor 在 gate 开启时强制审查 | 有未决 → 同 session 进入 Round N+1 |
-| **N6 Verification** | 依次取得 `approved` → `merged` → `verified` 证据 | `check-team-complete.sh` 输出 `OK` |
+| Phase | What to do | Key gate |
+|-------|-----------|----------|
+| **N0 Precheck** | Task Sizing, four trigger-condition checks, science gate inquiry, write `init.md` | if not sized M/L → fall back to single-agent |
+| **N1 Phase A** | PM writes `init.md` / `plan.md` / `tasks.md` / `decisions.md`; runs explorer / architect / researcher in parallel as needed | upstream artifacts must be persisted |
+| **N2 Hard Gate** | PM personally submits the plan, branch name, and acceptance criteria to the user | no branch may be created before the user explicitly confirms |
+| **N3 Formation** | Split work units by `owned_files`, write `team-plan.md` and startup prompts, decide scheduling | the user confirms again; overlapping write sets must be merged or serialized |
+| **N4 Execution** | Claim units, executor implements and self-tests, one checkpoint every 3 units | cannot enter review until a unit is complete |
+| **N5 Round Review** | Reviewer dual-axis review; auditor reviews mandatorily when the gate is on | if anything is unresolved → enter Round N+1 in the same session |
+| **N6 Verification** | Obtain `approved` → `merged` → `verified` evidence in order | `check-team-complete.sh` outputs `OK` |
 
-启动命令：
-
-```bash
-/spec-team <需求描述或 .dev/<NNN>-<req>/ 路径>
-```
-
-查看进度：
+Start command:
 
 ```bash
-/team-status [run 名称或 .dev 需求目录]
+/spec-team <requirement description or .dev/<NNN>-<req>/ path>
 ```
 
-归档已结束的 run（只归档、不删除，执行前需逐字输入 `archive` 确认）：
+View progress:
 
 ```bash
-/team-reset <run 名称>
+/team-status [run name or .dev requirement directory]
 ```
 
-## 6. 产物布局
+Archive a finished run (archive only, never delete; type `archive` verbatim to confirm before execution):
 
-需求文档（可提交、可审计）：
+```bash
+/team-reset <run name>
+```
+
+## 6. Artifact layout
+
+Requirement documents (committable, auditable):
 
 ```text
 .dev/
 └── 001-auth-refactor/
     └── generated/
-        ├── init.md                # PM：N0 判定、Spec、Requirements、验收标准
-        ├── plan.md                # PM：实现计划
-        ├── tasks.md               # PM：任务表
-        ├── decisions.md           # PM：append-only 决策与用户确认记录
-        ├── team-plan.md           # PM：工作单元、owned_files、调度判定、检查点
-        ├── primer.md              # PM：spawn 时注入的最小上下文
-        ├── findings.md            # 各角色独立 section + PM 汇总
-        ├── progress.md            # 只追加的动作时间线
-        ├── dead-ends.md           # 已失败且不应重试的尝试
-        ├── handoff.md             # 中断后的恢复入口
+        ├── init.md                # PM: N0 decision, goal, non-goals, acceptance criteria, constraints, glossary, risks
+        ├── plan.md                # PM: implementation plan
+        ├── tasks.md               # PM: task table
+        ├── decisions.md           # PM: append-only decisions and user-confirmation records
+        ├── team-plan.md           # PM: work units, owned_files, scheduling decision, checkpoints
+        ├── primer.md              # PM: minimal context injected at spawn
+        ├── findings.md            # independent section per role + PM summary
+        ├── progress.md            # append-only action timeline
+        ├── dead-ends.md           # attempts that failed and should not be retried
+        ├── handoff.md             # recovery entry point after interruption
         ├── inspect.md             # explorer
         ├── architecture-review.md # architect
-        ├── research.md            # science-researcher（可选）
-        ├── fixtures/              # science-researcher（交付后冻结）
-        └── science-audit.md       # science-auditor（可选）
+        ├── research.md            # science-researcher (optional)
+        ├── fixtures/              # science-researcher (frozen after delivery)
+        └── science-audit.md       # science-auditor (optional)
 ```
 
-团队运行状态（机械状态，通常不入库）：
+Team run state (mechanical state, usually not committed):
 
 ```text
 .team/
 └── 001-auth-refactor/
     ├── flow.json                  # mission / round / units / claim / events
-    ├── snapshots/                 # checkpoint 快照
-    └── verdicts/                  # teammate 回传契约落盘
+    ├── snapshots/                 # checkpoint snapshots
+    └── verdicts/                  # persisted teammate reply contracts
 ```
 
-常用状态命令：
+Common state commands:
 
 ```bash
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" init --run <req-name>
@@ -138,63 +138,63 @@ bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" checkpoint --note "..."
 bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-team-complete.sh"
 ```
 
-## 7. 科学通道如何开启
+## 7. How to enable the science channel
 
-科学通道默认**全关**，避免为常规工程需求支付额外成本。N0 会问一次：
+The science channel is **off by default**, to avoid paying extra cost for ordinary engineering requirements. N0 asks once:
 
-| 选项 | researcher | auditor | 适用 |
-|------|-----------|---------|------|
-| A（默认） | ✗ | ✗ | 常规工程需求 |
-| B | ✓ | ✗ | 只需文献调研或语料准备，不需要独立审计 |
-| C | ✗ | ✓ | 有外部科学共识可对照，但不需要专门调研 |
-| D | ✓ | ✓ | 科学计算、算法实现、论文复现、指标声称 |
+| Option | researcher | auditor | Applies to |
+|--------|-----------|---------|-----------|
+| A (default) | ✗ | ✗ | ordinary engineering requirements |
+| B | ✓ | ✗ | only literature research or corpus preparation needed, no independent audit |
+| C | ✗ | ✓ | external scientific consensus available for comparison, but no dedicated research needed |
+| D | ✓ | ✓ | scientific computing, algorithm implementation, paper reproduction, metric claims |
 
-典型开启条件：实现论文/标准中的公式或算法、声称「提升 X%」「误差低于 Y」、依赖语料或基准数据、结论会影响业务决策。
+Typical enabling conditions: implementing a formula or algorithm from a paper/standard, claiming "X% improvement" or "error below Y", depending on a corpus or benchmark data, or conclusions that affect business decisions.
 
-选择结果写入 `init.md` 的 N0 判定与 `team-plan.md` 的 science gate 表；`.team/<run>/flow.json` 的 `science_gate` 字段供 hooks 与完成检查读取。开启后：
+The choice is recorded in the N0 decision in `init.md` and the science gate table in `team-plan.md`; the `science_gate` field in `.team/<run>/flow.json` is read by hooks and the completion check. Once enabled:
 
-- 每条研究结论必须带来源与置信度（`established` / `contested` / `assumption`），禁止编造文献。
-- `fixtures/` 交付后冻结，Phase B 只读。
-- auditor 五项检查任一失败即 `FAIL`，进入 Round N+1；未说明理由的 `UNVERIFIABLE` 视为 `FAIL`。
-- 完成判定从「`findings.md` 无未决」升级为「无未决且 `science-audit.md` 存在且无 FAIL」。
+- Every research conclusion must include a source and confidence level (`established` / `contested` / `assumption`); fabricating literature is forbidden.
+- `fixtures/` is frozen after delivery and read-only in Phase B.
+- Any failure of the auditor's five checks yields `FAIL` and enters Round N+1; an unexplained `UNVERIFIABLE` counts as `FAIL`.
+- The completion criterion is upgraded from "no unresolved items in `findings.md`" to "no unresolved items and `science-audit.md` exists with no FAIL".
 
-## 8. 已知限制
+## 8. Known limitations
 
-- **实验能力**：依赖 `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`，行为可能随 Claude Code 版本变化。
-- **无 session resumption**：会话结束后 teammate 上下文丢失；恢复只能依赖 `handoff.md`、`dead-ends.md` 并重新 spawn。
-- **teammate 不能再 spawn**：不支持嵌套团队；PM 是唯一调度者。
-- **无 worktree 隔离**：所有 agent 共享同一工作树；写操作由全局 `claim` 串行化，只读分析与写操作可以重叠，只读角色之间也可并行阅读。`owned_files` 两两不相交是允许调度的必要条件，不是并行写的许可。
-- **仅交互式会话**：`claude -p` 与 Agent SDK 不支持 teammate spawn。
-- **成本高**：3–10× token；规模不够或触发不成立时应退回单人模式。
+- **Experimental capability**: depends on `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS`; behavior may change with Claude Code versions.
+- **No session resumption**: teammate context is lost after the session ends; recovery can only rely on `handoff.md` and `dead-ends.md` and re-spawn.
+- **Teammates cannot spawn further**: nested teams are not supported; the PM is the only scheduler.
+- **No worktree isolation**: all agents share the same working tree; write operations are serialized by the global `claim`, read-only analysis and write operations may overlap, and read-only roles may also read in parallel. Pairwise disjointness of `owned_files` is a necessary condition for scheduling, not permission for parallel writes.
+- **Interactive sessions only**: `claude -p` and the Agent SDK do not support teammate spawn.
+- **High cost**: 3–10× tokens; fall back to single-agent mode when the size is insufficient or the triggers do not hold.
 
-## 9. 常见问题
+## 9. FAQ
 
-**Q：为什么我的写入被拒绝了？**
+**Q: Why was my write rejected?**
 
-写入受两条规则约束：`flow.json` 的 `claim.files` 与 PM 在 `team-plan.md` 中给你的 `owned_files`（`claim.files` 默认等于 `owned_files`，也可能是它的子集）。只有匹配的路径才允许写；`findings.md`、`progress.md`、`inspect.md`、`architecture-review.md`、`research.md`、`science-audit.md` 是特例放行。先跑 `flow.sh status` 看当前 claim，再核对允许范围；不要重试同一越界路径，记录到 `findings.md` 后向 PM 上报。
+Writes are governed by two rules: `claim.files` in `flow.json` and the `owned_files` the PM gave you in `team-plan.md` (`claim.files` defaults to `owned_files`, but may also be a subset of it). Only matching paths may be written; `findings.md`, `progress.md`, `inspect.md`, `architecture-review.md`, `research.md`, and `science-audit.md` are special exemptions. First run `flow.sh status` to see the current claim, then check the allowed scope; do not retry the same out-of-bounds path—record it in `findings.md` and report to the PM.
 
-注意：`Write`/`Edit` 的拦截是精确的；`Bash` 只拦常见写入写法（重定向、`tee`、`cp`/`mv`/`ln`/`rm`、`sed -i`、`dd of=`、`truncate` 等），**不是沙箱**。`python -c` / `node -e` 之类内联脚本无法静态校验，按越界处理；需要写文件时用 `Write`/`Edit`。
+Note: `Write`/`Edit` interception is exact; `Bash` only blocks common write forms (redirection, `tee`, `cp`/`mv`/`ln`/`rm`, `sed -i`, `dd of=`, `truncate`, etc.) and is **not a sandbox**. Inline scripts such as `python -c` / `node -e` cannot be statically validated and are treated as out-of-bounds; use `Write`/`Edit` when you need to write files.
 
-**Q：为什么没有进入团队流程？**
+**Q: Why did it not enter the team flow?**
 
-N0 判定为 XS/S，或 `T1 && (T2 || T3 || T4)` 不成立。流程会显式说明原因并建议单人模式；如果用户坚持组队，PM 会把覆盖决定写入 `decisions.md`，并按 2 人最小团队（executor + reviewer）执行。
+N0 sized the task as XS/S, or `T1 && (T2 || T3 || T4)` does not hold. The flow explicitly explains the reason and recommends single-agent mode; if the user insists on a team, the PM writes the override decision into `decisions.md` and executes with a minimal 2-person team (executor + reviewer).
 
-**Q：能否中途加人或改调度安排？**
+**Q: Can people be added or the scheduling arrangement changed mid-run?**
 
-可以，但只能由 PM 重写 `team-plan.md` 并取得用户确认；teammate 不得自行扩权。新增单元仍按 `owned_files` 两两不相交判定。
+Yes, but only the PM may rewrite `team-plan.md` and obtain user confirmation; teammates must not expand their own authority. New units are still judged by pairwise disjoint `owned_files`.
 
-**Q：`approved`、`merged`、`verified` 有什么区别？**
+**Q: What is the difference between `approved`, `merged`, and `verified`?**
 
-`approved` 是评审通过，`merged` 是已进入集成分支，`verified` 是验收证据齐全。三者不可互相替代；缺任一项都不得宣布完成。
+`approved` means the review passed, `merged` means it has entered the integration branch, and `verified` means acceptance evidence is complete. The three are not interchangeable; completion must not be announced if any is missing.
 
-**Q：中断后如何继续？**
+**Q: How do I continue after an interruption?**
 
-先 `/team-status` 看磁盘状态，再读 `handoff.md` 的 `resumption_prompt`；不得假设旧 teammate 还活着，必须重新 spawn 并取得本次 session 的回执。
+First run `/team-status` to see the on-disk state, then read the `resumption_prompt` in `handoff.md`; do not assume old teammates are still alive—you must re-spawn and obtain an acknowledgment from this session.
 
-**Q：可以关闭科学通道吗？**
+**Q: Can the science channel be turned off?**
 
-可以，在 N0 选择 A（默认全关）。运行中关闭或降级必须写入 `decisions.md` 并取得用户显式确认；静默关闭视为流程失败。
+Yes; choose A at N0 (off by default). Turning it off or downgrading it mid-run must be written into `decisions.md` and explicitly confirmed by the user; silent disabling counts as a flow failure.
 
-**Q：`/team-reset` 会删除数据吗？**
+**Q: Does `/team-reset` delete data?**
 
-不会。它只把 `.team/<run>/` 移动到 `.team/archive/<run>-<UTC 时间戳>/`，不删除任何文件，也不修改 `.dev/<run>/` 下的需求产物。归档前会展示摘要并要求逐字输入 `archive` 确认；`mission=executing` 或 `claim` 非空的 run 会被拒绝归档。恢复时把归档目录移回 `.team/<run>/` 即可。
+No. It only moves `.team/<run>/` to `.team/archive/<run>-<UTC timestamp>/`; it deletes no files and does not modify requirement artifacts under `.dev/<run>/`. Before archiving it shows a summary and requires typing `archive` verbatim to confirm; runs with `mission=executing` or a non-empty `claim` are refused. To restore, move the archive directory back to `.team/<run>/`.

@@ -1,119 +1,121 @@
 ---
 name: <kebab-case-role-name>
-description: <2–4 个触发场景：在什么情况下该唤醒这个角色。写"何时用我"，不写"我多厉害"。>
-tools: <最小工具面，逗号分隔；先定 archetype 再裁剪>
-model: <按任务推理难度选择>
-color: <仅 UI 区分，不表达能力差异>
+description: <2–4 trigger scenarios — under what circumstances this role should be woken. Write "when to use me", not "how great I am".>
+tools: <minimal tool surface, comma-separated; decide the archetype first, then trim>
+model: <chosen by task reasoning difficulty>
+color: <UI distinction only, does not express capability differences>
 ---
 
-# <角色名>
+# <role name>
 
 <!--
-填写提示（提交前删除本注释块）
-- 11 段一个都不能少；删任何一段，角色都需要猜。
-- 全文只形容"这份工作"，不形容"这个人"。
-- 不复制 rails.md 内容，第 9 段只留引用。
+Fill-in hints (delete this comment block before submitting)
+- None of the 11 sections may be missing; deleting any one makes the role guess.
+- The whole text describes only "this job", never "this person".
+- Do not copy the shared rails content; section 9 keeps only a reference.
 -->
 
 ## Identity
 
-<!-- 一句话：你是谁 + 你对什么负责。≤ 2 行。不写履历、不写性格。 -->
+<!-- One sentence: who you are + what you are responsible for. ≤ 2 lines. No résumé, no personality. -->
 
-<例：你是本团队的验收角色，负责按验收标准判定单元是否可用；你不参与实现。>
+<Example: You are the acceptance role of this team, responsible for judging whether a unit is usable according to the acceptance criteria; you do not participate in implementation.>
 
 ## Lane
 
-<!-- 可写路径用 glob；只读可省略（默认全库只读）。这是 hook 的输入，必须机器可解析。 -->
+<!-- Writable paths use globs; read-only may be omitted (default all-repo read-only). The `## Lane` section is documentation: enforcement requires registering the same globs as the work unit (`flow.sh add-unit --files`) and taking the claim (`flow.sh claim --files`); the PreToolUse hook denies writes outside the active claim.files. -->
 
-**可写：**
+**Writable:**
 - `<glob 1>`
 - `<glob 2>`
 
-**只读：**
-- `<glob>`（可选）
+**Read-only:**
+- `<glob>` (optional)
 
 ## Inputs
 
-<!-- 上游产物确切路径 + 缺失时的行为。缺失一律 BLOCKED，不得臆测。≤ 5 条。 -->
+<!-- Exact paths of upstream artifacts + behavior when missing. Missing always means BLOCKED; no guessing. ≤ 5 items. -->
 
-- `<path>` — <它提供什么> — 缺失则输出 `BLOCKED`
-- `<path>` — <它提供什么> — 缺失则输出 `BLOCKED`
+- `<path>` — <what it provides> — output `BLOCKED` if missing
+- `<path>` — <what it provides> — output `BLOCKED` if missing
 
 ## Procedure
 
-<!-- 5–9 个有序步骤；每步有可观察动作（读/跑/写）。不得出现"思考一下"。 -->
+<!-- 5–9 ordered steps; each step has an observable action (read/run/write). No "think about it". -->
 
-1. 读 `<path>`，确认 <检查项>。
-2. 运行 `<命令>`，记录输出。
-3. <动作>，写入 `<path>`。
-4. <动作>。
-5. 按 Output contract 回传。
+1. Read `<path>`, confirm <check item>.
+2. Run `<command>`, record the output.
+3. <action>, write to `<path>`.
+4. <action>.
+5. Return according to the Output contract.
 
 ## Prohibitions
 
-<!-- 3–7 条。至少一条路径边界、一条不得自评、一条不得静默偏离。 -->
+<!-- 3–7 items. At least one path boundary, one no-self-review, one no-silent-deviation. -->
 
-- 不得写 `Lane` 之外的任何路径。
-- 不得批准自己的工作，也不得修改验收标准。
-- 计划与现实不符时不得自行修正，必须上报。
-- <本角色特有禁止项>
+- Do not write any path outside `Lane`.
+- Do not approve your own work, and do not modify the acceptance criteria.
+- When the plan does not match reality, do not correct it yourself; you must report it.
+- <prohibitions specific to this role>
 
 ## Output contract
 
-<!-- 落盘路径 + 固定回传格式。字段名不得增删。 -->
+<!-- Persistence path + fixed return format. Field names must not be added or removed. -->
 
-产物：`<path>`
+Artifacts: `<path>`
+
+While a claim is active, also persist `.team/<run>/verdicts/<unit-id>.json` containing at least `{verdict, artifacts, stop_reason}`. Conversation-only returns are blocked by the `SubagentStop` hook.
 
 ```yaml
 verdict: PASS | FAIL | BLOCKED
-artifacts: [路径...]
+artifacts: [paths...]
 findings:
   - severity: blocker | critical | major | minor | nit
     file: path:line
-    evidence: <命令输出 / 现象>
-    fix: <建议>
-contract_for_next: <下游需要知道的接口/假设，一句话>
-next_action: <建议的下一步>
-stop_reason: <为什么结束>
+    evidence: <command output / phenomenon>
+    fix: <suggestion>
+contract_for_next: <interface/assumption downstream needs to know, one sentence>
+next_action: <suggested next step>
+stop_reason: <why it ended>
 ```
 
 ## Done criteria
 
-<!-- 2–6 条，每条含一个命令或数值阈值；第三方可在不知道实现过程的情况下重跑。 -->
+<!-- 2–6 items, each containing a command or numeric threshold; a third party can re-run without knowing the implementation process. -->
 
-- `<命令>` 退出码为 0。
-- `<命令>` 输出包含 `<期望片段>`。
-- <覆盖率 / 数量阈值>。
+- `<command>` exits with code 0.
+- `<command>` output contains `<expected fragment>`.
+- <coverage / count threshold>.
 
 ## Escalation
 
-<!-- 3–5 条。必须包含"同一单元第 3 次失败"。 -->
+<!-- 3–5 items. Must include "third failure of the same unit". -->
 
-- 同一单元第 3 次失败 → 停止，向 lead 上报失败记录与已排除假设。
-- 输入缺失或与计划冲突 → 停止，回传 `BLOCKED` + 缺失项。
-- 需要写 `Lane` 之外的路径 → 停止，向 lead 申请，不自行扩 lane。
-- 验收标准本身有歧义 → 停止，向 lead 请求裁决。
+- Third failure of the same unit → stop, report the failure record and excluded hypotheses to the lead.
+- Input missing or conflicting with the plan → stop, return `BLOCKED` + the missing items.
+- Need to write a path outside `Lane` → stop, request from the lead, do not expand the lane yourself.
+- The acceptance criteria themselves are ambiguous → stop, request adjudication from the lead.
 
 ## Rails
 
-见团队共享的 `rails.md`（本插件内路径：`../../spec-coding-team-skill/references/rails.md`；部署到团队目录后按实际层级调整）。
+See `../../spec-coding-team-skill/references/rails.md` (adjust according to the actual hierarchy after deployment to the team directory).
 
 ## Context budget
 
-<!-- 3–5 行；与 rails.md R-6 对齐。 -->
+<!-- 3–5 lines; align with R-6 of the shared rails. -->
 
-| 文件大小 | 读法 |
+| File size | How to read |
 |---|---|
-| ≤ 200 KB | 可全读 |
-| 200–500 KB | 先 grep 定位，再读命中段 |
-| > 1 MB | 只搜高优先级区域，并在回传中记录 `skipped` |
+| ≤ 200 KB | read fully |
+| 200–500 KB | grep to locate first, then read the matching sections |
+| > 1 MB | search only high-priority areas, and record `skipped` in the return |
 
-单次读取不超过 3–5 个文件；跳过内容必须写明。
+Do not read more than 3–5 files at a time; skipped content must be stated.
 
 ## Anti-patterns
 
-<!-- 3–5 条本角色特有失败方式，每条一句话，最好带可观察信号。 -->
+<!-- 3–5 failure modes specific to this role, one sentence each, preferably with an observable signal. -->
 
-- <失败方式 1 — 可观察信号：……>
-- <失败方式 2 — 可观察信号：……>
-- <失败方式 3 — 可观察信号：……>
+- <failure mode 1 — observable signal: ...>
+- <failure mode 2 — observable signal: ...>
+- <failure mode 3 — observable signal: ...>

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# check-lanes.sh — 校验工作单元的 owned_files 是否两两不相交（N3 组队门禁）。
-# 用法: check-lanes.sh [--json]     基目录: <repo>/.team（可用 LEO_TEAM_DIR 覆盖）
-# 退出码: 0 = 无确定相交（可能有潜在重叠警告）；1 = 存在确定相交或读取失败
+# check-lanes.sh — verify that work units' owned_files are pairwise disjoint (N3 teaming gate).
+# Usage: check-lanes.sh [--json]     base dir: <repo>/.team (override with LEO_TEAM_DIR)
+# Exit: 0 = no definite overlap (potential overlap warnings may still print); 1 = definite overlap or read failure
 set -uo pipefail
 
 python3 - "$@" <<'PY'
@@ -29,7 +29,7 @@ def find_flow(base):
 
 
 def static_prefix(pattern):
-    """返回 pattern 中第一个通配符之前的部分。"""
+    """Return the part of pattern before the first wildcard."""
     for i, ch in enumerate(pattern):
         if ch in "*?[":
             return pattern[:i]
@@ -41,16 +41,16 @@ def expand(pattern):
 
 
 def overlap(a, b):
-    """返回 (definite, potential, reason)。"""
+    """Return (definite, potential, reason)."""
     pa, pb = static_prefix(a), static_prefix(b)
     if a == b:
-        return True, True, "同一 glob"
+        return True, True, "identical glob"
     if pa and pb and (pa.startswith(pb) or pb.startswith(pa)):
-        return False, True, f"前缀重叠：{pa!r} vs {pb!r}"
+        return False, True, f"prefix overlap: {pa!r} vs {pb!r}"
     files_a, files_b = expand(a), expand(b)
     common = files_a & files_b
     if common:
-        return True, True, f"已存在文件重叠：{sorted(common)[:3]}"
+        return True, True, f"existing file overlap: {sorted(common)[:3]}"
     return False, False, ""
 
 
@@ -58,14 +58,14 @@ def main(argv):
     as_json = "--json" in argv
     path = find_flow(base_dir())
     if path is None:
-        msg = "NO RUN：未找到 flow.json"
+        msg = "NO RUN: flow.json not found"
         print(json.dumps({"status": "no_run", "message": msg}, ensure_ascii=False) if as_json else msg)
         return 1
 
     try:
         flow = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        msg = f"无法读取 {path}: {exc}"
+        msg = f"Cannot read {path}: {exc}"
         print(json.dumps({"status": "error", "message": msg}, ensure_ascii=False) if as_json else msg)
         return 1
 
@@ -97,16 +97,16 @@ def main(argv):
     else:
         print(f"Run: {flow.get('run', '?')}  Units: {len(units)}")
         if not units:
-            print("警告：还没有工作单元")
+            print("Warning: no work units yet")
         if definite:
-            print(f"确定相交 {len(definite)} 处（必须处理）：")
+            print(f"Definite overlaps: {len(definite)} (must fix):")
             for it in definite:
                 print(f"  {it['a_unit']}:{it['a_glob']}  ×  {it['b_unit']}:{it['b_glob']}  — {it['reason']}")
         if potential:
-            print(f"潜在重叠 {len(potential)} 处（需人工确认或改成更精确的 glob）：")
+            print(f"Potential overlaps: {len(potential)} (needs human confirmation or a more precise glob):")
             for it in potential:
                 print(f"  {it['a_unit']}:{it['a_glob']}  ×  {it['b_unit']}:{it['b_glob']}  — {it['reason']}")
-        print("结果：" + {"ok": "OK（无重叠）", "warn": "WARN（有潜在重叠）", "fail": "FAIL（存在确定相交）"}[status])
+        print("Result: " + {"ok": "OK (no overlap)", "warn": "WARN (potential overlap)", "fail": "FAIL (definite overlap)"}[status])
     return 1 if definite else 0
 
 

@@ -46,7 +46,7 @@ CLAIMABLE_LANES = {"pending", "in_progress", "changes_requested"}
 
 
 def fail(msg, code=1):
-    print(f"错误：{msg}", file=sys.stderr)
+    print(f"Error: {msg}", file=sys.stderr)
     sys.exit(code)
 
 
@@ -73,11 +73,11 @@ def find_flow(base):
 def load_flow():
     path = find_flow(base_dir())
     if path is None:
-        fail(f"未找到 flow.json（目录：{base_dir()}）。先执行 flow.sh init --run <name>")
+        fail(f"flow.json not found (dir: {base_dir()}). Run flow.sh init --run <name> first")
     try:
         return path, json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
-        fail(f"无法读取 {path}：{exc}")
+        fail(f"Cannot read {path}: {exc}")
 
 
 def save_flow(path, flow):
@@ -92,9 +92,9 @@ def parse_opts(args):
     while i < len(args):
         arg = args[i]
         if not arg.startswith("--"):
-            fail(f"未知参数：{arg}")
+            fail(f"Unknown argument: {arg}")
         if i + 1 >= len(args):
-            fail(f"参数 {arg} 缺少值")
+            fail(f"Argument {arg} is missing a value")
         opts[arg[2:]] = args[i + 1]
         i += 2
     return opts
@@ -103,7 +103,7 @@ def parse_opts(args):
 def require(opts, key):
     value = opts.get(key, "").strip()
     if not value:
-        fail(f"缺少 --{key}")
+        fail(f"Missing --{key}")
     return value
 
 
@@ -120,7 +120,7 @@ def find_unit(flow, unit_id):
     for unit in flow.get("units", []):
         if unit.get("id") == unit_id:
             return unit
-    fail(f"unit {unit_id} 不存在。现有：{', '.join(u.get('id', '') for u in flow.get('units', [])) or '无'}")
+    fail(f"unit {unit_id} does not exist. Existing: {', '.join(u.get('id', '') for u in flow.get('units', [])) or 'none'}")
 
 
 def last_block_event(flow, unit=None):
@@ -135,7 +135,7 @@ def last_block_event(flow, unit=None):
 def block_detail(flow, unit=None):
     ev = last_block_event(flow, unit)
     if ev:
-        return f"（by {ev.get('by') or 'unknown'} @ {ev.get('ts', '')}）"
+        return f" (by {ev.get('by') or 'unknown'} @ {ev.get('ts', '')})"
     return ""
 
 
@@ -145,39 +145,54 @@ def compute_next(flow):
     claim = flow.get("claim")
 
     if mission == "blocked":
-        return f"人工裁决：mission 处于 blocked{block_detail(flow)}", "human", "-"
+        return f"Human decision required: mission is blocked{block_detail(flow)}", "human", "-"
     blocked_units = [u for u in units if u.get("lane") == "blocked"]
     if blocked_units:
         unit = blocked_units[0]
-        return f"人工裁决：{unit['id']} 处于 blocked{block_detail(flow, unit['id'])}", "human", unit["id"]
+        return f"Human decision required: {unit['id']} is blocked{block_detail(flow, unit['id'])}", "human", unit["id"]
     if mission == "planning":
-        return "N1 Phase A：写 init.md", "n1", "-"
+        return "N1 Phase A: write init.md", "n1", "-"
     if mission == "gate":
-        return "N2 硬门禁：等待用户 confirmed", "n2", "-"
+        return "N2 hard gate: waiting for user confirmed", "n2", "-"
     stuck = [u for u in units if u.get("lane") == "changes_requested" and u.get("failures", 0) >= 3]
     if stuck:
         unit = stuck[0]
-        return f"人工裁决：{unit['id']} 连续失败 {unit.get('failures', 0)} 次", "human", unit["id"]
+        return f"Human decision required: {unit['id']} failed {unit.get('failures', 0)} times in a row", "human", unit["id"]
+    if mission == "executing":
+        if claim is not None:
+            unit = claim.get("unit", "-")
+            return f"Executing: {unit} (claim held)", "execute", unit
+        pending = [u for u in units if u.get("lane") == "pending"]
+        if pending:
+            return f"claim and execute {pending[0]['id']}", "claim", pending[0]["id"]
+        reviewing = [u for u in units if u.get("lane") == "for_review"]
+        if reviewing:
+            return f"Review {reviewing[0]['id']}", "review", reviewing[0]["id"]
+        if units and all(u.get("lane") in ("approved", "merged", "verified") for u in units):
+            return "All units reviewed or merged; transition --to reviewing", "n5", "-"
+        return "N5 Round Review", "round_review", "-"
+
+    # mission is reviewing or verified
     reviewing = [u for u in units if u.get("lane") == "for_review"]
     if reviewing:
-        return f"评审 {reviewing[0]['id']}", "review", reviewing[0]["id"]
+        return f"Review {reviewing[0]['id']}", "review", reviewing[0]["id"]
     approved = [u for u in units if u.get("lane") == "approved"]
     if approved:
-        return f"合并 {approved[0]['id']} 到集成分支", "merge", approved[0]["id"]
+        return f"Merge {approved[0]['id']} into the integration branch", "merge", approved[0]["id"]
     merged = [u for u in units if u.get("lane") == "merged"]
     if merged:
-        return f"验收 {merged[0]['id']}", "verify", merged[0]["id"]
+        return f"Verify {merged[0]['id']}", "verify", merged[0]["id"]
     pending = [u for u in units if u.get("lane") == "pending"]
-    if pending and claim is None:
-        return f"claim 并执行 {pending[0]['id']}", "claim", pending[0]["id"]
+    if pending:
+        return f"Unit {pending[0]['id']} is still pending; reopen the round before merging", "blocked_pending", pending[0]["id"]
     if claim is not None:
         unit = claim.get("unit", "-")
-        return f"执行中：{unit}（claim 已持有）", "execute", unit
+        return f"Executing: {unit} (claim held)", "execute", unit
     all_verified = bool(units) and all(u.get("lane") == "verified" for u in units)
     if all_verified and mission != "verified":
-        return "进入 N6 集成验收", "n6", "-"
+        return "Enter N6 integration verification", "n6", "-"
     if all_verified and mission == "verified":
-        return "全部完成（mission=verified）", "done", "-"
+        return "All done (mission=verified)", "done", "-"
     return "N5 Round Review", "round_review", "-"
 
 
@@ -185,12 +200,12 @@ def cmd_init(args):
     opts = parse_opts(args)
     run = require(opts, "run")
     if "/" in run or run in (".", ".."):
-        fail("run 名称不能包含 / 或为 . / ..")
+        fail("run name must not contain / or be . / ..")
     base = base_dir()
     run_dir = base / run
     flow_path = run_dir / "flow.json"
     if flow_path.exists():
-        fail(f"{flow_path} 已存在，拒绝覆盖（如需重来请先手动删除）")
+        fail(f"{flow_path} already exists, refusing to overwrite (delete it manually first to start over)")
     run_dir.mkdir(parents=True, exist_ok=True)
     (run_dir / "snapshots").mkdir(exist_ok=True)
     (run_dir / "prompts").mkdir(exist_ok=True)
@@ -207,7 +222,7 @@ def cmd_init(args):
         "events": [],
     }
     save_flow(flow_path, flow)
-    print(f"已初始化 run {run}：{flow_path}")
+    print(f"Initialized run {run}: {flow_path}")
     return 0
 
 
@@ -215,7 +230,7 @@ def cmd_next(args):
     parse_opts(args)
     _, flow = load_flow()
     text, action, unit = compute_next(flow)
-    print(f"建议动作：{text}")
+    print(f"Suggested action: {text}")
     print(f"KEY action={action} unit={unit} mission={flow.get('mission', '?')}")
     return 0
 
@@ -229,17 +244,17 @@ def cmd_transition(args):
 
     if unit_id:
         if target not in UNIT_STATES:
-            fail(f"未知 unit 状态：{target}。合法状态：{', '.join(UNIT_STATES)}")
+            fail(f"Unknown unit state: {target}. Valid states: {', '.join(UNIT_STATES)}")
         unit = find_unit(flow, unit_id)
         current = unit.get("lane", "pending")
         allowed = UNIT_TRANSITIONS.get(current, set())
         if target not in allowed:
-            fail(f"非法 unit 转移：{current} → {target}。允许的目标："
-                 f"{', '.join(sorted(allowed)) or '无'}")
+            fail(f"Illegal unit transition: {current} → {target}. Allowed targets: "
+                 f"{', '.join(sorted(allowed)) or 'none'}")
         if current == "pending" and target == "in_progress" and not unit.get("owner"):
-            fail(f"前置条件不满足：{unit_id} 没有 owner，不能进入 in_progress")
+            fail(f"Precondition not met: {unit_id} has no owner, cannot enter in_progress")
         if current == "changes_requested" and target == "in_progress" and unit.get("failures", 0) >= 3:
-            fail(f"前置条件不满足：{unit_id} failures={unit.get('failures', 0)} >= 3，需人工裁决")
+            fail(f"Precondition not met: {unit_id} failures={unit.get('failures', 0)} >= 3, human decision required")
         unit["lane"] = target
         if target == "changes_requested":
             unit["failures"] = unit.get("failures", 0) + 1
@@ -247,25 +262,25 @@ def cmd_transition(args):
             flow["claim"] = None
         append_event(flow, {"type": "transition", "unit": unit_id, "to": target, "by": by})
         save_flow(path, flow)
-        print(f"{unit_id}: {current} → {target}（by {by}）")
+        print(f"{unit_id}: {current} → {target} (by {by})")
         return 0
 
     if target not in MISSION_STATES:
-        fail(f"未知 mission 状态：{target}。合法状态：{', '.join(MISSION_STATES)}")
+        fail(f"Unknown mission state: {target}. Valid states: {', '.join(MISSION_STATES)}")
     current = flow.get("mission", "planning")
     allowed = MISSION_TRANSITIONS.get(current, set())
     if target not in allowed:
-        fail(f"非法 mission 转移：{current} → {target}。允许的目标："
-             f"{', '.join(sorted(allowed)) or '无'}")
+        fail(f"Illegal mission transition: {current} → {target}. Allowed targets: "
+             f"{', '.join(sorted(allowed)) or 'none'}")
     flow["mission"] = target
     append_event(flow, {"type": "transition", "to": target, "by": by})
     save_flow(path, flow)
-    print(f"mission: {current} → {target}（by {by}）")
+    print(f"mission: {current} → {target} (by {by})")
     return 0
 
 
 def covered_by(glob, owned):
-    """glob 是否被某个 owned_files 条目覆盖（保守判定）。"""
+    """Whether glob is covered by an owned_files entry (conservative check)."""
     if glob == owned:
         return True
     if owned.endswith("/**"):
@@ -282,28 +297,28 @@ def cmd_claim(args):
     path, flow = load_flow()
     if flow.get("claim") is not None:
         held = flow["claim"].get("unit", "?")
-        fail(f"已有 claim（{held}），请先 flow.sh release")
+        fail(f"claim already held ({held}); run flow.sh release first")
     unit = find_unit(flow, unit_id)
     lane = unit.get("lane", "pending")
     if lane not in CLAIMABLE_LANES:
-        fail(f"{unit_id} 当前 lane={lane}，不能 claim（可 claim：{', '.join(sorted(CLAIMABLE_LANES))}）")
+        fail(f"{unit_id} current lane={lane}, cannot claim (claimable: {', '.join(sorted(CLAIMABLE_LANES))})")
     owned = unit.get("owned_files") or []
     if not owned:
-        fail(f"{unit_id} 没有 owned_files，不能 claim")
+        fail(f"{unit_id} has no owned_files, cannot claim")
     if files_raw:
         globs = [g.strip() for g in files_raw.split(",") if g.strip()]
         if not globs:
-            fail("--files 至少需要一个 glob")
+            fail("--files requires at least one glob")
         widened = [g for g in globs if not any(covered_by(g, o) for o in owned)]
         if widened:
-            fail(f"claim 范围超出 {unit_id} 的 owned_files：{', '.join(widened)}；"
-                 f"允许：{', '.join(owned)}")
+            fail(f"claim scope exceeds {unit_id} owned_files: {', '.join(widened)};"
+                 f"allowed: {', '.join(owned)}")
     else:
         globs = list(owned)
     flow["claim"] = {"unit": unit_id, "files": globs, "by": by, "ts": now_iso()}
     append_event(flow, {"type": "claim", "unit": unit_id, "files": globs, "by": by})
     save_flow(path, flow)
-    print(f"已 claim {unit_id}（files: {', '.join(globs)}）")
+    print(f"Claimed {unit_id} (files: {', '.join(globs)})")
     return 0
 
 
@@ -312,12 +327,12 @@ def cmd_release(args):
     path, flow = load_flow()
     claim = flow.get("claim")
     if claim is None:
-        print("当前没有 claim，无需 release")
+        print("No claim currently held; nothing to release")
         return 0
     flow["claim"] = None
     append_event(flow, {"type": "release", "unit": claim.get("unit"), "by": os.environ.get("USER") or "flow.sh"})
     save_flow(path, flow)
-    print(f"已 release {claim.get('unit', '?')}")
+    print(f"Released {claim.get('unit', '?')}")
     return 0
 
 
@@ -346,18 +361,18 @@ def cmd_status(args):
             line += "  [claim]"
         print(line)
     if claim:
-        print(f"Claim: {claim.get('unit', '?')}（by {claim.get('by', '?')}）")
+        print(f"Claim: {claim.get('unit', '?')} (by {claim.get('by', '?')})")
     else:
         print("Claim: none")
     blockers = []
     if flow.get("mission") == "blocked":
-        blockers.append("mission 处于 blocked")
+        blockers.append("mission is blocked")
     for unit in units:
         if unit.get("lane") == "blocked":
-            blockers.append(f"{unit.get('id')} 处于 blocked")
+            blockers.append(f"{unit.get('id')} is blocked")
         elif unit.get("lane") == "changes_requested" and unit.get("failures", 0) >= 3:
-            blockers.append(f"{unit.get('id')} 连续失败 {unit.get('failures')} 次")
-    print("Blockers: " + ("；".join(blockers) if blockers else "none"))
+            blockers.append(f"{unit.get('id')} failed {unit.get('failures')} times in a row")
+    print("Blockers: " + ("; ".join(blockers) if blockers else "none"))
     print(f"Next: {compute_next(flow)[0]}")
     return 0
 
@@ -372,7 +387,7 @@ def cmd_checkpoint(args):
     snap = snap_dir / f"{ts.strftime('%Y%m%dT%H%M%S%fZ')}.json"
     payload = {"ts": ts.strftime("%Y-%m-%dT%H:%M:%SZ"), "note": note, "flow": flow}
     snap.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"已写检查点 {snap}")
+    print(f"Checkpoint written {snap}")
     return 0
 
 
@@ -384,11 +399,11 @@ def cmd_add_unit(args):
     by = actor(opts)
     globs = [g.strip() for g in files_raw.split(",") if g.strip()]
     if not globs:
-        fail("--files 至少需要一个 glob")
+        fail("--files requires at least one glob")
     path, flow = load_flow()
     units = flow.setdefault("units", [])
     if any(u.get("id") == unit_id for u in units):
-        fail(f"unit {unit_id} 已存在")
+        fail(f"unit {unit_id} already exists")
     units.append({
         "id": unit_id,
         "lane": "pending",
@@ -398,7 +413,7 @@ def cmd_add_unit(args):
     })
     append_event(flow, {"type": "add_unit", "unit": unit_id, "owner": owner, "files": globs, "by": by})
     save_flow(path, flow)
-    print(f"已添加 {unit_id}（owner: {owner}，files: {', '.join(globs)}）")
+    print(f"Added {unit_id} (owner: {owner}, files: {', '.join(globs)})")
     return 0
 
 
@@ -411,15 +426,15 @@ def cmd_reopen(args):
     path, flow = load_flow()
     unit = find_unit(flow, unit_id)
     current = unit.get("lane", "pending")
-    if current == "changes_requested" and unit.get("failures", 0) >= 3 and not force:
-        fail(f"{unit_id} failures={unit.get('failures', 0)} >= 3，需人工裁决；"
-             f"用户确认后加 --force true 并写明理由")
+    if unit.get("failures", 0) >= 3 and not force:
+        fail(f"{unit_id} failures={unit.get('failures', 0)} >= 3, human decision required;"
+             f"after user confirmation add --force true and state the reason")
     unit["lane"] = "pending"
     if flow.get("claim") and flow["claim"].get("unit") == unit_id:
         flow["claim"] = None
     append_event(flow, {"type": "reopen", "unit": unit_id, "from": current, "reason": reason, "by": by})
     save_flow(path, flow)
-    print(f"{unit_id}: {current} → pending（reopen：{reason}）")
+    print(f"{unit_id}: {current} → pending (reopen: {reason})")
     return 0
 
 
@@ -430,7 +445,7 @@ def cmd_recover(args):
     changed = []
     claim = flow.get("claim")
     if claim is not None:
-        changed.append(f"释放 stale claim（{claim.get('unit', '?')}）")
+        changed.append(f"Released stale claim ({claim.get('unit', '?')})")
         flow["claim"] = None
     if flow.get("mission") == "blocked":
         units = flow.get("units", [])
@@ -439,7 +454,7 @@ def cmd_recover(args):
         changed.append(f"mission blocked → {resumed}")
     append_event(flow, {"type": "recover", "changes": changed, "by": by})
     save_flow(path, flow)
-    print("恢复完成：" + ("；".join(changed) if changed else "无变化"))
+    print("Recovery complete: " + ("; ".join(changed) if changed else "no changes"))
     return 0
 
 
@@ -453,7 +468,7 @@ def cmd_set(args):
         if not raw:
             continue
         if raw not in ("true", "false"):
-            fail(f"--{flag} 只接受 true / false")
+            fail(f"--{flag} only accepts true / false")
         gate[key] = raw == "true"
         changed.append(f"science_gate.{key}={raw}")
     branch = opts.get("branch", "").strip()
@@ -465,16 +480,16 @@ def cmd_set(args):
         try:
             round_no = int(round_raw)
         except ValueError:
-            fail("--round 只接受整数")
+            fail("--round only accepts an integer")
         if round_no < 1:
-            fail("--round 必须 >= 1")
+            fail("--round must be >= 1")
         flow["round"] = round_no
         changed.append(f"round={round_no}")
     if not changed:
-        fail("没有任何要设置的字段")
+        fail("No fields to set")
     append_event(flow, {"type": "set", "changes": changed, "by": actor(opts)})
     save_flow(path, flow)
-    print("已设置：" + "；".join(changed))
+    print("Set: " + "; ".join(changed))
     return 0
 
 
@@ -495,11 +510,11 @@ COMMANDS = {
 
 def main(argv):
     if not argv:
-        print(__doc__ if __doc__ else "用法：flow.sh <init|next|transition|claim|release|status|checkpoint>")
+        print(__doc__ if __doc__ else "Usage: flow.sh <init|next|transition|claim|release|status|checkpoint>")
         return 1
     cmd = argv[0]
     if cmd not in COMMANDS:
-        fail(f"未知子命令：{cmd}。可用：{', '.join(COMMANDS)}")
+        fail(f"Unknown subcommand: {cmd}. Available: {', '.join(COMMANDS)}")
     return COMMANDS[cmd](argv[1:])
 
 

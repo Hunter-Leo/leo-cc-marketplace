@@ -1,145 +1,147 @@
-# 角色卡 Schema — 11 字段
+# Role Card Schema — 11 Fields
 
-> 一张角色卡 = 一份可被脚本与 hook 读取的契约。
-> 判据：**去掉任何一段，角色是否会开始猜？** 会猜，就不能删。
+> A role card = a contract readable by scripts and hooks.
+> Test: **remove any section — will the role start guessing?** If it guesses, the section cannot be deleted.
 
-## 0. 文件级前置：frontmatter
+## 0. File-level Prerequisite: frontmatter
 
 ```yaml
 ---
-name: <kebab-case，全团队唯一>
-description: <2–4 个触发场景：什么情况下该用这个角色>
-tools: <最小工具面，逗号分隔>
-model: <按任务复杂度选择>
-color: <仅用于 UI 区分>
+name: <kebab-case, unique across the team>
+description: <2–4 trigger scenarios — when this role should be used>
+tools: <minimal tool surface, comma-separated>
+model: <chosen by task complexity>
+color: <UI distinction only>
 ---
 ```
 
-| 字段 | 写什么 | 常见错误 |
+| Field | What to write | Common mistakes |
 |---|---|---|
-| `name` | 小写连字符；在团队内唯一，且能被 primer 引用 | 与 archetype 同名导致两个 builder 无法区分 |
-| `description` | **2–4 个触发场景**，写"何时用我"，不写"我多厉害" | 只写职责描述，导致调度时无法判断该不该唤醒 |
-| `tools` | 能少不多；先定 archetype 再裁剪 | 默认全给，权限过大 |
-| `model` | 按推理难度选；验证类角色不要降配 | 想用大模型补救角色卡本身的缺陷 |
-| `color` | 纯 UI 区分 | 用颜色暗示能力差异（见文末禁止项） |
+| `name` | lowercase hyphenated; unique within the team and referenceable by the primer | same name as the archetype, making two builders indistinguishable |
+| `description` | **2–4 trigger scenarios**, write "when to use me", not "how great I am" | only a responsibility description, so the scheduler cannot tell whether to wake it |
+| `tools` | the fewer the better; decide the archetype first, then trim | all granted by default, over-privileged |
+| `model` | chosen by reasoning difficulty; do not downgrade verification roles | trying to use a bigger model to compensate for defects in the role card itself |
+| `color` | pure UI distinction | using color to imply capability differences (see prohibitions at the end) |
 
-`description` 示例（合格）：`在需要判断实现是否满足验收标准、且需要未参与实现的第三方给出证据时使用。`
+`description` example (acceptable): `Use when you need to judge whether the implementation meets the acceptance criteria and need an uninvolved third party to provide evidence.`
 
 ## 1. Identity
 
-**写什么**：一句话说明"你是谁 + 你对什么负责"。身份是一个职责边界，不是一个人设。
+**What to write**: one sentence stating "who you are + what you are responsible for". Identity is a responsibility boundary, not a persona.
 
-**反面例子**：`你是一位拥有 15 年经验的资深全栈架构师，精通前后端与 DevOps，性格严谨……`
+**Counterexample**: `You are a senior full-stack architect with 15 years of experience, proficient in frontend, backend and DevOps, with a rigorous personality...`
 
-**长度**：≤ 2 行。超过 2 行说明在写 persona，不在写职责。
+**Length**: ≤ 2 lines. More than 2 lines means you are writing a persona, not a responsibility.
 
 ## 2. Lane
 
-**写什么**：两组路径——可写（glob 列表）与只读（glob 列表）。这是 `PreToolUse` hook 的输入，必须机器可解析。
+**What to write**: two sets of paths — writable (glob list) and read-only (glob list), machine-parsable. The `## Lane` section is documentation. Enforcement requires registering the same globs as the work unit (`flow.sh add-unit --files`) and taking the claim (`flow.sh claim --files`); the `PreToolUse` hook denies writes outside the active `claim.files`.
 
-**反面例子**：`负责前端部分和相关的测试文件。`
+**Counterexample**: `Responsible for the frontend part and related test files.`
 
-**长度**：可写 1–5 条 glob；只读可以省略（默认全库只读）。每条一行，不写解释性散文。
+**Length**: 1–5 globs for writable; read-only may be omitted (default all-repo read-only). One per line, no explanatory prose.
 
 ## 3. Inputs
 
-**写什么**：上游产物的确切路径，以及**缺失时的行为**。缺失时的行为只能是"输出 BLOCKED 并停止"，不得臆测补全。
+**What to write**: the exact paths of upstream artifacts, plus **behavior when missing**. Behavior when missing may only be "output BLOCKED and stop"; no guessing or filling in.
 
-**反面例子**：`参考上游的设计文档。`（哪一份？缺失怎么办？）
+**Counterexample**: `Refer to the upstream design document.` (Which one? What if missing?)
 
-**长度**：≤ 5 条。每条形如 `- <path> — <它提供什么> — 缺失则 BLOCKED`。
+**Length**: ≤ 5 items. Each in the form `- <path> — <what it provides> — BLOCKED if missing`.
 
 ## 4. Procedure
 
-**写什么**：5–9 个有序步骤，每步都有一个可观察动作（读某文件、跑某命令、写某文件）。步骤之间不得有"然后思考一下"。
+**What to write**: 5–9 ordered steps, each with an observable action (read some file, run some command, write some file). No "then think about it" between steps.
 
-**反面例子**：`1. 理解需求 2. 分析代码 3. 实现 4. 测试 5. 完成`
+**Counterexample**: `1. Understand requirements 2. Analyze code 3. Implement 4. Test 5. Done`
 
-**长度**：5–9 步，每步 ≤ 2 行。超过 9 步时考虑拆角色或把细节放 references。
+**Length**: 5–9 steps, each ≤ 2 lines. If more than 9, consider splitting the role or putting details in references.
 
 ## 5. Prohibitions
 
-**写什么**：明确禁止的动作。禁止比鼓励有效：模型会为"应该做"找理由，但"不得"是硬边界。
+**What to write**: explicitly forbidden actions. Prohibition is more effective than encouragement: the model finds reasons for "should do", but "must not" is a hard boundary.
 
-**反面例子**：`请尽量不要修改其他模块。`（"尽量"= 允许）
+**Counterexample**: `Please try not to modify other modules.` ("try" = permitted)
 
-**长度**：3–7 条。至少包含一条路径边界、一条"不得自评"、一条"不得静默偏离"。
+**Length**: 3–7 items. Include at least one path boundary, one "must not self-review", and one "must not deviate silently".
 
 ## 6. Output contract
 
-**写什么**：产物落盘路径 + 固定回传格式。回传格式与 rails.md R-10 一致，字段名不得改动。
+**What to write**: artifact persistence path + fixed return format. The return format is consistent with `../../spec-coding-team-skill/references/rails.md` R-10; field names must not be changed.
 
 ```yaml
 verdict: PASS | FAIL | BLOCKED
-artifacts: [路径...]
+artifacts: [paths...]
 findings:
   - severity: blocker | critical | major | minor | nit
     file: path:line
-    evidence: <命令输出 / 现象>
-    fix: <建议>
-contract_for_next: <下游需要知道的接口/假设，一句话>
-next_action: <建议的下一步>
-stop_reason: <为什么结束>
+    evidence: <command output / phenomenon>
+    fix: <suggestion>
+contract_for_next: <interface/assumption downstream needs to know, one sentence>
+next_action: <suggested next step>
+stop_reason: <why it ended>
 ```
 
-**反面例子**：`完成后告诉我结果。`
+**Counterexample**: `Tell me the result when done.`
 
-**长度**：路径 1–3 条 + 上述代码块一份。字段名固定，不得增删。
+**Verdict file**: while a claim is active, also persist `.team/<run>/verdicts/<unit-id>.json` containing at least `{verdict, artifacts, stop_reason}`. Conversation-only returns are blocked by the `SubagentStop` hook.
+
+**Length**: 1–3 paths + one copy of the code block above. Field names are fixed; do not add or remove.
 
 ## 7. Done criteria
 
-**写什么**：可执行判定——命令 + 期望输出或阈值。判定必须能由第三方在不知道实现过程的情况下重跑。
+**What to write**: executable judgment — command + expected output or threshold. The judgment must be re-runnable by a third party who does not know the implementation process.
 
-**反面例子**：`功能正常、代码整洁、测试通过。`
+**Counterexample**: `Functionality normal, code clean, tests pass.`
 
-**长度**：2–6 条。每条含一个命令或一个数值阈值。
+**Length**: 2–6 items. Each contains a command or a numeric threshold.
 
 ## 8. Escalation
 
-**写什么**：何时停止、向谁上报、报什么内容。必须包含 rails.md R-9 的停止条件（尤其"同一单元第 3 次失败"）。
+**What to write**: when to stop, whom to report to, what to report. Must include the stop conditions of `../../spec-coding-team-skill/references/rails.md` R-9 (especially "third failure of the same unit").
 
-**反面例子**：`遇到问题及时沟通。`
+**Counterexample**: `Communicate promptly when issues arise.`
 
-**长度**：3–5 条。每条形如 `- <触发条件> → 向 <角色> 报 <字段>`。
+**Length**: 3–5 items. Each in the form `- <trigger condition> → report <field> to <role>`.
 
 ## 9. Rails
 
-**写什么**：只写一行引用：`见 ../../spec-coding-team-skill/references/rails.md。`（部署到团队目录后按实际层级调整）
+**What to write**: only a one-line reference: `See ../../spec-coding-team-skill/references/rails.md` (adjust according to the actual hierarchy after deployment to the team directory). If a claim is active, the role must also persist its verdict file; see section 6.
 
-**反面例子**：把 R-1 到 R-11 复制进角色卡（复制后就会分叉，且占用预算）。
+**Counterexample**: copying R-1 to R-11 into the role card (copies will diverge and consume budget).
 
-**长度**：1 行。任何内容复制都是错误。
+**Length**: 1 line. Copying any content is a mistake.
 
 ## 10. Context budget
 
-**写什么**：读文件的大小上限、分片策略、单次读取文件数上限。与 rails.md R-6 对齐。
+**What to write**: the size cap for file reads, sharding strategy, max number of files per read. Aligns with `../../spec-coding-team-skill/references/rails.md` R-6.
 
-**反面例子**：`注意控制上下文长度。`（不可执行）
+**Counterexample**: `Pay attention to controlling context length.` (not executable)
 
-**长度**：3–5 行，或一张 3 行的表（≤200KB 全读 / 200–500KB 先 grep / >1MB 只搜并记录 skipped）。
+**Length**: 3–5 lines, or a 3-row table (≤200KB read fully / 200–500KB grep first / >1MB search only and record skipped).
 
 ## 11. Anti-patterns
 
-**写什么**：**本角色特有**的失败方式，每条一句话，最好带一个可观察信号。
+**What to write**: failure modes **specific to this role**, one sentence each, preferably with an observable signal.
 
-**反面例子**：`注意不要犯错。`
+**Counterexample**: `Be careful not to make mistakes.`
 
-**长度**：3–5 条。至少一条来自该角色在本项目里真实发生过的事；没有真实案例时写明"待观察"，但不得写空泛条目。
+**Length**: 3–5 items. At least one from something that actually happened to this role in this project; when there is no real case, write "to be observed", but do not write generic entries.
 
 ---
 
-## 明确禁止
+## Explicitly Prohibited
 
-| 禁止 | 原因 |
+| Prohibited | Reason |
 |---|---|
-| **长 persona** | 占用上下文预算，且对行为无约束力；模型不会因为"性格严谨"而更严谨 |
-| **"15 年经验"式人设** | 这是无法验证的声明，只会诱导模型输出更自信而非更准确的判断 |
-| **用 `color` 表达能力** | 颜色只是 UI 标签；用它暗示"这个角色更强"会让调度者错误加权 |
-| **复制 rails 内容** | 多份副本必然分叉；共享纪律只能有一个事实源 |
-| **在角色卡里写业务方案** | 角色卡是约束，方案属于 `team-plan.md`；混合会让 reload 时把方案当约束 |
+| **Long persona** | consumes context budget and has no binding force on behavior; the model will not be more rigorous because of "a rigorous personality" |
+| **"15 years of experience" personas** | an unverifiable claim that only induces the model to output more confidently rather than more accurately |
+| **Using `color` to express capability** | color is only a UI label; using it to imply "this role is stronger" makes the scheduler weight incorrectly |
+| **Copying rails content** | multiple copies necessarily diverge; shared discipline can have only one source of truth |
+| **Writing business solutions in the role card** | the role card is a constraint; solutions belong in `team-plan.md`; mixing makes the solution be treated as a constraint on reload |
 
-## 一张合格角色卡的自检
+## Self-Check for an Acceptable Role Card
 
-- 把 11 个标题单独拿出来，能看出这个角色**不能**做什么。
-- 任何一段被删掉后，角色都需要猜——所以一段都不能少。
-- 通读一遍，没有任何一句是在形容"这个人"，全部在形容"这份工作"。
+- Take the 11 headings alone and you can see what this role **cannot** do.
+- If any section is deleted, the role needs to guess — so not one section can be missing.
+- Read through: not a single sentence describes "this person"; all describe "this job".

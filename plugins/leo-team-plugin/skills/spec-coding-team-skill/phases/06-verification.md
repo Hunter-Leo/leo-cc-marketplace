@@ -1,177 +1,174 @@
-# N6 Verification — 集成验收
+# N6 Verification — Integration acceptance
 
-> 目标：把「评审通过」推进到可审计的「已合并、已验收」。
-> 前置：N5 判定无未决；`flow.json.mission=reviewing`；所有实现单元已 `for_review`/`approved`。
-> 三态必须按 `approved → merged → verified` 顺序达成，不得跳步或合并声明。
+> Goal: advance "review passed" to an auditable "merged and accepted".
+> Prerequisite: N5 determination has no unresolved items; `flow.json.mission=reviewing`; all implementation units have `for_review`/`approved`.
+> The three states must be reached in the order `approved → merged → verified`; skipping steps or combining declarations is forbidden.
 
-## 1. 三态判定（单元级 + mission 级）
+## 1. Three-state determination (unit level + mission level)
 
-### approved（评审通过）
+### approved (review passed)
 
-| 条件 | 判定方式 |
+| Condition | Determination method |
 |---|---|
-| reviewer `verdict: PASS` | `findings.md` 中对应单元段落末条 verdict |
-| `blocker == 0 && critical == 0 && unaccepted_major == 0` | `findings.md` PM 段计数 |
-| `auditor=true` 时 `science-audit.md` 无 FAIL / 未说明 UNVERIFIABLE | Verdict 行与检查矩阵 |
-| minor/nit 已进 Backlog | `findings.md § Backlog` |
+| reviewer `verdict: PASS` | the last verdict in the corresponding unit section of `findings.md` |
+| `blocker == 0 && critical == 0 && unaccepted_major == 0` | PM section counts in `findings.md` |
+| when `auditor=true`, `science-audit.md` has no `FAIL`, and any `UNVERIFIABLE` has been closed by explicit user adjudication in `decisions.md`, with the audit file carrying a `PASS` or a decision reference | Verdict line and check matrix |
+| minor/nit already in Backlog | `findings.md § Backlog` |
 
-由 reviewer / science-auditor 出具；PM 只汇总。PM 自评 PASS 不算 approved。
-单元动作：`flow.sh transition --unit <U-ID> --to approved`。
+Issued by reviewer / science-auditor; PM only aggregates. PM's self-assessed PASS does not count as approved.
+Unit action: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --unit <U-ID> --to approved`.
 
-### merged（已进集成分支）
+### merged (in the integration branch)
 
-| 条件 | 判定方式 |
+| Condition | Determination method |
 |---|---|
-| 分支已合入目标分支 | `git merge --no-ff <branch>` 成功，或 PR 状态为 `MERGED` |
-| 无冲突 | 合并命令 exit 0 |
-| 目标分支 HEAD 含合并提交 | `git merge-base --is-ancestor <branch> <target>` exit 0 |
-| 合并后测试通过 | 在合并后的 HEAD 跑完整测试，exit 0 |
+| branch merged into the target branch | `git merge --no-ff <branch>` succeeds, or PR status is `MERGED` |
+| no conflicts | merge command exit 0 |
+| target branch HEAD contains the merge commit | `git merge-base --is-ancestor <branch> <target>` exit 0 |
+| tests pass after merge | run the full test suite on the merged HEAD, exit 0 |
 
-执行人：用户，或获用户明确授权的 PM。teammate 不得 push、不得合并主干（R-8）。
-合并前必须有 approved 证据；未 approved 直接合并 → 流程失败。
-单元动作：`flow.sh transition --unit <U-ID> --to merged`。
+Executor: the user, or a PM with explicit user authorization. Teammates must not push or merge to trunk (R-8).
+Approved evidence must exist before merging; merging directly without approval → process failure.
+Unit action: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --unit <U-ID> --to merged`.
 
-### verified（验收证据齐全）
+### verified (acceptance evidence complete)
 
-| 条件 | 判定方式 |
+| Condition | Determination method |
 |---|---|
-| 每条 AC 都有证据 | `findings.md § PM — Verification Summary` 中 AC ID 与 `init.md` 一一对应 |
-| 删除类需求通过负向不变量 | 见第 4 节 |
-| 完整测试在合并后 HEAD 通过 | 命令 + exit 0 + 通过数 |
-| `check-team-complete.sh` 输出 `OK` | 见第 5 节 |
-| 工作区干净 | `git status --porcelain` 为空（`.dev/`、`.team/` 按项目忽略规则处理） |
+| every AC has evidence | AC IDs in `findings.md § PM — Verification Summary` correspond one-to-one with `init.md` |
+| deletion-type requirements pass negative invariants | see section 4 |
+| full tests pass on the merged HEAD | command + exit 0 + pass count |
+| `check-team-complete.sh` outputs `OK` | see section 5 |
+| working tree clean | `git status --porcelain` is empty (`.dev/`, `.team/` handled per project ignore rules) |
 
-单元动作：`flow.sh transition --unit <U-ID> --to verified`。
-全部实现单元 verified 后：`flow.sh transition --to verified`。
+Unit action: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --unit <U-ID> --to verified`.
+After all implementation units are verified: `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --to verified`.
 
-## 2. AC → 证据映射
+## 2. AC → evidence mapping
 
-在 `findings.md` 的 PM 段追加一张表，每条 AC 恰好一行：
+Append a table to the PM section of `findings.md`, exactly one row per AC:
 
-| AC | 类型 | 证据 | 位置 | 结果 |
+| AC | Type | Evidence | Location | Result |
 |---|---|---|---|---|
 | AC-1 | automated | `npm test -- refresh-store` | `tests/auth/refresh-store.test.ts` | PASS |
-| AC-2 | manual | 五要素 | `findings.md#ac-2` | PASS |
+| AC-2 | manual | five elements | `findings.md#ac-2` | PASS |
 
-规则：
+Rules:
 
-- 禁止用「整体测试通过」代替逐条 AC 映射。
-- 自动化证据必须写：测试文件路径、测试名、执行命令、exit code。
-- 手工证据必须写全五要素，缺一即视为未验证。
-- 缺陷修复类 AC 必须额外记录：基线提交上复现失败的命令与输出、修复后通过的命令与输出。
+- Using "the overall test suite passes" in place of per-AC mapping is forbidden.
+- Automated evidence must state: test file path, test name, execution command, exit code.
+- Manual evidence must state all five elements; missing one counts as unverified.
+- Defect-fix ACs must additionally record: the command and output that reproduce the failure on the baseline commit, and the command and output that pass after the fix.
 
-## 3. 手工证据五要素
+## 3. Five elements of manual evidence
 
-| 要素 | 要求 | 反例 |
+| Element | Requirement | Counterexample |
 |---|---|---|
-| 1. 命令/操作 | 可直接复制执行，或逐步可复现的操作序列 | 「手动点了下」 |
-| 2. 前置状态 | 分支 + HEAD、环境变量、fixtures、账号/权限 | 省略版本与数据 |
-| 3. 输入 | 具体请求、文件、参数 | 「用了一些测试数据」 |
-| 4. 实际输出 | 原样输出、exit code、截图路径；不得改写 | 「结果正常」 |
-| 5. 判定 | 预期 vs 实际，结论 PASS/FAIL | 「看起来没问题」 |
+| 1. Command/operation | directly copy-pasteable, or a step-by-step reproducible operation sequence | "clicked around manually" |
+| 2. Precondition state | branch + HEAD, environment variables, fixtures, account/permissions | omits versions and data |
+| 3. Input | the concrete request, file, args | "used some test data" |
+| 4. Actual output | verbatim output, exit code, screenshot path; must not be rewritten | "result is normal" |
+| 5. Determination | expected vs actual, conclusion PASS/FAIL | "looks fine" |
 
-模板：
+Template:
 
 ```markdown
-### AC-<n> — <描述>
+### AC-<n> — <description>
 
-- 命令: <command>
-- 前置: branch=<branch>, HEAD=<sha>, env=<...>, fixture=<path>
-- 输入: <request/file/args>
-- 实际输出: <verbatim output 或截图路径> / exit=<code>
-- 判定: 预期 <expected>；实际 <actual>；结论 PASS
+- Command: <command>
+- Precondition: branch=<branch>, HEAD=<sha>, env=<...>, fixture=<path>
+- Input: <request/file/args>
+- Actual output: <verbatim output or screenshot path> / exit=<code>
+- Determination: expected <expected>; actual <actual>; conclusion PASS
 ```
 
-## 4. 删除类需求：负向不变量
+## 4. Deletion-type requirements: negative invariants
 
-当 AC 包含「删除/下线/移除/废弃」时，必须同时验证：
+When an AC includes "delete/decommission/remove/deprecate", you must also verify:
 
-| 不变量 | 判定 |
+| Invariant | Determination |
 |---|---|
-| 符号不存在 | `rg "<symbol>" <源码目录>` 命中数为 0 |
-| 入口不可达 | 删除的 HTTP 路由返回 404/410；CLI 参数报 unknown；导出不再存在 |
-| 契约同步 | OpenAPI/schema/类型定义不再包含该项 |
-| 无静默回退 | 旧配置键不再被读取；默认值未把旧行为重新引入 |
-| 消费方已迁移 | 全量 typecheck / build / 契约测试通过 |
+| symbol absent | `rg "<symbol>" <source dir>` has 0 hits |
+| entry point unreachable | the deleted HTTP route returns 404/410; the CLI flag reports unknown; the export no longer exists |
+| contract synchronized | OpenAPI/schema/type definitions no longer contain the item |
+| no silent fallback | old config keys are no longer read; defaults do not reintroduce the old behavior |
+| consumers migrated | full typecheck / build / contract tests pass |
 
-示例：删除 `GET /api/v1/users/:id/legacy`
+Example: delete `GET /api/v1/users/:id/legacy`
 
 ```markdown
-### AC-5（删除类）— legacy 端点已下线
+### AC-5 (deletion type) — legacy endpoint decommissioned
 
 - rg: `rg "users/:id/legacy|legacyEndpoint" src/` → 0 hits
-- 请求: `curl -i http://localhost:3000/api/v1/users/1/legacy` → HTTP/1.1 404
-- 契约: openapi.yaml 中无 `/api/v1/users/{id}/legacy`
-- 回退: `LEGACY_USER_API` 配置不再被读取（rg 0 hits）
-- 回归: `npm test` → 全部通过
-- 判定: PASS
+- Request: `curl -i http://localhost:3000/api/v1/users/1/legacy` → HTTP/1.1 404
+- Contract: openapi.yaml contains no `/api/v1/users/{id}/legacy`
+- Fallback: `LEGACY_USER_API` config is no longer read (rg 0 hits)
+- Regression: `npm test` → all pass
+- Determination: PASS
 ```
 
-只验证「新功能可用」而不验证「旧路径确实消失」→ 该 AC 未通过。
+Verifying only "the new feature works" without verifying "the old path truly disappeared" → that AC does not pass.
 
 ## 5. check-team-complete.sh
 
-脚本读取 `.team/<run>/flow.json`，**永远 exit 0**，结论看输出文本：`OK` / `NOT COMPLETE` / `NO RUN`。
+The script reads `.team/<run>/flow.json`, **always exits 0**, and the conclusion is in the output text: `OK` / `NOT COMPLETE` / `NO RUN`.
 
-推荐在产物目录内运行，让脚本能找到 `research.md` / `science-audit.md`：
+It can be run from any directory (it anchors to the repository root), so no `cd` is needed. Point it at the run explicitly when more than one run exists:
 
 ```bash
-(
-  cd ".dev/<NNN>-<req>/generated"
-  LEO_TEAM_DIR="<repo-absolute>/.team/<run>" \
-    bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-team-complete.sh"
-)
+LEO_TEAM_DIR="<repo-absolute>/.team/<run>" \
+  bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-team-complete.sh"
 ```
 
-脚本机械检查：
+The script mechanically checks:
 
-| 检查 | 通过条件 |
+| Check | Pass condition |
 |---|---|
 | mission | `mission=verified` |
-| 单元 | 全部实现单元 `lane=verified` |
-| researcher | `science_gate.researcher=true` 时 `research.md` 存在 |
-| auditor | `science_gate.auditor=true` 时 `science-audit.md` 存在且无 `FAIL`、无未说明 `UNVERIFIABLE` |
+| units | all implementation units `lane=verified` |
+| researcher | when `science_gate.researcher=true`, `research.md` exists |
+| auditor | when `science_gate.auditor=true`, `science-audit.md` exists and carries a `PASS` or a decision reference; an `UNVERIFIABLE` verdict never permits verification and is closed only by explicit user adjudication in `decisions.md` |
 
-脚本不检查 AC 覆盖与五要素；这两项由 reviewer 与 PM 在第 2–4 节人工（可复现）验证。
+The script does not check AC coverage or the five elements; those two are verified manually (reproducibly) by reviewer and PM in sections 2–4.
 
-处理：
+Handling:
 
-- 输出 `OK`：可向用户报告完成。
-- 输出 `NOT COMPLETE`：逐条修复；不得手工改脚本、不得删除 `flow.json`。
-- 输出 `NO RUN`：检查 `LEO_TEAM_DIR` 与 run 名称；不得伪造状态。
-- 因 mission 未 verified 而阻塞：先完成单元 verified 并 `transition --to verified`，再重跑。
+- Output `OK`: may report completion to the user.
+- Output `NOT COMPLETE`: fix item by item; must not manually edit the script or delete `flow.json`.
+- Output `NO RUN`: check `LEO_TEAM_DIR` and the run name; must not fabricate state.
+- Blocked because mission is not verified: first complete unit verification and `transition --to verified`, then re-run.
 
-## 6. Stop hook 与 PreCompact
+## 6. Stop hook and PreCompact
 
-Stop hook（`validate-lane-write.sh --stop`）在以下任一成立时拒绝结束：
+The Stop hook (`validate-lane-write.sh --stop`) refuses to end when any of the following holds:
 
-- `flow.json.mission != verified`；
-- `science_gate.auditor=true` 但找不到 `science-audit.md`。
+- `flow.json.mission != verified`;
+- `science_gate.auditor=true` but `science-audit.md` cannot be found.
 
-规则：
+Rules:
 
-- 不得通过删除 `flow.json`、改 `mission`、跳过 hook 来绕过。
-- 脚本没有「abandon」白名单；未完成时如实向用户报告未完成项，不得伪造成 `verified`。
-- `stop_hook_active` 只用于防止重复拦截，不是完成凭证。
+- Must not bypass by deleting `flow.json`, changing `mission`, or skipping the hook.
+- The script has no "abandon" allowlist; when incomplete, truthfully report the incomplete items to the user; must not fake `verified`.
+- `stop_hook_active` is only used to prevent repeated interception, not as proof of completion.
 
-PreCompact hook 在 `executing` / `reviewing` 期间要求存在 ≤30 分钟的 checkpoint；压缩前先执行 `flow.sh checkpoint --note "pre-compact"`。
+The PreCompact hook requires a checkpoint no older than 30 minutes during `executing` / `reviewing`; run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" checkpoint --note "pre-compact"` before compaction.
 
-## 7. 执行顺序
+## 7. Execution order
 
-1. N5 结论：无未决阻塞项。
-2. PM 依据 reviewer 的 PASS 把对应单元推进到 `approved`。
-3. 获用户授权后合并分支；在合并后 HEAD 跑完整测试。
-4. 每个 approved 单元 → `merged`。
-5. 逐条 AC 建立证据；删除类补负向不变量；写入 `findings.md` PM 段。
-6. 每个 merged 实现单元 → `verified`。
-7. 全部实现单元 verified → `flow.sh transition --to verified`。
-8. 运行 `check-team-complete.sh`；输出 `OK` 才可收尾。
-9. 向用户报告：分支、合并提交、测试摘要、AC 覆盖数、证据路径。
+1. N5 conclusion: no unresolved blockers.
+2. PM advances the corresponding unit to `approved` based on reviewer's PASS.
+3. After user authorization, merge the branch; run the full test suite on the merged HEAD.
+4. Each approved unit → `merged`.
+5. Build evidence for each AC one by one; add negative invariants for deletion-type; write into the PM section of `findings.md`.
+6. Each merged implementation unit → `verified`.
+7. All implementation units verified → `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --to verified`.
+8. Run `check-team-complete.sh`; only when it outputs `OK` may you wrap up.
+9. Report to the user: branch, merge commit, test summary, AC coverage count, evidence paths.
 
-## 完成标志
+## Completion criteria
 
-- approved / merged / verified 三项证据齐全且可复现。
-- `findings.md § PM — Verification Summary` 的 AC 行数 == `init.md` 的 AC 数。
-- `check-team-complete.sh` 输出 `OK`，输出已保存。
-- `flow.json.mission == verified`。
-- 向用户报告包含所有证据的绝对路径。
+- All three evidence sets approved / merged / verified are complete and reproducible.
+- AC row count in `findings.md § PM — Verification Summary` == AC count in `init.md`.
+- `check-team-complete.sh` outputs `OK`, and the output is saved.
+- `flow.json.mission == verified`.
+- The report to the user contains absolute paths to all evidence.

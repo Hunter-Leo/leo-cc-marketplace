@@ -1,144 +1,144 @@
-# N0 Precheck — 前置门
+# N0 Precheck — Pre-gate
 
-> 目标：在花费任何团队成本之前，判定「是否该组队」并初始化运行状态。本阶段不建 git 分支、不写业务代码、不 spawn teammate。
-> 前置：已读 `references/essence.md`、`references/rails.md`。
+> Goal: before spending any team cost, determine "should we form a team" and initialize runtime state. This phase does not create a git branch, does not write business code, does not spawn teammates.
+> Prerequisite: `references/essence.md`, `references/rails.md` have been read.
 
-## 步骤
+## Steps
 
-1. **分配需求编号**：扫描 `.dev/` 下匹配 `[0-9]{3}-*` 的目录，取最大编号 +1，三位补零；`.dev/` 不存在则创建。目录名 `<NNN>-<req>` 同时作为 run 名称。
-2. **建目录**：`.dev/<NNN>-<req>/generated/`。
-3. **检测 Agent Teams**：`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` 且当前为交互式终端 Claude Code。不满足 → 走「话术 3：Agent Teams 未启用」，等待用户三选一，不得直接换模式。
-4. **Task Sizing**：按下方表格定级，取命中的最高档。
-5. **四触发条件判定**：逐条给出 `true/false` 与证据。
-6. **science_gate 询问**：按 A/B/C/D 四选项问用户，默认 A（全关）。
-7. **写 `generated/init.md`**：把结果写入 `## N0 前置判定`（格式见下）。
-8. **分流**：
-   - XS/S → 停止并退回单人模式，不创建 `flow.json`。
-   - M/L 且 `T1 && (T2 || T3 || T4)` → 执行 `bash "$CLAUDE_PLUGIN_ROOT/scripts/flow.sh" init --run "<NNN>-<req>"`，再执行 `flow.sh set --science-gate-researcher <true|false> --science-gate-auditor <true|false>`。
+1. **Assign requirement number**: scan `.dev/` for directories matching `[0-9]{3}-*`, take the max number +1, zero-pad to three digits; create `.dev/` if it does not exist. The chosen directory name is the run identifier used as `<run>` throughout this skill.
+2. **Create directory**: `.dev/<run>/generated/`.
+3. **Detect Agent Teams**: `CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1` and the current session is interactive terminal Claude Code. If not satisfied → go to "Script 3: Agent Teams not enabled", wait for the user to choose one of three, and do not switch modes directly.
+4. **Task Sizing**: rate per the table below, taking the highest tier hit.
+5. **Four-trigger determination**: give `true/false` and evidence for each item.
+6. **science_gate question**: ask the user with the four options A/B/C/D, default A (all off).
+7. **Write `generated/init.md`**: write the result into `## N0 Precheck Determination` (format below).
+8. **Route**:
+   - XS/S → stop and fall back to single-agent mode, do not create `flow.json`.
+   - M/L and `T1 && (T2 || T3 || T4)` → run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" init --run "<run>"`, then run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" set --science-gate-researcher <true|false> --science-gate-auditor <true|false>`.
 
 ## Task Sizing
 
-| 级别 | 判定（任一命中即取最高档） | 去向 |
+| Tier | Determination (any hit takes the highest tier) | Destination |
 |---|---|---|
-| XS | ≤1 个文件 且 ≤30 行 且 单一行为 | 退回单人 |
-| S | 2–5 个文件 或 ≤150 行；不跨模块接口 | 退回单人 |
-| M | 6–20 个文件 或 151–800 行 或 跨 2–3 个模块 | 进入团队 |
-| L | >20 个文件 或 >800 行 或 跨 ≥4 个模块/仓库 | 进入团队；N3 可分波次 |
+| XS | ≤1 file and ≤30 lines and single behavior | fall back to single agent |
+| S | 2–5 files or ≤150 lines; does not cross module interfaces | fall back to single agent |
+| M | 6–20 files or 151–800 lines or crosses 2–3 modules | enter team |
+| L | >20 files or >800 lines or crosses ≥4 modules/repos | enter team; N3 may split into waves |
 
-计行以「净新增 + 净修改」估算，不统计生成文件与锁文件。
+Line count is estimated as "net added + net modified", excluding generated files and lock files.
 
-## 四触发条件
+## Four triggers
 
-| 编号 | 条件 | 判定为 true 的证据 |
+| ID | Condition | Evidence for true |
 |---|---|---|
-| T1 | 规模达到 M/L | Task Sizing 结果为 M 或 L |
-| T2 | 存在并行收益 | `init.md` 中列出 ≥2 个初步工作单元及其 `owned_files` 草案，且两两不相交 |
-| T3 | 需要独立验证上下文 | 验收依赖以下任一：外部事实审查、跨模块接口评审、双轴评审 |
-| T4 | 用户明示团队 | 用户原话包含「组队 / 多 agent / team / agent teams / 并行开发」之一 |
+| T1 | scale reaches M/L | Task Sizing result is M or L |
+| T2 | parallel benefit exists | `init.md` lists ≥2 preliminary work units and their `owned_files` drafts, pairwise disjoint |
+| T3 | independent verification context needed | acceptance depends on any of: external fact audit, cross-module interface review, dual-axis review |
+| T4 | user explicitly asks for a team | the user's own words contain one of "team formation / multi-agent / team / agent teams / parallel development" |
 
-**进入条件（写死）**：`T1 && (T2 || T3 || T4)`。任一不满足 → 不进入团队流程。
+**Entry condition (hard-coded)**: `T1 && (T2 || T3 || T4)`. If any is unmet → do not enter the team workflow.
 
-## science_gate 四选项
+## science_gate four options
 
-用 `AskUserQuestion` 提一个问题（不可用时用等价内联四选项），只问一次：
+Use `AskUserQuestion` to ask one question (when unavailable, use an equivalent inline four-option prompt), ask only once:
 
-> 本需求是否涉及科学算法、公式、数值结论、语料/基准数据，或需要对用户声称效果（如「提升 X%」）？
+> Does this requirement involve scientific algorithms, formulas, numerical conclusions, corpora/benchmark data, or a need to back user-claimed effects (e.g. "improves X%")?
 
-| 选项 | researcher | auditor | 适用 | 写入 `flow.json` |
+| Option | researcher | auditor | Applicable | Written into `flow.json` |
 |---|---|---|---|---|
-| A（默认） | false | false | 常规工程需求，无外部事实断言 | `{"researcher":false,"auditor":false}` |
-| B | true | false | 需要文献结论或语料，实现结果不需科学核查 | `{"researcher":true,"auditor":false}` |
-| C | false | true | 有外部科学共识可对照，但不需要专门调研 | `{"researcher":false,"auditor":true}` |
-| D | true | true | 科学计算、算法实现、论文复现、指标声称 | `{"researcher":true,"auditor":true}` |
+| A (default) | false | false | routine engineering requirements with no external fact assertions | `{"researcher":false,"auditor":false}` |
+| B | true | false | needs literature conclusions or corpora; implementation results need no scientific review | `{"researcher":true,"auditor":false}` |
+| C | false | true | external scientific consensus exists to compare against, but no dedicated research is needed | `{"researcher":false,"auditor":true}` |
+| D | true | true | scientific computing, algorithm implementation, paper reproduction, metric claims | `{"researcher":true,"auditor":true}` |
 
-- 默认 A 是刻意的：常规需求不为科学通道支付成本。
-- N1 期间用户改变选项 → PM 更新 `flow.json` 布尔值并写入 `decisions.md`；N2 以最新值为准。
-- 运行中关闭或降级 → 必须写 `decisions.md` 并取得用户显式 `confirmed`。
+- Defaulting to A is deliberate: routine requirements do not pay the cost of the science channel.
+- If the user changes the option during N1 → PM updates the booleans in `flow.json` and writes to `decisions.md`; N2 uses the latest values.
+- Disabling or downgrading at runtime → must write `decisions.md` and obtain explicit user `confirmed`.
 
-## 输出格式（写入 `generated/init.md`）
+## Output format (written to `generated/init.md`)
 
 ```markdown
-## N0 前置判定
+## N0 Precheck Determination
 
-- 需求目录: .dev/[NNN]-[req]
-- run: [NNN]-[req]
-- Agent Teams: 可用
-- Task Sizing: M（8 个文件 / 2 个模块 / 约 400 行）
-- T1: true — M 级
-- T2: true — 初步单元 U-01/U-02/U-03 的写集两两不相交
-- 初步单元: U-01(src/a.ts, tests/a.test.ts); U-02(src/b.ts, tests/b.test.ts); U-03(src/c.ts, tests/c.test.ts)
+- Requirement directory: .dev/<run>
+- run: <run>
+- Agent Teams: available
+- Task Sizing: M (8 files / 2 modules / ~400 lines)
+- T1: true — M level
+- T2: true — preliminary units U-01/U-02/U-03 have pairwise disjoint write sets
+- Preliminary units: U-01(src/a.ts, tests/a.test.ts); U-02(src/b.ts, tests/b.test.ts); U-03(src/c.ts, tests/c.test.ts)
 - T3: false
 - T4: false
-- 判定: 进入团队流程
+- Verdict: enter team workflow
 - science_gate: A
 - science_gate.researcher: false
 - science_gate.auditor: false
-- 判定时间: YYYY-MM-DD
+- Determined at: YYYY-MM-DD
 ```
 
-## 退回单人模式
+## Falling back to single-agent mode
 
-退回必须是显式动作：说明级别与触发结果 → 给出替代 → 询问是否切换。禁止静默切换。
+Fallback must be an explicit action: state the tier and trigger results → present the alternative → ask whether to switch. Silent switching is forbidden.
 
-### 话术 1：XS/S 或 T1 不成立
-
-```
-这次需求按 N0 判定属于 [XS/S]（[文件数] 个文件 / [模块数] 个模块 / 约 [行数] 行），
-未达到 M 级门槛，团队编排成本会高于收益。建议改用 spec-coding-skill 单人模式：
-Phase A→B 门禁、偏差记录、轮次评审和验收标准保持一致。要我现在切换吗？
-```
-
-若 `spec-coding-skill` 未安装（只装了本插件），改为：
+### Script 1: XS/S or T1 not met
 
 ```
-当前只安装了 leo-team-plugin，单人模式技能不可用。两个选择：
-[A] 安装 leo-dev-plugin 后使用 spec-coding-skill（/plugin install leo-dev-plugin@leo-cc-marketplace）
-[B] 我直接按同样纪律执行：先写计划等你确认，再实现、测试、提交
+This requirement is rated [XS/S] by N0 ([file count] files / [module count] modules / ~[line count] lines),
+below the M-level threshold, so team orchestration cost would exceed the benefit. Suggest switching to spec-coding-skill single-agent mode:
+the Phase A→B gate, deviation logging, round review, and acceptance criteria stay the same. Switch now?
 ```
 
-### 话术 2：T1 成立但 T2/T3/T4 全不成立
+If `spec-coding-skill` is not installed (only this plugin is installed), change to:
 
 ```
-这次需求规模是 [M/L]，但未发现并行收益、独立验证需求或团队意愿，
-单 agent 可以连续完成，组队只会增加 3–10× token。建议改用 spec-coding-skill。
-要我现在切换吗？
+Only leo-team-plugin is currently installed, so the single-agent skill is unavailable. Two options:
+[A] Install leo-dev-plugin then use spec-coding-skill (/plugin install leo-dev-plugin@leo-cc-marketplace)
+[B] I follow the same discipline directly: write the plan and wait for your confirmation, then implement, test, commit
 ```
 
-### 话术 3：Agent Teams 未启用（按 `references/degradation.md`）
+### Script 2: T1 met but T2/T3/T4 all unmet
 
 ```
-检测到 Agent Teams 未启用，以下能力不可用：
-- teammate 之间无法直接通信（无 mailbox）
-- 无 SendMessage / TaskCreate 等协作工具
-- teammate 上下文不持久，每个工作单元都要重新初始化
-共享文件纪律、状态机、hooks、验收流程仍然有效。
-
-请选择：
-[A] 开启 Agent Teams 并重启会话（推荐，settings.json 加
-    "env": {"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"}）
-[B] 用 subagent 顺序执行（更省 token，无并行，每单元重建上下文）
-[C] 退回单人模式 spec-coding-skill
+This requirement is [M/L] in scale, but no parallel benefit, independent verification need, or team
+intent was found. A single agent can complete it continuously, and forming a team would only add 3–10× tokens.
+Suggest switching to spec-coding-skill. Switch now?
 ```
 
-用户选 B 时：仍按 N0→N6 推进，但 N3 取消只读重叠，全部串行，回传落 `.team/<run>/verdicts/<unit>.json`，并写入 `decisions.md`。用户选 C 时本技能立即终止。
+### Script 3: Agent Teams not enabled (per `references/degradation.md`)
 
-### 用户坚持在 XS/S 上组队
+```
+Agent Teams is not enabled; the following capabilities are unavailable:
+- teammates cannot communicate directly (no mailbox)
+- no SendMessage / TaskCreate collaboration tools
+- teammate context is not persistent; each work unit must be re-initialized
+Shared-file discipline, the state machine, hooks, and the acceptance flow still apply.
 
-记 `decisions.md`：
+Please choose:
+[A] Enable Agent Teams and restart the session (recommended; add
+    "env": {"CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"} to settings.json)
+[B] Use subagents sequentially (saves tokens, no parallelism, rebuild context per unit)
+[C] Fall back to single-agent spec-coding-skill
+```
+
+When the user chooses B: still proceed N0→N6, but in N3 cancel read-only overlap, run everything serialized, report back to `.team/<run>/verdicts/<unit>.json`, and write to `decisions.md`. When the user chooses C, this skill terminates immediately.
+
+### User insists on forming a team for XS/S
+
+Record in `decisions.md`:
 
 ```markdown
-## D-<NNN> 用户覆盖 N0 分级
+## D-<NNN> User overrides N0 sizing
 
 - trigger: user_override
-- decision: 用户在 [XS/S] 需求上要求组队
-- context: N0 判定为 [XS/S]，已告知 3–10× token 成本
+- decision: user requested a team for a [XS/S] requirement
+- context: N0 rated [XS/S]; the 3–10× token cost was communicated
 - approved_by: user
 ```
 
-按最小团队执行：`spec-executor` + `spec-reviewer`，科学通道全关，N3 规模写 `2`。
+Execute with a minimal team: `spec-executor` + `spec-reviewer`, science channel fully off, N3 size `2`.
 
-## 完成标志
+## Completion criteria
 
-- `generated/init.md` 含 `## N0 前置判定`，所有字段非空。
-- `.team/<req>/flow.json` 存在，`mission=planning`，`branch` 非空，`science_gate` 布尔值与用户选项一致。
-- 退回单人时：不创建 `flow.json`、不建分支、不 spawn。
+- `generated/init.md` contains `## N0 Precheck Determination`, all fields non-empty.
+- `.team/<run>/flow.json` exists, `mission=planning`, `branch` non-empty, `science_gate` booleans match the user's option.
+- When falling back to single agent: no `flow.json`, no branch, no spawn.

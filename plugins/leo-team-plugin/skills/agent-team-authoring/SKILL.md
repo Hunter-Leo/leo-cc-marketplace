@@ -1,125 +1,140 @@
 ---
 name: agent-team-authoring
-description: 设计与编写多 agent 团队（agent team）的方法论元技能。当用户说"设计一个 agent 团队"、"写一个多 agent 工作流"、"team authoring"、"角色怎么分"、"要不要组队"、"这个任务需要几个 agent"、"帮我拆一下 agent 角色"时使用。不绑定任何具体业务域，只回答四件事：该不该组队、按什么切分、每个角色卡怎么写、约束放在哪一层。若用户只是要完成一件具体工作而非设计团队，不要触发本技能。
+description: "This skill should be used when the user asks to design an agent team, write a multi-agent workflow, split roles, decide whether to form a team, or choose which enforcement layer to use, because it answers only whether to form a team, how to split it, how to write each role card, and where to place constraints, and it should not be used when the user merely wants one specific piece of work completed rather than a team design."
 ---
 
 # Agent Team Authoring
 
-写团队不是写角色。角色写得好但团队结构错了，结果是四个 agent 各自正确地做错事。
+Writing a team is not writing roles. If the roles are well written but the team structure is wrong, the result is four agents each correctly doing the wrong thing.
 
-本技能只输出"设计"，不产出被设计团队的业务产物。与 spec-coding 系列共享底层事实源：六条不变量见 `../spec-coding-team-skill/references/essence.md`，全员纪律见 `../spec-coding-team-skill/references/rails.md`。本技能不重复定义它们。
+This skill outputs only "design"; it does not produce the business artifacts of the designed team. It shares the same underlying source of truth with the spec-coding family: the six invariants are in `../spec-coding-team-skill/references/essence.md`, and the all-hands discipline is in `../spec-coding-team-skill/references/rails.md`. This skill does not redefine them.
 
-## 1. 写团队前的三问
+## 1. Three Questions Before Writing a Team
 
-任何组队请求先过三问，输出三选一判定。**必须写理由**，没有理由的判定视为未完成。
+Every team request must first pass the three questions, producing one of three verdicts. **You must write the reason**; a verdict without a reason counts as incomplete.
 
-| # | 问题 | 判"是"的依据 | 判"否"的结果 |
+| # | Question | Basis for "yes" | Result if "no" |
 |---|---|---|---|
-| Q1 | **独立性**：这些工作能否拆成互不依赖、可分别验证的单元？ | 每个单元有自己的验收标准，且失败互不传染 | `single_session` |
-| Q2 | **观点冲突**：是否存在需要被真正反驳的决策，而不是可以并行完成的劳动？ | 有至少一个"结论可能被推翻"的判断（选型、方案、完成度） | `workflow` |
-| Q3 | **是否值得拆**：协调成本是否小于"一个 context 装不下"的损失？ | 单个 context 无法容纳全部输入+产物+验证 | `workflow` |
+| Q1 | **Independence**: Can this work be split into mutually independent, separately verifiable units? | Each unit has its own acceptance criteria, and failures do not infect each other | `single_session` |
+| Q2 | **Conflict of viewpoints**: Are there decisions that need to be genuinely challenged, rather than labor that can be completed in parallel? | There is at least one judgment whose "conclusion may be overturned" (technology choice, approach, completeness) | `workflow` |
+| Q3 | **Is it worth splitting**: Is the coordination cost less than the loss of "one context cannot hold it"? | A single context cannot accommodate all inputs + artifacts + verification | `workflow` |
 
-输出格式固定为一行：
+The output format is fixed to one line:
 
 ```
-结论: agent_teams | workflow | single_session — 理由: <一句话，指出是哪一问定的>
+Conclusion: agent_teams | workflow | single_session — reason: <one sentence, pointing to which question decided it>
 ```
 
-三种输出的含义：
+Meanings of the three outputs:
 
-- `single_session` — 一个 agent 顺序完成。不建团队、不建 mailbox、不写角色卡。
-- `workflow` — 单 agent + 明确的阶段与产物，用脚本或顺序流程串起来。不加并行、不加反驳角色。
-- `agent_teams` — 多 agent 并行，且至少包含一个**不为实现服务**的角色（反驳 / 验证 / 调研）。
+- `single_session` — one agent completes it sequentially. No team, no mailbox, no role cards.
+- `workflow` — a single agent + explicit phases and artifacts, chained by scripts or a sequential process. No added parallelism, no adversary role.
+- `agent_teams` — multiple agents in parallel, including at least one role that **does not serve implementation** (adversary / verification / research).
 
-## 2. 四触发条件
+## 2. Four Trigger Conditions
 
-只有满足任一条件才值得组队；一条都不满足就退回 `workflow`。这是为了防止"为了用团队而组队"。
+Only when any condition is met is a team worth forming; if none is met, fall back to `workflow`. This prevents "forming a team for the sake of using a team".
 
-| 触发条件 | 判据 | 若缺失会怎样 |
+| Trigger condition | Criterion | What happens if missing |
 |---|---|---|
-| **一个 context 装不下** | 输入 + 产物 + 验证证据超出单次上下文预算 | 后期只能凭记忆工作，静默丢失约束 |
-| **需要真正不同的工具面与行为约束** | 两个角色的可写路径、可用工具、禁忌必须不同 | 同一套约束下写出的"多个角色"只是同一视角的复读 |
-| **可并行且 wall-clock 重要** | 单元之间无写冲突，且总时长是目标 | 并行只增加协调成本，不减少时间 |
-| **需要未受污染的第二意见** | 需要一个没看过实现推理过程的判断者 | 自评会继承自己的错误假设，评审变成确认偏误 |
+| **One context cannot hold it** | inputs + artifacts + verification evidence exceed a single context budget | later work can only rely on memory, silently losing constraints |
+| **Genuinely different tool surfaces and behavioral constraints are needed** | two roles' writable paths, available tools, and prohibitions must differ | "multiple roles" written under the same set of constraints are just the same viewpoint repeated |
+| **Parallelizable and wall-clock matters** | no write conflicts between units, and total duration is the goal | parallelism only adds coordination cost, it does not reduce time |
+| **An uncontaminated second opinion is needed** | someone who has not seen the implementation reasoning process is needed to judge | self-review inherits its own wrong assumptions; review becomes confirmation bias |
 
-注意最后一条：第二意见的价值来自"没被污染"，不是来自"多一个 agent"。让评审者读作者的推理过程，等于污染它。
+Note the last one: the value of a second opinion comes from being "uncontaminated", not from "one more agent". Letting the Adversary read the author's reasoning process is contamination.
 
-## 3. 按验证方式分解角色
+## 3. Decompose Roles by Verification Method
 
-**不要按技术层分解**（前端 / 后端 / 测试 / 运维）。这是官方点名的 problem-centric 反模式：它按"问题长什么样"切，而不是按"产物如何被验证"切。
+**Do not decompose by technical layer** (frontend / backend / test / ops). This is the officially named problem-centric anti-pattern: it splits by "what the problem looks like", not by "how the artifact is verified".
 
-正确的切分方式：先问"这个角色的产物，用什么方式判定它成立？"——同一验证方式的工作才归入同一 archetype。
+The correct way: first ask "by what means is this role's artifact judged to hold?" — only work with the same verification method belongs to the same archetype.
 
-| archetype | 一句话判据 | 典型产物 | 核心工具面 |
+| archetype | One-line criterion | Typical artifacts | Core tool surface |
 |---|---|---|---|
-| 只协调 | 自己不改产物，只切分、调度、裁决 | 计划、任务表、裁决记录 | 计划文件 + SendMessage |
-| 能跑 | 产物是可执行物，"能跑"即验收条件 | 代码、脚本、可运行配置 | 写源码 + 执行 |
-| 可反驳 | 有否决权，否决必须附证据 | findings（带 severity） | 只读 + 执行 + 写 findings |
-| 有出处 | 每个结论附可核查来源 | research.md | 检索/抓取 + 写 research |
-| 讲得通 | 把系统讲成可检查的结构 | 架构说明、权衡表 | 只读 + 写架构文档 |
-| 有模式 | 抽出可复用契约，下游能照着写 | schema、接口契约、模板 | 读写规范路径 |
-| 能用 | 只按验收标准判断，不看作者推理 | 验收报告（含命令与输出） | 执行 + 只读 + 写验收 |
+| Coordinator | does not change artifacts itself; only splits, schedules, adjudicates | plan, task table, adjudication record | plan files + SendMessage |
+| Builder | the artifact is executable, and "it runs" is the acceptance condition | code, scripts, runnable config | write source + execute |
+| Adversary | has veto power; a veto must come with evidence | findings (with severity) | read-only + execute + write findings |
+| Researcher | every conclusion comes with a verifiable source | research.md | search/fetch + write research |
+| Explainer | explains the system as an inspectable structure | architecture notes, tradeoff table | read-only + write architecture docs |
+| Contract Designer | extracts reusable contracts that downstream can implement against | schema, interface contract, template | read/write spec paths |
+| Verifier | judges only by acceptance criteria, ignoring the author's reasoning | acceptance report (with command and output) | execute + read-only + write verification |
 
-硬规则：**一个角色只能属于一个 archetype**。完整定义、失败方式与反例见 `references/archetypes.md`。
+Hard rule: **a role can belong to only one archetype**. For full definitions, failure modes and counterexamples see `references/archetypes.md`.
 
-## 4. 角色卡 11 字段
+## 4. The 11 Role Card Fields
 
-每个角色写成一张卡。字段缺失 = 角色不成立，不是"以后再补"。
+Each role is written as one card. A missing field = the role is invalid, not "to be added later".
 
-| # | 字段 | 一句话要求 |
+| # | Field | One-line requirement |
 |---|---|---|
-| 1 | Identity | 一句话：你是谁、对什么负责。≤ 2 行，无履历 |
-| 2 | Lane | 可写路径 glob 清单 + 只读路径清单 |
-| 3 | Inputs | 上游产物路径 + 缺失时输出 BLOCKED |
-| 4 | Procedure | 5–9 个有序步骤，每步可观察 |
-| 5 | Prohibitions | 3–7 条明确禁止 |
-| 6 | Output contract | 落盘路径 + 固定回传格式 |
-| 7 | Done criteria | 可执行命令或阈值，不是形容 |
-| 8 | Escalation | 何时停、向谁报、报什么 |
-| 9 | Rails | 只写"见 rails.md"，不复制 |
-| 10 | Context budget | 读文件大小上限与分片策略 |
-| 11 | Anti-patterns | 3–5 条本角色特有失败方式 |
+| 1 | Identity | One sentence: who you are, what you are responsible for. ≤ 2 lines, no résumé |
+| 2 | Lane | Writable path glob list + read-only path list |
+| 3 | Inputs | Upstream artifact paths + output BLOCKED when missing |
+| 4 | Procedure | 5–9 ordered steps, each observable |
+| 5 | Prohibitions | 3–7 explicit prohibitions |
+| 6 | Output contract | Persisted path + fixed return format |
+| 7 | Done criteria | Executable commands or thresholds, not adjectives |
+| 8 | Escalation | When to stop, whom to report to, what to report |
+| 9 | Rails | Write only "see `../spec-coding-team-skill/references/rails.md`", do not copy |
+| 10 | Context budget | File read size cap and sharding strategy |
+| 11 | Anti-patterns | 3–5 failure modes specific to this role |
 
-字段定义、反面例子与长度建议见 `references/role-card-schema.md`；可复制模板见 `templates/role-card.md`。
+See `references/role-card-schema.md` for field definitions, counterexamples and length guidance; see `templates/role-card.md` for a copyable template.
 
-## 5. 强制力三层
+## 5. Three Layers of Enforcement
 
-同样的规则，写在不同层，实际约束力差一个数量级。
+The same rule, written at different layers, differs in actual binding force by an order of magnitude.
 
-| 层 | 能保证 | 不能保证 | 成本 |
+| Layer | Guarantees | Does not guarantee | Cost |
 |---|---|---|---|
-| **文本规则** | 读到了会知道 | 会被执行 | 极低 |
-| **文档结构** | 字段存在、缺失可见 | 语义正确 | 低 |
-| **hook / 脚本** | 违反即失败 | 意图合理 | 高（要写与维护代码） |
+| **Text rules** | the reader will know once they read it | it will be executed | extremely low |
+| **Document structure** | fields exist, missing ones are visible | semantic correctness | low |
+| **hook / scripts** | violation fails | the intent is reasonable | high (must write and maintain code) |
 
-社区实测数据点：把门禁写成 1648 行 SKILL 里的文本要求，四次触发测试中命中 **0/4**。文本门禁在长文档里会被稀释到接近零。这不是"写得不够醒目"的问题，是层级选错了。
+Community data point: a gate written as a text requirement in a 1648-line SKILL hit **0/4** in four trigger tests. Text gates get diluted to near zero in long documents. This is not a matter of "not writing it prominently enough"; it is choosing the wrong layer.
 
-判定表与选层方法见 `references/enforcement-ladder.md`。
+See `references/enforcement-ladder.md` for the decision table and the layer-selection method.
 
-## 6. 团队级 5 条不变量
+## 6. Five Team-Level Invariants
 
-这五条与 essence.md 的六条不同：六条管**流程**，五条管**团队运行时**。逐条规则、违反后果与机械检查见 `references/team-invariants.md`。
+These five differ from the six in `../spec-coding-team-skill/references/essence.md`: the six govern the **process**, the five govern **team runtime**. See `references/team-invariants.md` for per-rule details, consequences of violation and mechanical checks.
 
-| # | 不变量 | 一句话 |
+| # | Invariant | One sentence |
 |---|---|---|
-| T-1 | files over context | 没有落盘 = 没有发生 |
-| T-2 | own your files | 只写自己 Lane 内的路径 |
-| T-3 | liveness is receipt | 只有本 session 的 SendMessage 回执算"还活着" |
-| T-4 | keep checkpoint | 每个单元结束必须留快照 |
-| T-5 | lead coordinates | 团队级决策只有 lead 能做 |
+| T-1 | files over context | no persisted file = it never happened |
+| T-2 | own your files | write only paths within your own Lane |
+| T-3 | liveness is receipt | only a SendMessage receipt from this session counts as "alive" |
+| T-4 | keep checkpoint | a snapshot must be left at the end of every unit |
+| T-5 | lead coordinates | team-level decisions can only be made by the lead |
 
-## 7. 规模指引
+## 7. Scale Guidance
 
-| 规模 | 适用 | 说明 |
+| Scale | Applies to | Notes |
 |---|---|---|
-| **2–3** | 默认 | 一个实现 + 一个反驳/验证，或加一个协调者 |
-| **4** | 上限 | 只有出现第三类验证方式时才加 |
-| 5+ | 停止 | 先怀疑切分方式，再考虑加人 |
+| **2–3** | default | one implementation + one Adversary or one Verifier, or add a Coordinator |
+| **4** | maximum | add only when a third verification method appears |
+| 5+ | stop | first question the decomposition, then consider adding people |
 
-**协调者不计入规模**。协调者不产出业务产物，它的存在是为了让别人少互相等。
+**Coordinators do not count toward scale.** A coordinator produces no business artifacts; its existence is to make others wait on each other less.
 
-多 agent 比单 agent 多消耗 3–10× token（官方数据）。每加一个角色，先回答"它替代了哪一次自评"。
+A multi-agent setup consumes 3–10× more tokens than a single agent (official data). Before adding each role, first answer "which self-review does it replace?"
 
-## 8. 交付前自检
+## 8. Reference Map
 
-写完团队设计后，逐条走 `checklists/authoring-checklist.md`。12 条中任何一条拿不出**可验证证据**，设计就还没完成——"考虑过了"不是证据。
+| File | Read when |
+|---|---|
+| `references/anti-patterns.md` | checking a draft design against known failure modes before delivery |
+| `references/archetypes.md` | assigning each role to exactly one of the seven archetypes |
+| `references/comms-and-handoff.md` | writing the return contract, the spawn primer, or the resume protocol |
+| `references/enforcement-ladder.md` | deciding whether a rule belongs at L1 text, L2 structure, or L3 hook |
+| `references/role-card-schema.md` | writing or reviewing an individual role card |
+| `references/state-machines.md` | wiring mission and work-unit transitions into `flow.sh` |
+| `references/team-invariants.md` | checking the five team-runtime invariants and their mechanical checks |
+| `templates/primer.md` | preparing the ≤ 6000-character spawn dossier |
+| `templates/role-card.md` | starting a new role card from a copyable skeleton |
+| `checklists/authoring-checklist.md` | running the final 12-item gate before spawn |
+
+## 9. Pre-Delivery Self-Check
+
+After writing the team design, walk through `checklists/authoring-checklist.md` item by item. If any of the 12 items cannot produce **verifiable evidence**, the design is not complete — "considered it" is not evidence.

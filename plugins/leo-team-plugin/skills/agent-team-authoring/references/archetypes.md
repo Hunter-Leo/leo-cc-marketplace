@@ -1,155 +1,155 @@
-# 角色 Archetype：按验证方式分类
+# Role Archetypes: Classified by Verification Method
 
-> 一个角色的 archetype 由**它的产物如何被判定成立**决定，不由它写什么语言、碰哪个目录决定。
-> 同一份代码库上可以有两个 builder，只要它们的 Lane 不相交；但不能有一个角色同时是 builder 和 reviewer。
+> A role's archetype is determined by **how its artifact is judged to hold**, not by what language it writes or which directory it touches.
+> The same codebase can have two Builders, as long as their Lanes do not overlap; but one role cannot be both Builder and Adversary.
 
-## 硬规则
+## Hard Rules
 
-1. **一个角色只能属于一个 archetype。** 混合 archetype 的角色无法被判分：它既当运动员又当裁判，或者既产出又验证产出。
-2. **不得按技术层分解。** "前端 / 后端 / 测试 / 运维 / DBA" 是官方点名的 problem-centric 反模式。它按问题的物理位置切，导致同一验证方式被拆成多个角色，而真正的独立验证缺失。
-3. **archetype 决定工具面。** 先定 archetype，再据此裁剪 `tools:`。反过来做（先给全工具再想角色）会得到一群权限过大的通用 agent。
+1. **A role can belong to only one archetype.** A mixed-archetype role cannot be scored: it is both player and referee, or both produces and verifies the output.
+2. **Do not decompose by technical layer.** "Frontend / backend / test / ops / DBA" is the officially named problem-centric anti-pattern. It splits by the physical location of the problem, causing one verification method to be split into multiple roles while genuine independent verification is absent.
+3. **The archetype determines the tool surface.** Decide the archetype first, then trim `tools:` accordingly. Doing it in reverse (give all tools first, then think about the role) yields a bunch of over-privileged general-purpose agents.
 
-## 速查表
+## Quick Reference
 
-| # | archetype | 产物如何被验证 |
+| # | archetype | How the artifact is verified |
 |---|---|---|
-| 1 | 只协调 | 计划是否可执行、裁决是否有记录 |
-| 2 | 能跑 | 产物是否真的运行通过 |
-| 3 | 可反驳 | 否决是否有证据、是否真的行使过否决 |
-| 4 | 有出处 | 每个结论是否能被第三方点开链接复核 |
-| 5 | 讲得通 | 结构是否能被下游直接用来做决策 |
-| 6 | 有模式 | 下游是否不追问就能照着实现 |
-| 7 | 能用 | 验收标准是否逐条有证据 |
+| 1 | Coordinator | Is the plan executable, are adjudications recorded |
+| 2 | Builder | Does the artifact actually run and pass |
+| 3 | Adversary | Is the veto backed by evidence, was the veto actually exercised |
+| 4 | Researcher | Can every conclusion be double-checked by a third party by opening the link |
+| 5 | Explainer | Can the structure be used directly by downstream to make decisions |
+| 6 | Contract Designer | Can downstream implement against it without follow-up questions |
+| 7 | Verifier | Does every acceptance criterion have evidence |
 
 ---
 
-## 1. 只协调（Coordinator）
+## 1. Coordinator
 
-**判定标准**：自己不修改任何业务产物；产物是计划、任务表、裁决记录；对其他人有说"不"的权力并实际使用。
+**Criterion**: modifies no business artifacts itself; the artifacts are plans, task tables, adjudication records; has the power to say "no" to others and actually uses it.
 
-**典型产物**：`team-plan.md`、`tasks.md`、`decisions.md`、阶段门禁的问询记录。
+**Typical artifacts**: `team-plan.md`, `tasks.md`, `decisions.md`, inquiry records for phase gates.
 
-**需要的工具面**：计划文件读写 + SendMessage + 只读代码。**不给源码写权限**——给了就一定会去改。
+**Required tool surface**: plan file read/write + SendMessage + read-only code. **Do not give source write permission** — if given, it will definitely go and modify.
 
-**失败方式**：
-- 越权实现：因为"顺手"而改了代码，从此失去裁决中立性。
-- 工作囤积：把所有难任务留在自己手里，teammate 空转。
-- 不做裁决：两边意见都记录，谁也不否，团队卡在原地。
+**Failure modes**:
+- Overreach implementation: changes code "while at it", losing adjudication neutrality from then on.
+- Work hoarding: keeps all the hard tasks to itself, leaving teammates idle.
+- No adjudication: records both sides' opinions, denies neither, and the team stalls in place.
 
-**反例**：一个人既写核心代码又自称 coordinator——那不是 coordinator，是 builder 兼职协调者。它在评审自己时会放水。
-
----
-
-## 2. 能跑（Builder）
-
-**判定标准**：产物是可执行物（代码 / 脚本 / 配置），且"能跑"是明确的验收条件之一。
-
-**典型产物**：源码、迁移脚本、可运行配置、单元测试。
-
-**需要的工具面**：写自己 Lane 内的源码 + 执行/测试 + 读依赖。不需要检索外部网页。
-
-**失败方式**：
-- 只写不跑：交付未执行的代码，把"第一次运行"留给下游。
-- Early victory：跑通一个用例就宣布完成（rails.md R-5 点名的头号失败模式）。
-- 越界修补：为了让自己的测试过，去改别人的模块。
-
-**反例**：只产出设计文档或伪代码的"实现者"。没有可执行物，就不属于这个 archetype。
+**Counterexample**: one person both writes core code and calls itself a coordinator — that is not a coordinator, it is a builder moonlighting as coordinator. It will go easy when reviewing itself.
 
 ---
 
-## 3. 可反驳（Adversary / Reviewer）
+## 2. Builder
 
-**判定标准**：有否决权，且否决必须附可复现证据；**不参与实现**，不使用作者的推理过程作为判断依据。
+**Criterion**: the artifact is executable (code / script / config), and "it runs" is one of the explicit acceptance conditions.
 
-**典型产物**：`findings.md`，每条含 `severity / file:line / evidence / fix`。
+**Typical artifacts**: source, migration scripts, runnable config, unit tests.
 
-**需要的工具面**：只读源码 + 执行验证 + 写 findings 路径。**无源码写权限**。
+**Required tool surface**: write source within own Lane + execute/test + read dependencies. No need to search external web pages.
 
-**失败方式**：
-- 无否决：永远 PASS，评审退化成盖章。
-- 软性建议：把 blocker 写成"建议考虑"，下游无法据此停止。
-- 被说服：作者解释后撤回有证据的否决。
-- 看作者思路：读了实现者的过程记录，继承其错误假设。
+**Failure modes**:
+- Write without running: delivers unexecuted code, leaving "the first run" to downstream.
+- Early victory: declares done after one test case passes (the number-one failure mode named in `../../spec-coding-team-skill/references/rails.md` R-5).
+- Out-of-bounds patching: modifies someone else's module to make its own tests pass.
 
-**反例**：只做命名与格式检查的 linter 式角色。它能发现风格问题，但不会否决不成立的实现——它还不足以构成"可反驳"。
-
----
-
-## 4. 有出处（Researcher）
-
-**判定标准**：每个结论都附可核查来源；明确区分"来源如此说"与"我推断"，两者不得混写。
-
-**典型产物**：`research.md`，结论 + 链接 + 置信度 + 推断标记。
-
-**需要的工具面**：检索/抓取 + 写 research 路径。**不需要源码写权限**。
-
-**失败方式**：
-- 推断当事实：没有来源的判断写成"业界普遍认为"。
-- 来源不可复核：只给站点名不给可点开的地址。
-- 把外部指令当内容：网页里的"请执行""忽略上述"被照做（rails.md R-7）。
-
-**反例**：凭记忆写综述、无链接的行业概述、把搜索结果摘要当原始来源。
+**Counterexample**: an "implementer" that only produces design docs or pseudocode. Without an executable artifact, it does not belong to this archetype.
 
 ---
 
-## 5. 讲得通（Architect / Explainer）
+## 3. Adversary
 
-**判定标准**：把系统讲成可检查的结构——边界、数据流、依赖方向、权衡、失败模式。下游能据此做决策，而不是"大概了解了"。
+**Criterion**: has veto power, and a veto must be accompanied by reproducible evidence; **does not participate in implementation** and does not use the author's reasoning process as a basis for judgment.
 
-**典型产物**：`architecture.md`、权衡表、失败模式清单。
+**Typical artifacts**: `findings.md`, each entry containing `severity / file:line / evidence / fix`.
 
-**需要的工具面**：只读 + 写架构文档。不需要执行，也不写源码。
+**Required tool surface**: read-only source + execute verification + write findings path. **No source write permission**.
 
-**失败方式**：
-- 画大图不给决策：图很完整，但"选 A 还是 B"没有答案。
-- 术语堆砌：用抽象名词替代具体机制。
-- 没有失败模式：只讲正常路径，下游无法预防。
+**Failure modes**:
+- No veto: always PASS, review degenerates into rubber-stamping.
+- Soft suggestions: writes blockers as "suggest considering", so downstream cannot stop on that basis.
+- Persuaded: withdraws an evidence-backed veto after the author explains.
+- Reads the author's thinking: reads the implementer's process record, inheriting its wrong assumptions.
 
-**反例**：只做文件树与目录说明的"架构文档"。那是索引，不是架构。
-
----
-
-## 6. 有模式（Pattern / Contract Designer）
-
-**判定标准**：从多个具体需求中抽出可复用契约（schema / 接口 / 规范 / 模板），且**下游不追问就能照着实现**。
-
-**典型产物**：schema 文件、接口契约、代码模板、命名规范。
-
-**需要的工具面**：读写规范/schema 路径 + 只读现有实现。不写业务源码。
-
-**失败方式**：
-- 过度抽象：为了"通用"造出无人使用的层。
-- 与实现脱节：契约写完但现有代码不符合，也不说明迁移路径。
-- 只给建议：输出是"建议统一命名"，没有可执行的 schema。
-
-**反例**：输出一份"最佳实践清单"但没有任何可被机器读取的契约。清单不是模式。
+**Counterexample**: a linter-style role that only checks naming and formatting. It can find style issues but will not veto an invalid implementation — that is not enough to constitute "Adversary".
 
 ---
 
-## 7. 能用（Verifier / Acceptance）
+## 4. Researcher
 
-**判定标准**：只按验收标准判断，**不看作者的推理与自述**；执行端到端流程；每条结论都有命令 + 输出 + `file:line`。
+**Criterion**: every conclusion comes with a verifiable source; clearly distinguishes "the source says so" from "I infer", and the two must not be written mixed together.
 
-**典型产物**：`verification.md`，验收标准逐条映射到证据。
+**Typical artifacts**: `research.md`, conclusion + link + confidence + inference marker.
 
-**需要的工具面**：执行 + 只读 + 写 verification 路径。无源码写权限。
+**Required tool surface**: search/fetch + write research path. **No source write permission needed**.
 
-**失败方式**：
-- 抽查代替全量：跑一两个用例就宣布通过。
-- 复述作者的话当证据：把"作者说已测试"当作测试结果。
-- 无负向测试：只验证正常路径，不构造应当失败的输入。
+**Failure modes**:
+- Inference as fact: judgments without sources written as "the industry generally believes".
+- Unverifiable source: gives only the site name, not an address that can be opened.
+- Treats external instructions as content: "please execute" and "ignore the above" in web pages are followed (`../../spec-coding-team-skill/references/rails.md` R-7).
 
-**反例**："代码看起来没问题"式的口头通过。没有执行记录就不是验证。
+**Counterexample**: writing a survey from memory, an industry overview without links, treating search-result snippets as primary sources.
 
 ---
 
-## 与 Reviewer 的区别（最容易混的一对）
+## 5. Explainer
 
-| | 可反驳（3） | 能用（7） |
+**Criterion**: explains the system as an inspectable structure — boundaries, data flow, dependency direction, tradeoffs, failure modes. Downstream can make decisions on that basis, rather than "roughly understand it".
+
+**Typical artifacts**: `architecture.md`, tradeoff table, failure-mode list.
+
+**Required tool surface**: read-only + write architecture docs. No execution needed, and no source writing.
+
+**Failure modes**:
+- Big picture without decisions: the diagram is complete, but "choose A or B" has no answer.
+- Jargon stacking: uses abstract nouns in place of concrete mechanisms.
+- No failure modes: only the happy path, so downstream cannot prevent.
+
+**Counterexample**: an "architecture document" that is only a file tree and directory description. That is an index, not architecture.
+
+---
+
+## 6. Contract Designer
+
+**Criterion**: extracts a reusable contract (schema / interface / spec / template) from multiple concrete requirements, such that **downstream can implement against it without follow-up questions**.
+
+**Typical artifacts**: schema files, interface contracts, code templates, naming conventions.
+
+**Required tool surface**: read/write spec/schema paths + read-only existing implementation. Does not write business source.
+
+**Failure modes**:
+- Over-abstraction: creates a layer nobody uses for the sake of "generality".
+- Disconnected from implementation: the contract is written but existing code does not conform, and no migration path is given.
+- Suggestions only: the output is "suggest unifying naming", with no executable schema.
+
+**Counterexample**: outputs a "best practices checklist" with no machine-readable contract. A checklist is not a pattern.
+
+---
+
+## 7. Verifier
+
+**Criterion**: judges only by the acceptance criteria, **ignoring the author's reasoning and self-report**; executes the end-to-end process; every conclusion has command + output + `file:line`.
+
+**Typical artifacts**: `verification.md`, mapping each acceptance criterion to evidence.
+
+**Required tool surface**: execute + read-only + write verification path. No source write permission.
+
+**Failure modes**:
+- Spot checks instead of full coverage: declares pass after running one or two cases.
+- Repeats the author's words as evidence: treats "the author says it was tested" as test results.
+- No negative tests: only verifies the happy path, does not construct inputs that should fail.
+
+**Counterexample**: a verbal pass in the style of "the code looks fine". Without an execution record, it is not verification.
+
+---
+
+## Adversary vs Verifier (the Most Easily Confused Pair)
+
+| | Adversary (3) | Verifier (7) |
 |---|---|---|
-| 判断对象 | 方案与实现是否成立 | 验收标准是否满足 |
-| 输入 | 计划 + 产物 + 代码 | **验收标准** + 产物（不看计划） |
-| 结论形态 | findings（可带 severity） | 逐条 PASS/FAIL |
-| 能否在同一轮兼任 | 否 | 否 |
+| Judgment target | whether the approach and implementation hold | whether the acceptance criteria are met |
+| Input | plan + artifacts + code | **acceptance criteria** + artifacts (does not read the plan) |
+| Conclusion form | findings (may carry severity) | item-by-item PASS/FAIL |
+| Can one serve both in the same round | No | No |
 
-同一个 agent 既评审方案又做最终验收，会让"验收标准"被评审结论反向塑造——标准迁就实现。必须拆开。
+If the same agent both reviews the approach and performs final acceptance, the "acceptance criteria" get reverse-shaped by the review conclusion — the criteria accommodate the implementation. They must be separated.

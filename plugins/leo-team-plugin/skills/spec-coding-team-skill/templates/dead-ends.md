@@ -1,16 +1,16 @@
 # Dead Ends
 
-> 用途：记录已失败且不应重试的尝试。
-> **恢复会话后第一件事：读本文件。** 新 teammate 必须先核对此表再动手。
-> 只追加，不删除；失败尝试同样是证据（essence I-2）。
+> Purpose: record attempts that have failed and should not be retried.
+> **First thing after resuming a session: read this file.** New teammates must check this table before acting.
+> Append only, never delete; failed attempts are evidence too (essence I-2).
 
-| ID | 尝试过什么 | 为什么失败 | 证据 | 不要再试的理由 |
+| ID | What was tried | Why it failed | Evidence | Reason not to retry |
 |---|---|---|---|---|
-| DE-01 | <具体做法：文件/命令/参数> | <根本原因> | <命令 + 输出 / file:line> | <在什么条件下仍然无效> |
+| DE-01 | <specific approach: file/command/parameters> | <root cause> | <command + output / file:line> | <under what conditions it still fails> |
 
-## 使用规则
+## Usage rules
 
-- 开始任何单元前通读本表；命中相似做法时，先在 progress.md 记录「已核对 DE-xx」，再决定是否换路。
-- 新增条目必须附证据，不接受「感觉不行」。
-- 条件变化后可能有效的条目，追加 `DE-xx-revisit` 说明变化，不修改原条目。
-- 同一条 dead end 被第二次误试时，在对应 progress 行标注 `repeat: DE-xx`，供 PM 追责与改进启动 prompt。
+- Read this table before starting any unit; when a similar approach is hit, first record "checked DE-xx" in progress.md, then decide whether to change course.
+- New entries must include evidence; "it feels wrong" is not accepted.
+- For an entry that might work after conditions change, append `DE-xx-revisit` explaining the change; do not modify the original entry.
+- When the same dead end is mistakenly retried a second time, annotate the corresponding progress row with `repeat: DE-xx`, so the PM can hold accountable and improve the launch prompt.

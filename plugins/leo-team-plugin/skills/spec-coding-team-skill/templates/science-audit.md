@@ -1,57 +1,58 @@
 # Science Audit
 
-> 用途：独立验证研究结论与数值正确性的审计记录，由 auditor 独占写入。
-> auditor 不参与实现，也不读实现者的推理过程，只看产物与证据（essence I-5）。
-> 发现问题以 `F-AUD-*` 记入 findings.md，不在本文件展开讨论。
+> Purpose: audit record for independently verifying research conclusions and numerical correctness, written exclusively by the auditor.
+> The auditor does not participate in implementation and does not read the implementer's reasoning; it looks only at artifacts and evidence (essence I-5).
+> Issues found are recorded as `F-AUD-*` in findings.md and are not discussed at length in this file.
 
-## 元信息
+## Metadata
 
 | Field | Value |
 |---|---|
 | audit_id | <AUD-001> |
 | auditor | <name> |
 | round | <N> |
-| scope | <被审对象：research.md R-x / 模块路径> |
+| scope | <audit target: research.md R-x / module path> |
 | audited_at | <YYYY-MM-DD HH:MM> |
 
-## 1. 脚本先行区
+## 1. Script-first section
 
-先跑确定性脚本，再人工判断。逐条记录实际命令与退出码，不得只写「已运行」。
+Run deterministic scripts first, then make manual judgments. Record the actual command and exit code for each item; do not just write "already run".
 
-| # | 脚本 / 命令 | 输入 | Exit code | 关键输出 | 结果 |
+| # | Script / command | Input | Exit code | Key output | Result |
 |---|---|---|---|---|---|
-| 1 | <如 uv run pytest tests/science -q> | <路径> | <0> | <N passed> | <PASS \| FAIL> |
-| 2 | <如 python scripts/check_units.py> | <路径> | <0> | <all units consistent> | <PASS \| FAIL> |
-| 3 | <如 python scripts/verify_formula.py> | <路径> | <1> | <mismatch at term 3> | <FAIL> |
+| 1 | <e.g. uv run pytest tests/science -q> | <path> | <0> | <N passed> | <PASS \| FAIL> |
+| 2 | <e.g. python scripts/check_units.py> | <path> | <0> | <all units consistent> | <PASS \| FAIL> |
+| 3 | <e.g. python scripts/verify_formula.py> | <path> | <1> | <mismatch at term 3> | <FAIL> |
 
-- 未跑脚本的原因：<无 / 说明为什么不可能跑>
-- 脚本本身的可信度问题：<无 / 说明>
-- 跳过的检查：<无 / 跳过了什么及原因（rails R-6）>
+- Reason no scripts were run: <none / explain why running was impossible>
+- Credibility issues with the scripts themselves: <none / explain>
+- Skipped checks: <none / what was skipped and why (rails R-6)>
 
-## 2. 检查矩阵
+## 2. Check matrix
 
-固定五项，不得增删。
+Fixed five items; do not add or remove any.
 
-| 检查项 | 方法 | 结果 | 证据 |
+| Check item | Method | Result | Evidence |
 |---|---|---|---|
-| 算法/公式符合性 | <逐式对照来源与实现位置> | <PASS \| FAIL \| UNVERIFIABLE> | <file:line / 来源页码> |
-| 量纲与单位 | <逐量纲推导 / 单位检查脚本> | <PASS \| FAIL \| UNVERIFIABLE> | <命令输出 / file:line> |
-| 语料代表性 | <样本来源、规模、覆盖面> | <PASS \| FAIL \| UNVERIFIABLE> | <数据路径 / 统计量> |
-| 结论可支撑性 | <结论 → 证据逐条映射> | <PASS \| FAIL \| UNVERIFIABLE> | <research.md R-n> |
-| 与文献一致性 | <与来源数值或定性结论对比> | <PASS \| FAIL \| UNVERIFIABLE> | <DOI / URL> |
+| Algorithm/formula conformance | <compare each formula against source and implementation location> | <PASS \| FAIL \| UNVERIFIABLE> | <file:line / source page number> |
+| Dimensions and units | <dimension-by-dimension derivation / unit check script> | <PASS \| FAIL \| UNVERIFIABLE> | <command output / file:line> |
+| Corpus representativeness | <sample source, scale, coverage> | <PASS \| FAIL \| UNVERIFIABLE> | <data path / statistics> |
+| Conclusion supportability | <conclusion → evidence item-by-item mapping> | <PASS \| FAIL \| UNVERIFIABLE> | <research.md R-n> |
+| Consistency with literature | <compare with source numerical or qualitative conclusions> | <PASS \| FAIL \| UNVERIFIABLE> | <DOI / URL> |
 
-## 3. UNVERIFIABLE 说明
+## 3. UNVERIFIABLE explanation
 
-判定为 UNVERIFIABLE 的检查项必填，缺一即视为审计未完成。
+Required for any check item judged UNVERIFIABLE; missing one is treated as an incomplete audit.
 
-| 检查项 | 为什么无法验证 | 需要什么证据 | 谁可提供 |
+| Check item | Why it cannot be verified | What evidence is needed | Who can provide it |
 |---|---|---|---|
-| <检查项> | <具体原因> | <证据形式与来源要求> | <role / user> |
+| <check item> | <specific reason> | <evidence format and source requirements> | <role / user> |
 
-## 4. 最终结论
+## 4. Final verdict
 
 - **Verdict**: <PASS | FAIL | UNVERIFIABLE>
-- 通过项：<列出检查项>
-- 未通过项：<列出检查项 + 对应 findings ID>
-- 是否阻塞进入下一阶段：<yes \| no，附一句理由>
-- auditor 签署：<name> @ <YYYY-MM-DD HH:MM>
+- An `UNVERIFIABLE` verdict never permits `verified`; only explicit user adjudication recorded in `decisions.md` can close it, and this file must then carry a `PASS` or a decision reference
+- Passed items: <list check items>
+- Failed items: <list check items + corresponding findings ID>
+- Blocks entering the next phase: <yes \| no, with a one-line reason>
+- Auditor signature: <name> @ <YYYY-MM-DD HH:MM>

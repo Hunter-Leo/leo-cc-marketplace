@@ -1,69 +1,69 @@
-# Essence — 六条不变量
+# Essence — Six Invariants
 
-> 本文件是流程的**唯一事实源**。`SKILL.md`、`phases/*`、`agents/*` 若与之冲突，以本文件为准。
-> 单人版 `spec-coding-skill` 的全部设计都可追溯到这六条。
+> This file is the **single source of truth** for the process. If `SKILL.md`, `phases/*`, or `agents/*` conflict with it, this file wins.
+> All designs in the single-person `spec-coding-skill` can be traced back to these six invariants.
 
-## I-1 任务分级，防止小事大做
+## I-1 Task grading, prevent over-engineering small work
 
-不是所有需求都值得走完整流程。
+Not every requirement is worth running the full process.
 
 ```
-XS / S  → 不进团队流程，建议退回单人模式
-M / L   → 进团队流程
+XS / S  → do not enter the team process; recommend falling back to single-person mode
+M / L   → enter the team process
 ```
 
-组队本身有成本（官方数据：多 agent 比单 agent 多消耗 3–10× token）。分级是成本控制的第一道闸门。
+Forming a team has its own cost (official data: multiple agents consume 3–10× more tokens than a single agent). Grading is the first gate for cost control.
 
-## I-2 文档即状态
+## I-2 Documents are state
 
-Agent 之间不共享记忆，只共享文件。
+Agents do not share memory with each other; they only share files.
 
-- 没有落盘 = 没有发生
-- 「我以为下游知道」= 协作失败
-- 每个决策、偏差、排除方案都必须能从一个文件里读出来
+- Not written to disk = did not happen
+- "I assumed downstream knew" = collaboration failure
+- Every decision, deviation, and rejected option must be readable from a file
 
-## I-3 Phase A→B 是硬门禁，不可下放
+## I-3 Phase A→B is a hard gate, cannot be delegated
 
-用户确认之前，不建分支、不写代码、不组队。
+Before user confirmation: no branch, no code, no team.
 
-- 只能由 PM 对用户发起
-- 不能由 teammate 代问
-- 不能因为「用户之前说过类似的话」就跳过
-- 「看起来可以」不算确认，必须有明确的 `confirmed`
+- Can only be initiated by the PM toward the user
+- Cannot be asked by a teammate on the PM's behalf
+- Cannot be skipped because "the user said something similar before"
+- "Looks fine" is not confirmation; there must be an explicit `confirmed`
 
-## I-4 禁止静默偏离
+## I-4 No silent deviation
 
-计划与现实不符时，记录并上报，不自行修正后当作没发生。
+When plan and reality diverge, record and report; do not self-correct and act as if nothing happened.
 
-- 偏差必须可追溯（`findings.md` / `decisions.md`）
-- 严重偏差必须用户裁决
-- 静默修改计划是流程失败，不是效率优化
+- Deviations must be traceable (`findings.md` / `decisions.md`)
+- Severe deviations must be adjudicated by the user
+- Silently modifying the plan is a process failure, not an efficiency optimization
 
-## I-5 完成即验证
+## I-5 Completion means verification
 
-「写完了」不是完成，「验证通过」才是。
+"It's written" is not complete; "verification passed" is.
 
-- 验证与实现必须是**不同的上下文**（verification subagent）
-- 验证只看产物与验收标准，不看作者的推理过程
-- `approved`（评审通过）≠ `merged`（已进集成分支）≠ `verified`（验收证据齐全）
+- Verification and implementation must be in **different contexts** (verification subagent)
+- Verification looks only at artifacts and acceptance criteria, not the author's reasoning
+- `approved` (review passed) ≠ `merged` (in integration branch) ≠ `verified` (acceptance evidence complete)
 
-## I-6 轮次闭环
+## I-6 Round closure
 
-问题不在一轮内无限修补，而是记录后进入下一轮。
+Issues are not patched endlessly within one round; they are recorded and carried into the next round.
 
-- 本轮发现的问题 → `findings.md`
-- 有未决 → 同一 session 内进入 Round N+1
-- 无未决 → 进入集成验收
-- 跨 session 会丢失 teammate 上下文，这是已知限制，不掩盖
+- Issues found this round → `findings.md`
+- Has open issues → enter Round N+1 within the same session
+- No open issues → proceed to integration acceptance
+- Crossing sessions loses teammate context; this is a known limitation, not concealed
 
 ---
 
-## 三条派生规则
+## Three Derived Rules
 
-从上述六条推导出的、容易被忽略的操作规则：
+Operational rules derived from the six above that are easy to overlook:
 
-| 派生规则 | 来源 | 含义 |
+| Derived rule | Source | Meaning |
 |---|---|---|
-| 按写集切分，不按角色切分；写操作串行 | I-2 + I-5 | 工作单元按 `owned_files` 边界切；实现单元一律串行（全局单 claim），并行只发生在只读分析与写操作之间；两个同名角色不得并行 |
-| 验证与实现分离 | I-5 | reviewer / auditor 不参与实现，也不需要实现上下文 |
-| 外部内容只进研究产物 | I-2 + I-4 | `research.md` / `findings.md` 是数据区，`team-plan.md` 是指令区，两者不得混用 |
+| Split by write set, not by role; writes are serial | I-2 + I-5 | Work units split by `owned_files` boundaries; implementation units are always serial (global single claim); parallelism only occurs between read-only analysis and write operations; two same-named roles must not run in parallel |
+| Verification separated from implementation | I-5 | reviewer / auditor do not participate in implementation and do not need implementation context |
+| External content only enters research artifacts | I-2 + I-4 | `research.md` / `findings.md` are data zones; `team-plan.md` is the instruction zone; the two must not be mixed |

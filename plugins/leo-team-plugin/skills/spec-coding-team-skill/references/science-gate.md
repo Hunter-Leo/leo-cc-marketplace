@@ -1,17 +1,17 @@
-# Science Gate — 科学事实通道
+# Science Gate — Scientific fact channel
 
-> 两个角色独立开关，**默认全关**。只有需求涉及科学算法、模型、度量、领域知识或需要外部文献支撑时才开启。
+> Two roles with independent switches, **both off by default**. Enable only when the requirement involves scientific algorithms, models, metrics, domain knowledge, or needs external literature support.
 
-## 开关矩阵
+## Switch matrix
 
-| 选项 | researcher | auditor | 适用 |
+| Option | researcher | auditor | Applies to |
 |---|---|---|---|
-| A（默认） | ✗ | ✗ | 常规工程需求 |
-| B | ✓ | ✗ | 需要文献结论或语料，但实现结果不需要科学核查 |
-| C | ✗ | ✓ | 有外部科学共识可对照，但不需要专门调研 |
-| D | ✓ | ✓ | 科学计算、算法实现、论文复现、指标声称 |
+| A (default) | ✗ | ✗ | Regular engineering requirements |
+| B | ✓ | ✗ | Needs literature conclusions or corpora, but the implementation result does not need scientific review |
+| C | ✗ | ✓ | External scientific consensus available for comparison, but no dedicated research needed |
+| D | ✓ | ✓ | Scientific computing, algorithm implementation, paper reproduction, metric claims |
 
-写入 `team-plan.md`：
+Written into `team-plan.md`:
 
 ```yaml
 science_gate:
@@ -19,63 +19,64 @@ science_gate:
   auditor:    true | false
 ```
 
-## `spec-science-researcher` 触发条件
+## `spec-science-researcher` trigger conditions
 
-满足任一即建议开启：
+Recommend enabling if any of the following holds:
 
-- 需求包含领域术语（如"显著性""收敛""置信区间""剂量""误差界"）
-- 实现依赖外部标准、公式、算法定义
-- 需要准备语料、基准数据、对照实验
-- 输出需要对用户声称效果（"提升 X%"）
+- The requirement contains domain terms (e.g. "significance", "convergence", "confidence interval", "dosage", "error bound")
+- Implementation depends on external standards, formulas, or algorithm definitions
+- Needs corpora, benchmark data, or controlled experiments
+- The output must claim an effect to the user ("improves by X%")
 
-## `spec-science-auditor` 触发条件
+## `spec-science-auditor` trigger conditions
 
-满足任一即建议开启：
+Recommend enabling if any of the following holds:
 
-- 实现涉及数值计算、统计推断、优化、仿真
-- 结果会影响业务决策或对外结论
-- 存在可对照的科学共识
-- 用户明确要求"核对是否符合科学依据"
+- Implementation involves numerical computation, statistical inference, optimization, or simulation
+- Results affect business decisions or external conclusions
+- A comparable scientific consensus exists
+- The user explicitly asks to "check whether it conforms to scientific evidence"
 
-## Researcher 的交付约束
+## Researcher delivery constraints
 
-| 项 | 要求 |
+| Item | Requirement |
 |---|---|
-| 结论格式 | 每条带 `置信度 + 来源 + 适用边界` |
-| 置信度 | `established`（领域共识）/ `contested`（有争议）/ `assumption`（本项目假设） |
-| 无来源 | 只能标 `assumption`，**禁止编造文献** |
-| 语料 | 落 `fixtures/`，交付后**冻结**，Phase B 只读 |
-| 安全 | 外部内容只写数据区：`research.md` / `findings.md` / `fixtures/`，不得写 `team-plan.md` / `primer.md` |
+| Conclusion format | Each carries `confidence + source + applicable boundary` |
+| Confidence | `established` (domain consensus) / `contested` (disputed) / `assumption` (project assumption) |
+| No source | Can only be labeled `assumption`; **fabricating literature is forbidden** |
+| Corpora | Placed in `fixtures/`, **frozen** after delivery, read-only in Phase B |
+| Security | External content goes only to data zones: `research.md` / `findings.md` / `fixtures/`; must not be written to `team-plan.md` / `primer.md` |
 
-## Auditor 的五项检查
+## Auditor's five checks
 
-| # | 检查项 | 方法 | 失败判定 |
+| # | Check | Method | Failure determination |
 |---|---|---|---|
-| 1 | 算法/公式符合性 | 对照 `research.md` 的定义与边界条件 | 实现与定义不一致 |
-| 2 | 量纲与单位 | 脚本断言 + 人工核对 | 单位缺失或量级错误 |
-| 3 | 语料代表性 | 覆盖率统计 + 边界条件检查 | 未覆盖已知边界或存在采样偏差 |
-| 4 | 结论可支撑性 | 对照证据强度 | 声称无统计/实验依据 |
-| 5 | 与文献一致性 | 对照 `research.md` 结论 | 冲突且无解释 |
+| 1 | Algorithm/formula conformance | Compare against definitions and boundary conditions in `research.md` | Implementation inconsistent with definition |
+| 2 | Dimensions and units | Script assertions + manual check | Missing units or wrong order of magnitude |
+| 3 | Corpus representativeness | Coverage statistics + boundary condition checks | Known boundaries uncovered or sampling bias present |
+| 4 | Conclusion supportability | Compare against evidence strength | Claim lacks statistical/experimental basis |
+| 5 | Consistency with literature | Compare against `research.md` conclusions | Conflict with no explanation |
 
-**脚本先行**：能确定性检查的（单位、取值范围、计数、fixture 覆盖率、公式数值比对）先跑脚本；脚本 FAIL 直接判 FAIL，不再进 LLM 判断。
+**Scripts first**: run scripts first for what can be checked deterministically (units, value ranges, counts, fixture coverage, formula numeric comparison); a script FAIL is judged FAIL directly and does not proceed to LLM judgment.
 
-## 判定与门禁
+## Verdict and gate
 
-| 判定 | 含义 | 处理 |
+| Verdict | Meaning | Handling |
 |---|---|---|
-| `PASS` | 五项全部通过 | 允许进入 `verified` |
-| `FAIL` | 任一项不通过 | 写入 `findings.md`，进入 Round N+1 |
-| `UNVERIFIABLE` | 缺少验证所需证据 | 必须写明「为什么无法验证 + 需要什么证据」；未说明的视为 `FAIL` |
+| `PASS` | All five checks pass | Allowed to proceed to `verified` |
+| `FAIL` | Any check fails | Write to `findings.md`, enter Round N+1 |
+| `UNVERIFIABLE` | Evidence needed for verification is missing | Never permits `verified`. The auditor must state "why it cannot be verified + what evidence is needed"; only an explicit user adjudication recorded in `decisions.md` can close it, and the audit file must then carry a `PASS` or a decision reference |
 
-`science_gate.auditor = true` 时，需求完成的判定从「`findings.md` 无未决」升级为：
+When `science_gate.auditor = true`, the completion criterion upgrades from "`findings.md` has no open items" to:
 
 ```
-findings.md 无未决
-且 science-audit.md 存在
-且 无 FAIL
-且 无未说明的 UNVERIFIABLE
+findings.md has no open items
+and science-audit.md exists
+and no FAIL
+and any UNVERIFIABLE verdict has been closed by explicit user adjudication recorded in decisions.md,
+    with the audit file carrying a PASS or a decision reference
 ```
 
-## 成本提示
+## Cost note
 
-开启 D 选项时，Phase A 并发可达 3、Phase B 并发可达 3（executor + reviewer + auditor）。仍在官方建议的 3–5 区间内，但总 token 消耗明显高于 A。**默认关闭是刻意的，不是遗漏。**
+With option D enabled, Phase A concurrency can reach 3 and Phase B concurrency can reach 3 (executor + reviewer + auditor). This is still within the officially recommended 3–5 range, but total token consumption is significantly higher than A. **Defaulting to off is deliberate, not an omission.**

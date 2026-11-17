@@ -1,90 +1,90 @@
-# 强制力三层
+# Three Layers of Enforcement
 
-> 同一条规则，写在哪一层，决定了它是"建议"还是"约束"。
-> 选错层是团队设计里最常见的结构性错误——比写错内容更贵，因为它让人误以为已经有了保障。
+> Where the same rule is written determines whether it is a "suggestion" or a "constraint".
+> Choosing the wrong layer is the most common structural error in team design — costlier than writing the wrong content, because it makes people believe a safeguard already exists.
 
-## 实测数据点
+## Measured Data Point
 
-把阶段门禁写成 1648 行 SKILL.md 里的文本要求（"必须获得用户确认后才进入下一阶段"），四次触发测试中命中 **0/4**。
+A phase gate written as a text requirement in a 1648-line SKILL.md ("must obtain user confirmation before entering the next phase") hit **0/4** in four trigger tests.
 
-结论不是"写得不够醒目"，而是：**长文档里的文本门禁会被上下文稀释到接近零**。模型读过它，但在实际决策点上不会召回。要它生效，只能换层。
-
----
-
-## 三层定义
-
-### L1 文本规则
-
-| 维度 | 说明 |
-|---|---|
-| **能保证** | 读到了就会知道；解释"为什么"的能力最强 |
-| **不能保证** | 会在决策点被召回；会被执行 |
-| **成本** | 极低：写几行 |
-| **失效模式** | 文档越长越失效；与当前任务"看起来无关"时优先被忽略 |
-| **适用** | 原则、权衡、理由、判断标准 |
-
-### L2 文档结构
-
-| 维度 | 说明 |
-|---|---|
-| **能保证** | 结构存在；字段缺失肉眼/脚本可见；跨文件引用可追踪 |
-| **不能保证** | 字段语义正确；填表人没有敷衍 |
-| **成本** | 低：定义 schema、模板、必填段 |
-| **失效模式** | 字段填了但为空/占位（"待补充"）；模板被复制后不再维护 |
-| **适用** | 角色卡 11 字段、回传契约、快照四要素、任务表列结构 |
-
-### L3 hook / 脚本
-
-| 维度 | 说明 |
-|---|---|
-| **能保证** | 违反即失败：拒绝写入、拒绝停止、拒绝状态转移 |
-| **不能保证** | 意图合理（它能拦"非法"，不能判断"愚蠢"） |
-| **成本** | 高：写代码、处理误报、维护、跨平台 |
-| **失效模式** | 规则过严导致绕过；hook 报错被当成噪音；脚本与文档不同步 |
-| **适用** | 路径边界、状态转移合法性、回传格式完整性、完成判定 |
+The conclusion is not "not written prominently enough", but: **text gates in long documents get diluted by context to near zero**. The model has read it, but will not recall it at the actual decision point. For it to take effect, the layer must be changed.
 
 ---
 
-## 该放哪层：判定表
+## Three Layer Definitions
 
-| 约束 | 放哪层 | 理由 |
+### L1 Text Rules
+
+| Dimension | Description |
+|---|---|
+| **Guarantees** | the reader will know once they read it; strongest at explaining "why" |
+| **Does not guarantee** | recall at the decision point; execution |
+| **Cost** | extremely low: a few lines |
+| **Failure mode** | the longer the document, the more it fails; ignored preferentially when it "seems unrelated" to the current task |
+| **Applies to** | principles, tradeoffs, reasons, judgment criteria |
+
+### L2 Document Structure
+
+| Dimension | Description |
+|---|---|
+| **Guarantees** | structure exists; missing fields visible to the eye/script; cross-file references traceable |
+| **Does not guarantee** | field semantics correct; the filler did not phone it in |
+| **Cost** | low: define schema, templates, required sections |
+| **Failure mode** | fields filled but empty/placeholder ("to be added"); templates copied and no longer maintained |
+| **Applies to** | role card 11 fields, return contract, snapshot four elements, task table column structure |
+
+### L3 hook / scripts
+
+| Dimension | Description |
+|---|---|
+| **Guarantees** | violation fails: reject write, reject stop, reject state transition |
+| **Does not guarantee** | intent reasonable (it can block "illegal", not judge "foolish") |
+| **Cost** | high: write code, handle false positives, maintain, cross-platform |
+| **Failure mode** | overly strict rules lead to bypass; hook errors treated as noise; scripts out of sync with docs |
+| **Applies to** | path boundaries, state transition validity, return format completeness, completion judgment |
+
+---
+
+## Which Layer: Decision Table
+
+| Constraint | Layer | Reason |
 |---|---|---|
-| 谁能写哪些路径 | **L3** | 越界写入不可撤销，必须事前拒绝 |
-| 状态转移是否合法 | **L3** | LLM 会自我合理化跳步，必须由确定性代码判 |
-| 完成是否成立 | **L3** | "看起来完成了"是最贵的误判，必须有脚本证据 |
-| 回传是否含 verdict | **L3** | 缺字段的回传无法被下游消费 |
-| 两个角色的 lane 是否相交 | **L3** | 派发前的静态检查，一次脚本调用 |
-| 团队规模上限 | **L2** | 用表格结构 + 自检清单；超标可人工否决 |
-| 角色卡字段是否齐全 | **L2** | 模板保证结构；语义仍需人判断 |
-| DEAD_ENDS 是否存在 | **L2** | 文件存在性可脚本检查，但内容质量靠人 |
-| 交接契约的字段名 | **L2** | 字段名必须全局一致，靠模板固化 |
-| 为什么这样切分 | **L1** | 无法机器判定，只能靠理由文本 |
-| 权衡与优先级 | **L1** | 情境相关 |
-| 什么算"污染的第二意见" | **L1** | 语义边界，无法脚本化 |
-| 何时升级用户裁决 | **L2 + L1** | 触发条件写进角色卡（结构），严重度判断靠文本 |
+| who can write which paths | **L3** | out-of-bounds writes are irreversible, must reject beforehand |
+| whether a state transition is valid | **L3** | LLMs rationalize skipping steps; must be decided by deterministic code |
+| whether completion holds | **L3** | "looks complete" is the most expensive misjudgment; script evidence required |
+| whether the return contains verdict | **L3** | a return missing fields cannot be consumed downstream |
+| whether two roles' lanes intersect | **L3** | a static check before dispatch, one script call |
+| team size cap | **L2** | table structure + self-check list; over-limit can be manually vetoed |
+| whether role card fields are complete | **L2** | templates guarantee structure; semantics still need human judgment |
+| whether DEAD_ENDS exists | **L2** | file existence is script-checkable, but content quality relies on humans |
+| field names of the handoff contract | **L2** | field names must be globally consistent, fixed by templates |
+| why decompose this way | **L1** | not machine-decidable, can only rely on reason text |
+| tradeoffs and priorities | **L1** | context-dependent |
+| what counts as a "contaminated second opinion" | **L1** | semantic boundary, cannot be scripted |
+| when to escalate to the user | **L2 + L1** | trigger conditions in the role card (structure), severity judgment by text |
 
-## 一个可操作的判断顺序
+## An Actionable Decision Order
 
 ```text
-1. 违反这条规则，会不会导致不可撤销的损坏（覆盖、丢失、伪造）？
-   会 → L3
-2. 这条规则能否用"字段存在 / 文件存在 / 集合相交"表达？
-   能 → L2
-3. 剩下的一律 L1，并且不要假装它会被执行。
+1. Would violating this rule cause irreversible damage (overwrite, loss, fabrication)?
+   Yes → L3
+2. Can this rule be expressed as "field exists / file exists / sets intersect"?
+   Yes → L2
+3. Everything else is L1, and do not pretend it will be executed.
 ```
 
-## 常见误配
+## Common Misplacements
 
-| 误配 | 症状 | 修正 |
+| Misplacement | Symptom | Fix |
 |---|---|---|
-| 路径边界只写文本 | "不得修改其他模块"写在角色卡正文 | 移入 `Lane` 段 + `PreToolUse` hook |
-| 完成判定只写文本 | "测试通过后标记完成" | 改为 Done criteria 里的命令 + 退出码 |
-| 状态机交给 LLM | "请根据当前进度判断下一步" | 写状态转移表 + 校验脚本 |
-| 什么都不敢上 L3 | 所有规则都在文档里，零脚本 | 至少把路径与状态转移下沉 |
-| 什么都上 L3 | 每个建议都写成 hook | 误报累积，hook 被忽略；回退到 L2/L1 |
+| path boundary written only as text | "must not modify other modules" written in the role card body | register the globs as the work unit (`flow.sh add-unit --files`) and take the claim (`flow.sh claim --files`); `PreToolUse` denies writes outside `claim.files` |
+| completion judgment written only as text | "mark complete after tests pass" | change to commands + exit codes in Done criteria |
+| state machine handed to the LLM | "please judge the next step based on current progress" | write a state transition table + validation script |
+| afraid to use L3 for anything | all rules live in docs, zero scripts | at minimum push down paths and state transitions |
+| using L3 for everything | every suggestion becomes a hook | false positives accumulate, hooks get ignored; fall back to L2/L1 |
 
-## 层级与可审计性
+## Layer and Auditability
 
-L1 的规则在出事后**无法证明曾被执行**；L2 能证明"字段被填过"；L3 能证明"当时被检查过并给出了结果"。
+L1 rules **cannot prove they were ever executed** after an incident; L2 can prove "the field was filled"; L3 can prove "it was checked at the time and a result was given".
 
-所以：**任何你希望事后能追责的约束，都不应该只留在 L1。**
+Therefore: **any constraint you want to be able to hold someone accountable for afterward should not remain only at L1.**

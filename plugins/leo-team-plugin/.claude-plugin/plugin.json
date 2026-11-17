@@ -1,7 +1,7 @@
 {
   "name": "leo-team-plugin",
   "description": "Multi-agent spec-driven development: a PM-led Agent Team with persistent-context executors, mechanical flow control, and an optional scientific-fact review lane.",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "author": {
     "name": "Fightinglee"
   }

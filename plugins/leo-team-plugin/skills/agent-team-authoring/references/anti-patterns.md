@@ -1,165 +1,165 @@
-# 反模式清单
+# Anti-Pattern Checklist
 
-> 每条格式：现象 → 为什么错 → 正确做法。
-> 排列顺序按"破坏力"从高到低；前五条会直接让团队产出不可信的结果。
-
----
-
-## AP-01 按技术层分解角色
-
-**现象**：团队切成"前端 agent / 后端 agent / 测试 agent / 运维 agent"。
-**为什么错**：这是官方点名的 problem-centric 反模式。它按问题的物理位置切，导致同一验证方式被拆成多个角色，而真正的独立验证缺席。更糟的是"测试 agent"会被当成质量兜底，但它的输入来自实现者，无法脱离实现者视角。
-**正确做法**：按验证方式分解（见 `archetypes.md` 的 7 个 archetype）。先问"产物如何被判定成立"，再把同验证方式的工作归入同一角色。
+> Each entry format: phenomenon → why it is wrong → correct approach.
+> Ordered by "destructive power" from high to low; the first five directly make team output untrustworthy.
 
 ---
 
-## AP-02 同角色并行
+## AP-01 Decompose roles by technical layer
 
-**现象**：两个 builder 同时改同一模块，理由是"任务不同"。
-**为什么错**：并行安全只看**写文件集合是否相交**，与任务名、角色名无关。不相交才是安全；相交必然静默覆盖，且后写者不会收到任何错误。
-**正确做法**：派发前跑 lane 相交检查（`team-invariants.md` T-2）。相交时改为串行，或把共享文件划给唯一所有者。
-
----
-
-## AP-03 长 persona
-
-**现象**：角色卡开篇写"你是一位有 15 年经验的资深工程师，性格严谨、注重细节……"。
-**为什么错**：persona 占预算但不产生约束。模型不会因为"注重细节"而更细致；它只会输出更像那么回事的措辞。真正的行为约束来自 Lane、Prohibitions、Done criteria。
-**正确做法**：Identity ≤ 2 行，只写职责边界。把那 200 字换成 3 条可执行 Prohibitions。
+**Phenomenon**: the team is split into "frontend agent / backend agent / test agent / ops agent".
+**Why it is wrong**: this is the officially named problem-centric anti-pattern. It splits by the physical location of the problem, causing one verification method to be split into multiple roles while genuine independent verification is absent. Worse, the "test agent" is treated as a quality backstop, but its input comes from the implementer and cannot escape the implementer's viewpoint.
+**Correct approach**: decompose by verification method (see the 7 archetypes in `archetypes.md`). First ask "how is the artifact judged to hold", then put work with the same verification method into the same role.
 
 ---
 
-## AP-04 文本当门禁
+## AP-02 Same role in parallel
 
-**现象**：在 SKILL.md 正文写"必须用户确认后才能继续"，就认为门禁已经存在。
-**为什么错**：实测数据点——1648 行 SKILL 里的文本门禁，四次触发命中 0/4。长文档中的文本要求会在决策点被稀释到接近零。
-**正确做法**：门禁下沉到 L3（hook/脚本）。用户确认必须落盘为 `confirmed` 字段，状态转移脚本只认该字段（见 `enforcement-ladder.md`）。
-
----
-
-## AP-05 把 approved 当 done
-
-**现象**：reviewer 给 PASS 后直接宣布完成，不合并、不验收。
-**为什么错**：approved 只说明"方案与实现对评审者成立"；产物还在作者分支，没有构建证据，没有验收证据。三者混同会在某处静默丢失证据。
-**正确做法**：`approved → merged → verified` 三个独立门槛，各有证据要求（见 `state-machines.md` 第 3 节）。
+**Phenomenon**: two builders modify the same module at the same time, on the grounds that "the tasks are different".
+**Why it is wrong**: parallel safety depends only on **whether the sets of written files intersect**, regardless of task names or role names. Only non-intersection is safe; intersection necessarily causes silent overwrite, and the later writer receives no error.
+**Correct approach**: run the lane intersection check before dispatch (`team-invariants.md` T-2). When they intersect, switch to serial, or assign shared files to a single owner.
 
 ---
 
-## AP-06 双编排者
+## AP-03 Long persona
 
-**现象**：一个团队里有两个人（或两个 agent）都能改计划、派任务、决定下一轮。
-**为什么错**：两份计划视图必然分叉；lane 会被重复分配；门禁问询者不唯一，用户确认的对象错位。冲突不会报错，只会表现为"某些工作没人做"。
-**正确做法**：coordination 权限唯一（T-5）。其他角色的建议只能写到 `decisions.md` 的提案区，由 lead 采纳后才进计划。
-
----
-
-## AP-07 让 LLM 做状态机
-
-**现象**：把"当前进行到哪一步、下一步是什么"交给模型自由判断。
-**为什么错**：模型会依据"感觉快完成了"提前推进，会为跳步编造理由，且同一输入不同轮次判断不一致。状态机一旦不确定，所有基于它的证据都不可信。
-**正确做法**：状态转移表 + 校验脚本（`state-machines.md`）。LLM 只能输出 `next_action` 建议，置位由脚本执行。
+**Phenomenon**: the role card opens with "You are a senior engineer with 15 years of experience, rigorous in personality, detail-oriented..."
+**Why it is wrong**: persona consumes budget but produces no constraints. The model will not be more meticulous because of "detail-oriented"; it will only output phrasing that sounds more like it. Real behavioral constraints come from Lane, Prohibitions, Done criteria.
+**Correct approach**: Identity ≤ 2 lines, only the responsibility boundary. Replace those 200 words with 3 executable Prohibitions.
 
 ---
 
-## AP-08 以为存在 per-teammate 权限
+## AP-04 Text as a gate
 
-**现象**：设计里写"给 reviewer 只读权限，给 builder 写权限"，但没有实现机制。
-**为什么错**：**Claude Code 不支持 per-teammate 权限**。teammate 继承 lead 的权限面。写在文档里的权限分配只是一句愿望。
-**正确做法**：把权限落到可执行层——`PreToolUse` hook 读角色卡里的 Lane 并拒绝越界写入；角色卡里明确写"越界会被 hook 拒绝"。若没有 hook，就必须承认这是文本约束。
-
----
-
-## AP-09 以为 teammate 继承 lead 的历史
-
-**现象**：spawn 时不说明背景，指望 teammate "知道我们刚才讨论过什么"。
-**为什么错**：**teammate 不继承 lead 的对话历史**。它从一张白纸开始。所有"我们刚才说好的"对它不存在。
-**正确做法**：spawn prompt 里显式给出 primer 六要素（`comms-and-handoff.md` 第 3 节）。
+**Phenomenon**: writing "user confirmation required before continuing" in the SKILL.md body and believing the gate already exists.
+**Why it is wrong**: measured data point — a text gate in a 1648-line SKILL hit 0/4 across four tests. Text requirements in long documents are diluted to near zero at the decision point.
+**Correct approach**: push the gate down to L3 (hook/scripts). User confirmation must be persisted as a `confirmed` field, and the state transition script recognizes only that field (see `enforcement-ladder.md`).
 
 ---
 
-## AP-10 以为 subagent 的 `skills:` frontmatter 对 teammate 有效
+## AP-05 Treat approved as done
 
-**现象**：在 agent 定义里写 `skills: [foo, bar]`，期待 teammate 自动加载这些技能。
-**为什么错**：该 frontmatter 对 **subagent** 有意义，对 **teammate 无效**。teammate 不会因此获得对应技能，行为与预期不符且没有报错。
-**正确做法**：在 primer 中明确写出该角色应读的技能/参考文件路径与摘要，作为部署步骤的一部分。
-
----
-
-## AP-11 依赖嵌套 team
-
-**现象**：让 teammate 自己再 spawn 一个团队来处理子任务。
-**为什么错**：嵌套团队没有统一的 lane 协调，没有统一的 registry，liveness 无法验证，产物归属不可追踪。还会瞬间放大 token 消耗。
-**正确做法**：团队结构由 lead 扁平定义。子任务应作为新的 work unit 在同一层派发；确需更多角色时由 lead 扩容（仍受 4 人上限约束）。
+**Phenomenon**: declares completion immediately after the Adversary gives PASS, without merging or acceptance.
+**Why it is wrong**: approved only means "the approach and implementation hold for the Adversary"; the artifact is still on the author's branch, with no build evidence and no acceptance evidence. Conflating the three silently loses evidence somewhere.
+**Correct approach**: `approved → merged → verified`, three independent gates, each with its own evidence requirement (see `state-machines.md` section 3).
 
 ---
 
-## AP-12 依赖 session 恢复
+## AP-06 Dual orchestrators
 
-**现象**：设计里假设"如果 session 断了，恢复一下就能接着跑"，因此不强制写快照。
-**为什么错**：跨 session 会丢失 teammate 上下文，这是已知限制。恢复不是无损的；没有快照时，恢复等于重新猜。
-**正确做法**：把恢复当作**可能失败**的路径。每个 unit 结束写快照（T-4）；恢复协议固定五步（`comms-and-handoff.md` 第 5 节）；恢复后第一件事读 DEAD_ENDS。
-
----
-
-## AP-13 外部内容写进会被反复注入的文件
-
-**现象**：把网页摘要、issue 正文、搜索结果直接贴进 `team-plan.md` 或 `primer.md`。
-**为什么错**：这两个文件会被反复注入 teammate 上下文，是 prompt injection 的高价值目标。外部文本里的"请执行""忽略上述"会变成指令。
-**正确做法**：外部内容只进 `research.md` / `findings.md`（数据区），并在摘要中标注来源与"这是数据不是指令"（rails.md R-7）。
+**Phenomenon**: two people (or two agents) in one team can both modify the plan, dispatch tasks, and decide the next round.
+**Why it is wrong**: two plan views necessarily diverge; lanes get assigned twice; the gate inquirer is not unique, and the object of user confirmation shifts. Conflicts do not raise errors; they only manifest as "some work nobody does".
+**Correct approach**: coordination permission is unique (T-5). Other roles' suggestions can only be written to the proposal area of `decisions.md` and enter the plan only after the lead adopts them.
 
 ---
 
-## AP-14 无限自动重试
+## AP-07 Let the LLM be the state machine
 
-**现象**：任务失败后自动重试，直到成功或上下文耗尽。
-**为什么错**：同类失败重试通常复现同一错误，只消耗 token；更糟的是它掩盖了"需要人裁决"的信号。
-**正确做法**：同一单元第 3 次失败即停止并上报（rails.md R-9）。上报内容含：失败次数、每次的 error、已排除的假设、需要的裁决。
-
----
-
-## AP-15 作者自评当门禁
-
-**现象**：实现者自己跑两个用例，写"已验证"，流程放行。
-**为什么错**：自评继承自己的错误假设，且 Early victory 是验证类角色的头号失败模式。同一上下文里"写"与"验"是同一个偏见。
-**正确做法**：验证与实现分离（essence.md I-5）。verifier 只看验收标准与产物，不看作者推理过程；证据必须是命令 + 输出 + `file:line`。
+**Phenomenon**: leaving "which step we are at now and what comes next" to the model's free judgment.
+**Why it is wrong**: the model advances early based on "feels almost done", fabricates justifications for skipping steps, and gives inconsistent judgments across rounds for the same input. Once the state machine is non-deterministic, all evidence based on it is untrustworthy.
+**Correct approach**: state transition table + validation script (`state-machines.md`). The LLM may only output `next_action` suggestions; setting is done by scripts.
 
 ---
 
-## AP-16 用 color / model 暗示能力差异
+## AP-08 Assume per-teammate permissions exist
 
-**现象**：给"更重要"的角色配大模型或显眼颜色，调度时据此加权。
-**为什么错**：`color` 只是 UI 标签；`model` 影响推理能力但不改变职责边界。用它表达"这个角色更强"会让调度者用错误信号做决策，也会掩盖角色卡本身的缺陷。
-**正确做法**：角色强弱由 archetype 与工具面决定；`model` 按任务推理难度选择；`color` 仅用于视觉区分。
-
----
-
-## AP-17 默认给全工具面
-
-**现象**：所有角色 `tools: *`，理由是"方便"。
-**为什么错**：工具面即行为边界。给了写权限的角色一定会去改；给了检索权限的角色会把外部内容带进不该进的地方。全工具面让 archetype 失去意义。
-**正确做法**：先定 archetype，再裁剪 `tools`。reviewer/verifier 不给源码写权限；researcher 不给源码写权限；coordinator 不给源码写权限。
+**Phenomenon**: the design says "give the Adversary read-only permission and the Builder write permission", but there is no mechanism implementing it.
+**Why it is wrong**: **Claude Code does not support per-teammate permissions**. Teammates inherit the lead's permission surface. Permission assignments written in a document are merely a wish.
+**Correct approach**: put permissions into the executable layer. The role-card `## Lane` is documentation; enforcement requires registering the same globs as the work unit (`flow.sh add-unit --files`) and taking the claim (`flow.sh claim --files`). The `PreToolUse` hook denies writes outside the active `claim.files`. If there is no hook, you must acknowledge this is a text constraint.
 
 ---
 
-## AP-18 spawn 时省略 primer
+## AP-09 Assume teammates inherit the lead's history
 
-**现象**：spawn prompt 只写"你是 reviewer，开始工作"。
-**为什么错**：Claude Code 没有 SubagentStart 事件，teammate 不会自动读取任何卷宗。省略 primer 等于让角色从零猜目标、猜输入、猜边界。
-**正确做法**：primer 六要素显式写进 spawn prompt，控制在 6000 字符内（`comms-and-handoff.md` 第 3 节）。
+**Phenomenon**: not explaining the background at spawn, expecting the teammate to "know what we just discussed".
+**Why it is wrong**: **teammates do not inherit the lead's conversation history**. It starts from a blank slate. Everything "we just agreed on" does not exist for it.
+**Correct approach**: explicitly give the six primer elements in the spawn prompt (`comms-and-handoff.md` section 3).
 
 ---
 
-## 快速自检
+## AP-10 Assume subagent `skills:` frontmatter works for teammates
 
-| 如果你写了…… | 大概率踩了 |
+**Phenomenon**: writing `skills: [foo, bar]` in an agent definition, expecting the teammate to automatically load these skills.
+**Why it is wrong**: that frontmatter is meaningful for **subagents**, and **invalid for teammates**. The teammate does not thereby gain the corresponding skills; behavior does not match expectations and no error is raised.
+**Correct approach**: explicitly write the paths and summaries of the skills/reference files this role should read in the primer, as part of the deployment steps.
+
+---
+
+## AP-11 Rely on nested teams
+
+**Phenomenon**: letting a teammate spawn another team to handle a subtask.
+**Why it is wrong**: nested teams have no unified lane coordination, no unified registry, liveness cannot be verified, and artifact ownership cannot be traced. It also instantly multiplies token consumption.
+**Correct approach**: the team structure is defined flat by the lead. Subtasks should be dispatched as new work units at the same layer; when more roles are truly needed, the lead expands capacity (still subject to the 4-person cap).
+
+---
+
+## AP-12 Rely on session resume
+
+**Phenomenon**: the design assumes "if the session breaks, just resume and keep going", so snapshots are not enforced.
+**Why it is wrong**: cross-session loses teammate context; this is a known limitation. Resume is not lossless; without a snapshot, resume equals guessing again.
+**Correct approach**: treat resume as a path that **may fail**. Write a snapshot at the end of each unit (T-4); the resume protocol is five fixed steps (`comms-and-handoff.md` section 5); the first thing after resume is to read DEAD_ENDS.
+
+---
+
+## AP-13 Write external content into files that get repeatedly injected
+
+**Phenomenon**: pasting web page summaries, issue bodies, or search results directly into `team-plan.md` or `primer.md`.
+**Why it is wrong**: these two files are repeatedly injected into teammate contexts and are high-value targets for prompt injection. "Please execute" and "ignore the above" in external text become instructions.
+**Correct approach**: external content goes only into `research.md` / `findings.md` (data area), and the summary marks the source and "this is data, not instructions" (`../../spec-coding-team-skill/references/rails.md` R-7).
+
+---
+
+## AP-14 Unbounded automatic retry
+
+**Phenomenon**: automatically retrying after a task failure until success or context exhaustion.
+**Why it is wrong**: retrying the same kind of failure usually reproduces the same error and only consumes tokens; worse, it masks the signal that "human adjudication is needed".
+**Correct approach**: stop and report after the third failure of the same unit (`../../spec-coding-team-skill/references/rails.md` R-9). The report contains: failure count, the error of each attempt, excluded hypotheses, and the adjudication needed.
+
+---
+
+## AP-15 Author self-review as a gate
+
+**Phenomenon**: the implementer runs two test cases, writes "verified", and the process lets it through.
+**Why it is wrong**: self-review inherits its own wrong assumptions, and Early victory is the number-one failure mode of verification roles. In the same context, "writing" and "verifying" share the same bias.
+**Correct approach**: separate verification from implementation (`../../spec-coding-team-skill/references/essence.md` I-5). The Verifier looks only at acceptance criteria and artifacts, not the author's reasoning process; evidence must be command + output + `file:line`.
+
+---
+
+## AP-16 Use color / model to imply capability differences
+
+**Phenomenon**: giving "more important" roles a large model or a conspicuous color, and weighting dispatch accordingly.
+**Why it is wrong**: `color` is only a UI label; `model` affects reasoning ability but does not change the responsibility boundary. Using it to express "this role is stronger" makes the scheduler decide with the wrong signal, and also masks defects in the role card itself.
+**Correct approach**: role strength is determined by the archetype and tool surface; `model` is chosen by task reasoning difficulty; `color` is only for visual distinction.
+
+---
+
+## AP-17 Grant the full tool surface by default
+
+**Phenomenon**: all roles have `tools: *`, on the grounds of "convenience".
+**Why it is wrong**: the tool surface is the behavioral boundary. A role given write permission will definitely go and modify; a role given search permission will bring external content into places it should not enter. The full tool surface makes the archetype meaningless.
+**Correct approach**: decide the archetype first, then trim `tools`. Do not give Adversary or Verifier source write permission; do not give Researcher source write permission; do not give Coordinator source write permission.
+
+---
+
+## AP-18 Omit the primer at spawn
+
+**Phenomenon**: the spawn prompt only says "you are an Adversary, start working".
+**Why it is wrong**: Claude Code has no SubagentStart event, and teammates do not automatically read any dossier. Omitting the primer is equivalent to making the role guess the goals, inputs, and boundaries from zero.
+**Correct approach**: explicitly write the six primer elements into the spawn prompt, kept within 6000 characters (`comms-and-handoff.md` section 3).
+
+---
+
+## Quick Self-Check
+
+| If you wrote... | You most likely hit |
 |---|---|
-| "前端/后端/测试" | AP-01 |
-| 两个角色都碰同一目录 | AP-02 |
-| "资深""10 年经验" | AP-03 |
-| "必须""务必"但没有 hook | AP-04 |
-| 状态只有 `done` | AP-05, AP-07 |
-| 两个 agent 都能改计划 | AP-06 |
-| "给 X 角色只读权限" | AP-08 |
-| "它应该知道上下文" | AP-09, AP-18 |
-| "失败就重试" | AP-14 |
-| "作者自己验证" | AP-15 |
+| "frontend/backend/test" | AP-01 |
+| two roles both touching the same directory | AP-02 |
+| "senior" "10 years of experience" | AP-03 |
+| "must" "be sure to" but no hook | AP-04 |
+| the only state is `done` | AP-05, AP-07 |
+| two agents can both modify the plan | AP-06 |
+| "give role X read-only permission" | AP-08 |
+| "it should know the context" | AP-09, AP-18 |
+| "retry on failure" | AP-14 |
+| "the author verifies it themselves" | AP-15 |

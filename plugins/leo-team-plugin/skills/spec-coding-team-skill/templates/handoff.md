@@ -1,42 +1,42 @@
 # Handoff
 
-> 用途：teammates 上下文丢失后的**唯一恢复入口**。
-> 每次 round 结束或 session 中断前由 PM 更新。任一固定字段缺失视为 handoff 无效，恢复时按无效处理并重新生成。
+> Purpose: the **single recovery entry point** after teammate context is lost.
+> Updated by the PM at the end of each round or before a session interruption. A missing fixed field makes the handoff invalid; on resume it is treated as invalid and regenerated.
 
-## resumption_prompt（可直接粘贴）
+## resumption_prompt (ready to paste)
 
 ```text
-你是 <role>，加入 run <run_id> 的 Round <N>。
-仓库：<repo absolute path>，分支：<branch>，HEAD：<sha>。
-先按顺序读：<run>/handoff.md → <run>/team-plan.md → <run>/findings.md → <run>/dead-ends.md。
-你的工作单元：<U-xx>，owned_files：<paths>。
-不要重做：<do_not_redo 摘要>。
-下一步：<next_action>。
-结束时按 rails R-10 回传。
+You are <role>, joining Round <N> of run <run>.
+Repository: <repo absolute path>, branch: <branch>, HEAD: <sha>.
+Read in order: <run>/handoff.md → <run>/team-plan.md → <run>/findings.md → <run>/dead-ends.md.
+Your work unit: <U-xx>, owned_files: <paths>.
+Do not redo: <do_not_redo summary>.
+Next step: <next_action>.
+On completion, report per rails R-10.
 ```
 
-## 状态快照
+## State snapshot
 
 | Field | Value |
 |---|---|
 | round | <N> |
 | branch | <branch> |
 | HEAD | <sha> |
-| uncommitted | <无 \| 文件列表> |
-| last passing test | <命令> → <结果> @ <YYYY-MM-DD HH:MM> |
-| context_minimum | <恢复所需最小文件集，按读取顺序，逗号分隔> |
+| uncommitted | <none \| file list> |
+| last passing test | <command> → <result> @ <YYYY-MM-DD HH:MM> |
+| context_minimum | <minimal file set needed for recovery, in reading order, comma-separated> |
 
-## 待处理
+## Pending items
 
-- **open issues**: <F-xx / Q-xx 列表，含 severity；无则写「无」>
-- **next_action**: <下一件具体要做的事，可直接执行>
-- **do_not_redo**: <已完成或已排除的事项，指向 progress.md / dead-ends.md 条目>
-- **blocked_on**: <等待谁 / 什么；无则写「无」>
+- **open issues**: <list of F-xx / Q-xx with severity; write "none" if none>
+- **next_action**: <the next concrete thing to do, directly executable>
+- **do_not_redo**: <items already done or ruled out, pointing to progress.md / dead-ends.md entries>
+- **blocked_on**: <waiting on whom / what; write "none" if none>
 
-## 过期策略
+## Staleness policy
 
 | Field | Value |
 |---|---|
-| stale_threshold_days | <默认 7> |
-| stale_action | <超过阈值时：重跑 last passing test，并核对 HEAD 与 uncommitted；任一不符则本文件作废并重新生成> |
+| stale_threshold_days | <default 7> |
+| stale_action | <when past threshold: re-run last passing test, verify HEAD and uncommitted; if either does not match, this file is void and must be regenerated> |
 | last_verified_at | <YYYY-MM-DD HH:MM> |

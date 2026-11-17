@@ -1,184 +1,184 @@
-# N3 Formation — 组队与工作单元切分
+# N3 Formation — Team formation and work-unit splitting
 
-> 目标：把 `tasks.md` 变成可机械调度的 `generated/team-plan.md`：每个单元有唯一 owner、唯一写集合、唯一验收命令。
-> 前置：`flow.json.mission=gate`；分支已创建；`primer.md` 已写。
-> 本阶段只写 `team-plan.md` 与 `.team/<run>/prompts/`；不 spawn executor，不写业务代码。
+> Goal: turn `tasks.md` into a mechanically schedulable `generated/team-plan.md`: each unit has a unique owner, a unique write set, and a unique acceptance command.
+> Prerequisite: `flow.json.mission=gate`; the branch has been created; `primer.md` has been written.
+> This phase writes only `team-plan.md` and `.team/<run>/prompts/`; it does not spawn executors and does not write business code. It also mutates runtime state by running `add-unit`, `transition --to executing`, and `checkpoint`.
 
-## Step 1 — 读 tasks.md 并统计任务类型
+## Step 1 — Read tasks.md and count task types
 
-逐行读 `tasks.md § 任务表`，按类型计数：
+Read `tasks.md § Task Table` line by line, count by type:
 
-| `tasks.md` 类型 | 含义 | 归属 |
+| `tasks.md` type | Meaning | Owner |
 |---|---|---|
-| `implementation` | 生产代码变更；`owned_files` 必须包含其测试文件 | executor |
-| `verification` | 独立评审、验收证据收集；**不写单元测试** | reviewer |
-| `research` | 外部事实调研；N1 未完成时在此补做 | science-researcher |
+| `implementation` | production code changes; `owned_files` must include its test files | executor |
+| `verification` | independent review, acceptance evidence collection; **does not write unit tests** | reviewer |
+| `research` | external fact research; done here if not completed in N1 | science-researcher |
 
-统计并写入 `team-plan.md § 统计`：
+Count and write into `team-plan.md § Statistics`:
 
 ```markdown
-- implementation: <n> 个任务 / <m> 个文件
-- verification: <n> 个任务
-- research: <n> 个任务
-- 涉及模块: <列表>
-- 共享文件: <index/router/types/config/schema/migration 等>
+- implementation: <n> tasks / <m> files
+- verification: <n> tasks
+- research: <n> tasks
+- Modules involved: <list>
+- Shared files: <index/router/types/config/schema/migration etc.>
 ```
 
-**硬规则**：单元测试与集成测试的编写属于 `implementation`，必须留在 executor 单元内。禁止把测试剥离成独立角色或独立单元。
+**Hard rule**: writing unit tests and integration tests belongs to `implementation` and must stay in the executor unit. Stripping tests into a separate role or unit is forbidden.
 
-## Step 2 — 按 owned_files 切实现工作单元
+## Step 2 — Split implementation work units by owned_files
 
-单元定义：一个 executor 在一次 `claim` 中完成的写集合 + 验收命令。ID 用 `U-01..U-nn`。
-`flow.json.units` **只登记实现单元**；reviewer / science-auditor 的验证任务见 Step 2b。
+Unit definition: the write set + acceptance command that one executor completes in one `claim`. IDs use `U-01..U-nn`.
+`flow.json.units` **registers implementation units only**; reviewer / science-auditor verification tasks are covered in Step 2b.
 
-### 切分规则（全部为硬规则）
+### Splitting rules (all hard rules)
 
-1. 每个单元 `owned_files` 非空，且列出**精确路径**；新增文件必须写全路径，禁止用宽 glob 覆盖未定文件。
-2. 一个实现单元文件数 ≤5，净变更 ≤200 行；超出则拆分。
-3. 拆分时必须把测试文件与它覆盖的代码放在同一单元。
-4. 共享可变文件（`index.*`、`router.*`、`types.*`、全局 config、schema、migration）**只能有一个 owner**；其他单元通过接口消费，不得共同编辑。
-5. 每个实现单元的 owner 必须是 executor；测试不得剥离成独立单元或独立角色。
-6. 每个单元必须有 `acceptance`：一条可直接执行的命令。
-7. 单元 ID 一经确认不得复用或重排。
+1. Each unit's `owned_files` is non-empty and lists **exact paths**; new files must be written with full paths, and broad globs covering undetermined files are forbidden.
+2. An implementation unit has at most 5 files and net changes ≤200 lines; split if exceeded.
+3. When splitting, test files must be in the same unit as the code they cover.
+4. Shared mutable files (`index.*`, `router.*`, `types.*`, global config, schema, migration) **may have only one owner**; other units consume them via interfaces and must not co-edit.
+5. Each implementation unit's owner must be an executor; tests must not be stripped into a separate unit or role.
+6. Each unit must have an `acceptance`: a directly executable command.
+7. Once unit IDs are finalized, they must not be reused or reordered.
 
 | ID | Owner | Archetype | owned_files | depends_on | acceptance |
 |---|---|---|---|---|---|
 | U-01 | spec-executor | Builder | `src/a.ts`, `tests/a.test.ts` | none | `npm test -- a` |
 | U-02 | spec-executor | Builder | `src/b.ts`, `tests/b.test.ts` | U-01 | `npm test -- b` |
 
-## Step 2b — 验证安排（不进入 flow.units）
+## Step 2b — Verification arrangement (not in flow.units)
 
-reviewer / auditor 的工作是阶段职责，不登记为实现单元：
+reviewer / auditor work is a phase responsibility and is not registered as an implementation unit:
 
-| ID | Owner | 产物 | depends_on | acceptance |
+| ID | Owner | Artifact | depends_on | acceptance |
 |---|---|---|---|---|
-| V-01 | spec-reviewer | `generated/findings.md` 的 `## Round N — spec-reviewer — <unit-id>` 段 | 所有 `for_review` 单元 | 每单元一段，含 verdict + 证据 |
-| V-02 | spec-science-auditor | `generated/science-audit.md` | 可审计产物完成 | Verdict 行存在 |
+| V-01 | spec-reviewer | the `## Round N — spec-reviewer — <unit-id>` section of `generated/findings.md` | all `for_review` units | one section per unit, with verdict + evidence |
+| V-02 | spec-science-auditor | `generated/science-audit.md` | auditable artifacts complete | Verdict line present |
 
-## Step 3 — 校验写文件集合两两不相交
+## Step 3 — Verify the write sets are pairwise disjoint
 
-对单元表中每一对 `(Ui, Uj)` 执行：
+For each pair `(Ui, Uj)` in the unit table, do:
 
-1. 展开 `owned_files`：既有文件用 `git ls-files` 验证存在；新增文件按字面路径比较。
-2. 计算交集。**交集为空 → 通过。**
-3. 交集非空 → 按顺序尝试：
-   - **合并**：两个单元合成一个，保留一个 owner；若文件数 >5 或行数 >200，转 4。
-   - **归属唯一化**：把共享文件判给其中一个单元，另一个单元从 `owned_files` 移除并改为 `depends_on`。
-   - **串行化**：仍无法消除时，两单元保持原样但标记 `execution: serial`，且不得同时 `claimed`。
-4. 串行化后仍存在「必须由两个角色同时编辑同一文件」→ 标记 `risk: high`，写入 `team-plan.md § 高风险`，并在 Step 6 向用户明示。
-5. **机械复核**：单元登记完成后运行 `bash "$CLAUDE_PLUGIN_ROOT/scripts/check-lanes.sh"`。
-   - exit 0（OK/WARN）→ 通过；WARN 需逐条人工确认并写进 `team-plan.md § 调度判定`。
-   - exit 1（存在确定相交）→ 必须回到第 3 步重切，不得进入 Step 6。
+1. Expand `owned_files`: for existing files, verify existence with `git ls-files`; for new files, compare by literal path.
+2. Compute the intersection. **Empty intersection → pass.**
+3. Non-empty intersection → try in order:
+   - **Merge**: combine the two units into one, keep one owner; if file count >5 or line count >200, go to 4.
+   - **Ownership uniqueness**: assign the shared file to one unit, remove it from the other unit's `owned_files` and change that unit to `depends_on`.
+   - **Serialization**: if it still cannot be eliminated, keep both units as-is but mark `execution: serial`, and they must not be `claimed` at the same time.
+4. If after serialization there remains a case where "the same file must be edited by two roles at the same time" → mark `risk: high`, write into `team-plan.md § High Risk`, and state it explicitly to the user at Step 6.
+5. **Mechanical recheck**: after unit registration is complete, run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-lanes.sh"`.
+   - exit 0 (OK/WARN) → pass; WARN requires item-by-item manual confirmation and must be written into `team-plan.md § Scheduling Decision`.
+   - exit 1 (definite overlap exists) → must return to step 3 and re-split; must not enter Step 6.
 
-禁止事项：
+Prohibitions:
 
-- 禁止用「不同功能」为理由让两个单元共写一个文件。
-- 禁止把共享文件复制成两份再各自修改。
-- 禁止在未记录的情况下把相交单元改成并行。
+- Forbidden to let two units co-write one file on the grounds of "different features".
+- Forbidden to copy a shared file into two copies and modify each separately.
+- Forbidden to turn overlapping units into parallel ones without recording it.
 
-### 调度事实
+### Scheduling facts
 
-`flow.sh` 只有一个全局 claim：同一时刻只允许一个写操作。`owned_files` 不相交是**允许调度**的条件，不是「同时写」的许可。并行收益来自：只读分析与实现重叠、验证角色与下一单元重叠；写操作按 claim 串行。
+The flow script has only one global claim: only one write is allowed at a time. `owned_files` being disjoint is a condition for **allowing scheduling**, not permission to "write simultaneously". Parallel benefit comes from: read-only analysis overlapping with implementation, and verification roles overlapping with the next unit; writes are serialized by claim.
 
-## Step 4 — 选角色（默认 2–3，上限 4）
+## Step 4 — Choose roles (default 2–3, cap 4)
 
-### 选人判定表
+### Role selection table
 
-| 任务构成 | 必选 | 可选（N1 未覆盖时） | 规模 |
+| Task composition | Required | Optional (when not covered in N1) | Size |
 |---|---|---|---|
-| 纯代码实现 | spec-executor ×1 + spec-reviewer ×1 | spec-explorer | 2–3 |
-| 代码 + 陌生模块 | spec-executor + spec-reviewer | spec-explorer | 3 |
-| 代码 + 接口/架构不确定 | spec-executor + spec-reviewer | spec-architect（需 `inspect.md`） | 3 |
-| 代码 + `auditor=true` | + spec-science-auditor | — | 3 |
+| Pure code implementation | spec-executor ×1 + spec-reviewer ×1 | spec-explorer | 2–3 |
+| Code + unfamiliar module | spec-executor + spec-reviewer | spec-explorer | 3 |
+| Code + interface/architecture uncertainty | spec-executor + spec-reviewer | spec-architect (requires `inspect.md`) | 3 |
+| Code + `auditor=true` | + spec-science-auditor | — | 3 |
 
-`science_gate.researcher` 只影响 N1，不在 N4 重复 spawn；全流程角色数（N1 researcher + N4 角色）上限 4。
+Count implementation + verification roles only: 1 executor + 1 reviewer + (auditor ? 1 : 0) + (explorer re-spawned in N3 because it was not covered in N1 ? 1 : 0) + (architect re-spawned for the same reason ? 1 : 0). The N1 researcher is not counted because it is not re-spawned in N4. Cap 4.
 
-### 角色约束（写死）
+### Role constraints (hard-coded)
 
-- executor 最多 1 个实例；同一角色同一时刻不得并行，多个代码单元由同一 executor 串行处理。
-- reviewer 至少 1 个；`science_gate.auditor=true` 时 science-auditor 至少 1 个且不可替代。
-- `science_gate.researcher=true` 时 researcher 至少 1 个。
-- 每个被选角色必须有 ≥1 个任务（实现单元或验证安排）；没有任务的闲置角色必须删除。
-- 角色数上限 4（含 auditor）。超过 4 → 砍 architect，再砍 explorer；不得砍 auditor。
-- 两个开关全 false 时禁止 spawn researcher / auditor。
-- `auditor=true` 且 `researcher=false` 时，`science-audit.md` 必须引用项目内既有依据；否则 auditor 会因 `research.md` 缺失 `BLOCKED`。PM 需在 `decisions.md` 记录依据路径，或改用 D。
+- executor has at most 1 instance; the same role must not run in parallel at any time; multiple code units are handled serially by the same executor.
+- reviewer has at least 1; when `science_gate.auditor=true`, science-auditor has at least 1 and is irreplaceable.
+- when `science_gate.researcher=true`, researcher has at least 1.
+- every selected role must have ≥1 task (implementation unit or verification arrangement); idle roles without tasks must be removed.
+- role count cap 4 (including auditor). Over 4 → cut architect, then explorer; must not cut auditor.
+- when both switches are false, spawning researcher / auditor is forbidden.
+- when `auditor=true` and `researcher=false`, `science-audit.md` must cite existing in-project evidence; otherwise auditor will be `BLOCKED` due to the missing `research.md`. PM must record the evidence path in `decisions.md`, or switch to D.
 
-## Step 5 — 写 team-plan.md
+## Step 5 — Write team-plan.md
 
-### 全局必含章节
+### Required global sections
 
-| 章节 | 必含内容 |
+| Section | Required content |
 |---|---|
-| `## Run` | run_id / round / branch / base_ref / phase_a_confirmed / 时间 |
-| `## Science gate` | researcher / auditor 布尔值、owner、产物、状态 |
-| `## 统计` | Step 1 的统计结果 |
-| `## 团队` | 角色、实例数、archetype、存活阶段 |
-| `## 单元表` | Step 2 的实现单元表；验证安排单独成表 |
-| `## 验证安排` | Step 2b 的 reviewer / auditor 任务、产物、依赖 |
-| `## 调度判定` | 实现顺序、只读重叠安排、写集冲突处理、`check-lanes.sh` 结果 |
-| `## 检查点` | 每 3 个单元一个 CP；检查内容与未通过动作 |
-| `## 高风险` | 串行/共享文件风险；无则写 `none` |
-| `## 确认` | 提交时写 `pending`；确认后回填用户原文、时间、`sha256(team-plan.md)` |
+| `## Run` | <run> / round / branch / base_ref / phase_a_confirmed / time |
+| `## Science gate` | researcher / auditor booleans, owner, artifacts, status |
+| `## Statistics` | statistical results from Step 1 |
+| `## Team` | roles, instance count, archetype, live phases |
+| `## Unit Table` | implementation unit table from Step 2; verification arrangement as a separate table |
+| `## Verification Arrangement` | reviewer / auditor tasks, artifacts, dependencies from Step 2b |
+| `## Scheduling Decision` | implementation order, read-only overlap arrangement, write-set conflict handling, `bash "${CLAUDE_PLUGIN_ROOT}/scripts/check-lanes.sh"` result |
+| `## Checkpoints` | one CP per 3 units; what is checked and the action when it fails |
+| `## High Risk` | serial/shared-file risks; write `none` when empty |
+| `## Confirmation` | write `pending` on submission; after confirmation backfill the user's original text, time, `sha256(team-plan.md)` |
 
-### 每个单元的必含字段（五要素）
+### Required fields per unit (five elements)
 
-以 `### U-<nn> — <标题>` 为单位，缺任一字段即视为不完整：
+Use `### U-<nn> — <title>` as the unit; a missing field makes it incomplete:
 
-| 字段 | 判定标准 |
+| Field | Criterion |
 |---|---|
-| `Objective` | 一句话，对应 `tasks.md` 任务 ID 与至少 1 条 AC |
-| `Output` | 精确产物路径 + 回传按 `rails.md` R-10 |
-| `Source guidance` | 必读文件路径 + 章节/行号范围 + 阅读顺序；禁止写「参考相关代码」 |
-| `Scope boundary` | 明确「不做什么」：不改哪些文件、不新增哪些依赖、不动哪些接口 |
-| `owned_files` | 精确路径列表；与其他单元两两不相交 |
+| `Objective` | one sentence, mapping to a `tasks.md` task ID and at least 1 AC |
+| `Output` | exact artifact paths + report back per `rails.md` R-10 |
+| `Source guidance` | required reading file paths + section/line ranges + reading order; "refer to the relevant code" is forbidden |
+| `Scope boundary` | explicitly "what not to do": which files not to change, which dependencies not to add, which interfaces not to touch |
+| `owned_files` | exact path list; pairwise disjoint from other units |
 
-补充字段：`Owner`、`Archetype`、`depends_on`、`Definition of done`（含验证命令）、`启动 prompt` 路径。
+Supplementary fields: `Owner`, `Archetype`, `depends_on`, `Definition of done` (including verification command), `Startup prompt` path.
 
-### 启动 prompt 文件
+### Startup prompt files
 
-每个单元写 `.team/<run>/prompts/<unit>.md`，内容必须含：角色定义、`owned_files`、Objective、Source guidance、Scope boundary、回传契约（R-10）。文件不存在 → 该单元不得启动。
+Write `.team/<run>/prompts/<unit>.md` for each unit; content must include: role definition, `owned_files`, Objective, Source guidance, Scope boundary, report-back contract (R-10). If the file does not exist → the unit must not start.
 
-## Step 6 — 展示、确认、导入状态
+## Step 6 — Present, confirm, import state
 
-PM 提交以下摘要（完整 `team-plan.md` 路径同时给出）：
+PM submits the following summary (also giving the full `team-plan.md` path):
 
 ```markdown
-## N3 组队方案 — [NNN] <需求名>
+## N3 Team Plan — [NNN] <requirement name>
 
-- 团队: <spec-role ×n, ...>（共 <2–4> 个角色）
-- 单元: <n> 个（全部串行）；只读重叠: <n>
-- 写锁: 同一时刻 1 个（flow.sh 单 claim）
-- 检查点: 每 3 个单元
-- 高风险: none | <逐条列出>
+- Team: <spec-role ×n, ...> (<2–4> roles total)
+- Units: <n> (all serialized); read-only overlap: <n>
+- Write lock: 1 at a time (the flow script's single claim)
+- Checkpoints: every 3 units
+- High risk: none | <listed one by one>
 - science gate: researcher=<bool> / auditor=<bool>
-- 详细方案: .dev/[NNN]-[req]/generated/team-plan.md
+- Detailed plan: .dev/<run>/generated/team-plan.md
 
-回复 `confirmed` 开始 N4；要改角色或单元请直接说改哪里。
+Reply `confirmed` to start N4; to change roles or units, say directly what to change.
 ```
 
-确认语义与 N2 相同：只接受用户本人消息中的 `confirmed` / 「确认执行」/「批准执行」；「可以」「看起来可以」不算。确认后：
+Confirmation semantics are the same as N2: only accept `confirmed` / "confirm execution" / "approve execution" in the user's own message; "okay" and "looks good" do not count. After confirmation:
 
-1. 把原文与时间写入 `team-plan.md § 确认`。
-2. 对**每个实现单元**执行：
+1. Write the original text and time into `team-plan.md § Confirmation`.
+2. For **each implementation unit**, run:
 
 ```bash
-flow.sh add-unit --id U-01 --owner spec-executor --files "src/a.ts,tests/a.test.ts"
+bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" add-unit --id U-01 --owner spec-executor --files "src/a.ts,tests/a.test.ts"
 ```
 
-`--files` 逗号分隔、顺序无关；新增文件写全路径。验证安排（V-xx）不写入 `flow.json.units`。`add-unit` 报 ID 重复 → 停止，禁止覆盖。
+`--files` is comma-separated and order-independent; new files use full paths. Verification arrangements (V-xx) are not written into `flow.json.units`. If `add-unit` reports a duplicate ID → stop; overwriting is forbidden.
 
-3. 执行 `flow.sh transition --to executing --by pm`。
-4. `flow.sh checkpoint --note "N3 confirmed; units loaded"`。
+3. Run `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --to executing --by pm`.
+4. `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" checkpoint --note "N3 confirmed; units loaded"`.
 
-用户要求改角色/单元 → 修改 `team-plan.md` 后重新提交确认。最终角色数与 N2 提交值不一致，或 science gate 布尔值变化 → 回 N2 重新提交并重新确认。
+If the user requests role/unit changes → modify `team-plan.md` and resubmit for confirmation. If the final role count differs from the N2 submitted value, or the science gate booleans change → the N2 submission is void: stay at `gate`, revise and resubmit the N2 template, and obtain confirmation again. If a revision must happen in N1, use the legal rollback path (`bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" transition --to blocked` → `bash "${CLAUDE_PLUGIN_ROOT}/scripts/flow.sh" recover` → `planning`) before resubmitting.
 
-## 完整示例（压缩版）
+## Full example (condensed)
 
 ```markdown
 # Team Plan — 001-auth-refresh
 
 ## Run
-- run_id: 001-auth-refresh | round: 1 | branch: feat/001-auth-refresh
+- run: 001-auth-refresh | round: 1 | branch: feat/001-auth-refresh
 - base_ref: main @ a1b2c3d | phase_a_confirmed: yes
 
 ## Science gate
@@ -187,66 +187,66 @@ flow.sh add-unit --id U-01 --owner spec-executor --files "src/a.ts,tests/a.test.
 | researcher | false | - | research.md | skipped |
 | auditor | true | spec-science-auditor | science-audit.md | pending |
 
-## 统计
-- implementation: 4 个任务 → 2 个单元 / 8 个文件
-- verification: 1 个任务
-- research: 0 个任务
-- 涉及模块: auth, api
-- 共享文件: src/api/router.ts
+## Statistics
+- implementation: 4 tasks → 2 units / 8 files
+- verification: 1 task
+- research: 0 tasks
+- Modules involved: auth, api
+- Shared files: src/api/router.ts
 
-## 团队
-| 角色 | 实例 | archetype | 阶段 |
+## Team
+| Role | Instances | archetype | Phase |
 |---|---|---|---|
 | spec-executor | 1 | Builder | N4–N6 |
 | spec-reviewer | 1 | Reviewer | N4–N6 |
 | spec-science-auditor | 1 | Verifier | N4–N6 |
 
-## 单元表
+## Unit Table
 | ID | Owner | Archetype | owned_files | depends_on | acceptance |
 |---|---|---|---|---|---|
 | U-01 | spec-executor | Builder | src/auth/refresh-store.ts, tests/auth/refresh-store.test.ts | none | npm test -- refresh-store |
 | U-02 | spec-executor | Builder | src/api/auth-refresh.ts, tests/api/auth-refresh.test.ts | U-01 | npm test -- auth-refresh |
 
-## 验证安排
-| ID | Owner | 产物 | depends_on | acceptance |
+## Verification Arrangement
+| ID | Owner | Artifact | depends_on | acceptance |
 |---|---|---|---|---|
-| V-01 | spec-reviewer | findings.md 的 Round 1 reviewer 段 | U-01, U-02 | 每单元 verdict + 证据 |
-| V-02 | spec-science-auditor | science-audit.md | U-01 | 最终结论 Verdict |
+| V-01 | spec-reviewer | Round 1 reviewer section of findings.md | U-01, U-02 | verdict + evidence per unit |
+| V-02 | spec-science-auditor | science-audit.md | U-01 | final conclusion Verdict |
 
-## 调度判定
-- 实现顺序: 全部串行 — U-01/U-02 同 owner 且 flow.sh 单 claim；V-01/V-02 依赖实现单元。
-- 串行: U-01 → U-02 → V-01/V-02。
-- 不得并行: src/api/router.ts 归 U-02；U-01 不修改。
+## Scheduling Decision
+- Implementation order: all serialized — U-01/U-02 have the same owner and the flow script has a single claim; V-01/V-02 depend on the implementation units.
+- Serial: U-01 → U-02 → V-01/V-02.
+- Must not run in parallel: src/api/router.ts belongs to U-02; U-01 does not modify it.
 
-## 检查点
-| CP | After | 检查内容 | 未通过 |
+## Checkpoints
+| CP | After | Checked content | On failure |
 |---|---|---|---|
-| CP-1 | U-02 | npm test -- auth + refresh-store | 停，记 findings.md |
-| CP-2 | V-01 | AC 覆盖 + 双轴评审 | 回 changes_requested |
-| CP-3 | V-02 | science-audit PASS | 不得 verified |
+| CP-1 | U-02 | npm test -- auth + refresh-store | stop, record in findings.md |
+| CP-2 | V-01 | AC coverage + dual-axis review | return to changes_requested |
+| CP-3 | V-02 | science-audit PASS | must not be verified |
 
-## 高风险
+## High Risk
 - none
 
-## 确认
+## Confirmation
 - pending
 
-### U-01 — refresh token 存储与轮换
+### U-01 — refresh token storage and rotation
 - Owner: spec-executor
 - Archetype: Builder
 - owned_files: src/auth/refresh-store.ts, tests/auth/refresh-store.test.ts
-- Objective: 实现持久化与单次轮换，满足 AC-1/AC-2
-- Output: 上述两个文件 + R-10 回传
-- Source guidance: 先读 plan.md § 模块/接口变更，再读 architecture-review.md § 数据模型，最后读 src/auth/token.ts:40-120
-- Scope boundary: 不改 src/api/router.ts；不新增依赖；不改 users 表结构
-- Definition of done: `npm test -- refresh-store` exit 0；负向轮换测试通过
-- 启动 prompt: .team/001-auth-refresh/prompts/U-01.md
+- Objective: implement persistence and one-time rotation, satisfying AC-1/AC-2
+- Output: the two files above + R-10 report-back
+- Source guidance: first read plan.md § Module/interface changes, then architecture-review.md § Data model, finally src/auth/token.ts:40-120
+- Scope boundary: do not change src/api/router.ts; do not add dependencies; do not change the users table schema
+- Definition of done: `npm test -- refresh-store` exit 0; negative rotation test passes
+- Startup prompt: .team/001-auth-refresh/prompts/U-01.md
 ```
 
-## 完成标志
+## Completion criteria
 
-- `team-plan.md` 所有 § 与每个单元的五个必含字段齐全。
-- 所有单元 `owned_files` 两两不相交；相交项已合并/唯一化/串行化并记录。
-- 角色数 2–4；每个角色有 ≥1 个任务（实现单元或验证安排）；science gate 对应角色在列。
-- 用户 `confirmed` 已写入 `team-plan.md § 确认`。
-- `flow.json.units` 已由 `add-unit` 写入，`mission=executing`，checkpoint 已写。
+- All `§` sections of `team-plan.md` and the five required fields of each unit are complete.
+- All units' `owned_files` are pairwise disjoint; overlapping items have been merged/uniquified/serialized and recorded.
+- Role count 2–4; each role has ≥1 task (implementation unit or verification arrangement); the roles corresponding to the science gate are present.
+- The user's `confirmed` has been written into `team-plan.md § Confirmation`.
+- `flow.json.units` has been written by `add-unit`, `mission=executing`, and the checkpoint has been written.
