@@ -29,6 +29,18 @@ Personal development toolkit with commands and skills:
 
 See the [plugin docs](plugins/leo-dev-plugin/docs/) for detailed usage guides, workflows, and best practices for each component.
 
+### leo-team-plugin
+
+Experimental multi-agent workflow for M-sized and larger requirements. A PM-led Agent Team runs a spec-driven pipeline — Phase A → hard user gate → formation → parallel execution → round review → verification — with mechanical state control and an optional science-fact review lane.
+
+| Component | Usage | Description |
+|-----------|-------|-------------|
+| `/spec-team` | `/spec-team <requirement or .dev path>` | Start the team workflow. Detects Agent Teams availability and never silently degrades to subagents |
+| `/team-status` | `/team-status [run]` | Read-only progress report: Goal / Progress / Active / Blockers / Next |
+| `/team-reset` | `/team-reset <run>` | Archive a finished run's runtime state without deleting it. Requires typing `archive` to confirm; refuses runs that are executing or hold a claim |
+
+Requires Agent Teams in an interactive Claude Code session (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`). See the [plugin docs](plugins/leo-team-plugin/docs/spec-coding-team-skill.md) for roles, artifacts, and limitations.
+
 ## Local Development
 
 ### Validate

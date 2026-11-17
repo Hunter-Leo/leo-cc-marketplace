@@ -11,11 +11,20 @@ A Claude Code plugin marketplace (`leo-cc-marketplace`) hosted at `Hunter-Leo/le
 ```
 .claude-plugin/marketplace.json    ← Marketplace catalog (plugin index)
 plugins/
-  └── leo-dev-plugin/               ← The only plugin
+  ├── leo-dev-plugin/               ← Single-agent toolkit
+  │   ├── .claude-plugin/plugin.json
+  │   ├── commands/                  ← Slash commands (agnes-json-img, calm, dev-init)
+  │   └── skills/
+  │       └── spec-coding-skill/     ← Skill with SKILL.md + references/
+  └── leo-team-plugin/              ← Multi-agent team toolkit
       ├── .claude-plugin/plugin.json
-      ├── commands/                  ← Slash commands (agnes-json-img, calm)
+      ├── agents/                    ← 6 team roles (spec-*)
+      ├── commands/                  ← spec-team, team-status
+      ├── hooks/hooks.json           ← Flow enforcement
+      ├── scripts/                   ← flow.sh, validate-lane-write.sh, check-team-complete.sh
       └── skills/
-          └── spec-coding-skill/     ← Skill with SKILL.md + references/
+          ├── agent-team-authoring/  ← How to design an agent team
+          └── spec-coding-team-skill/← Team workflow (phases, references, templates)
 ```
 
 `plugins/` root holds all plugin directories. Each plugin has its own `.claude-plugin/plugin.json`.
@@ -39,6 +48,7 @@ plugins/
 | Plugin | Contents |
 |--------|----------|
 | `leo-dev-plugin` | `agnes-json-img` (Agnes AI JSON prompt command), `calm` (debug pause command), `spec-coding-skill` (spec-driven round-based coding workflow with references and utility scripts) |
+| `leo-team-plugin` | `agent-team-authoring` (how to design an agent team), `spec-coding-team-skill` (PM-led multi-agent workflow), `spec-team` / `team-status` commands, 6 `spec-*` team roles, flow-enforcement hooks |
 
 ## Spec-Driven Development
 

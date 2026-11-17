@@ -20,6 +20,17 @@
       },
       "category": "development",
       "keywords": ["coding", "agnes", "calm", "productivity", "spec-driven"]
+    },
+    {
+      "name": "leo-team-plugin",
+      "source": "./plugins/leo-team-plugin",
+      "description": "Multi-agent spec-driven development: a PM-led Agent Team with persistent-context executors, mechanical flow control, and an optional scientific-fact review lane",
+      "version": "0.1.0",
+      "author": {
+        "name": "Fightinglee"
+      },
+      "category": "development",
+      "keywords": ["agent-teams", "multi-agent", "spec-driven", "orchestration", "pm", "research"]
     }
   ]
 }
