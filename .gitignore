@@ -1,8 +1,27 @@
-node_modules/
+# OS / editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Local environment
 .env
-.claude/*.local.md
-.claude/settings.local.json
+.env.*
+!.env.example
+
+# Claude Code local state
+# (force-add with `git add -f` if a shared project setting ever needs tracking)
+.claude/
+
+# Team workflow runtime state and generated requirement docs (leo-team-plugin)
+.team/
+.dev/
+
+# OMC runtime state and caches
 .omc/
 .cache/
-.team/
-.DS_Store
+
+# Language / package caches
+node_modules/
+__pycache__/
+*.pyc
