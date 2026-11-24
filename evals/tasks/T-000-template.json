@@ -1,0 +1,33 @@
+{
+  "id": "T-000",
+  "stratum": "S1",
+  "repo": "snapshots/repo-a",
+  "base_commit": "REPLACE_WITH_COMMIT",
+  "goal": "一句话可判成败",
+  "non_goals": ["..."],
+  "acceptance": [
+    {
+      "id": "AC-1",
+      "check": "command",
+      "run": "npm test -- auth",
+      "expect": "exit_code == 0"
+    },
+    {
+      "id": "AC-2",
+      "check": "invariant",
+      "run": "rg legacyEndpoint src/",
+      "expect": "matches == 0"
+    }
+  ],
+  "hidden_checks": [
+    {
+      "id": "H-1",
+      "run": "npm test -- regression",
+      "expect": "exit_code == 0"
+    }
+  ],
+  "irreversible_actions": false,
+  "data_impact": "none",
+  "estimated_human_minutes": 15,
+  "notes": "模板：复制为 T-001.json 后填写"
+}

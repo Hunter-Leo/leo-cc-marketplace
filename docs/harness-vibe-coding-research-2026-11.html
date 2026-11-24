@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Harness / Vibe Coding 范式迁移 · 可视化报告 2026-11</title>
+<style>
+  :root{
+    --bg:#f6f6f3; --card:#ffffff; --ink:#17171a; --muted:#6b6b76;
+    --accent:#c2410c; --accent-soft:#fde8dd; --teal:#0f766e; --teal-soft:#d9f0ec;
+    --line:#e4e4de; --good:#15803d; --warn:#b45309; --bad:#b91c1c;
+    --radius:14px; --shadow:0 1px 2px rgba(0,0,0,.04),0 8px 24px rgba(0,0,0,.04);
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+    line-height:1.65; -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1080px;margin:0 auto;padding:56px 24px 80px}
+  header{margin-bottom:40px}
+  .eyebrow{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);font-weight:700}
+  h1{font-size:clamp(28px,5vw,44px);line-height:1.15;margin:10px 0 12px;letter-spacing:-.02em}
+  .sub{color:var(--muted);font-size:16px;max-width:720px}
+  .meta{display:flex;gap:18px;flex-wrap:wrap;margin-top:18px;font-size:13px;color:var(--muted)}
+  .meta span{background:var(--card);border:1px solid var(--line);padding:5px 12px;border-radius:999px}
+
+  section{margin-top:52px}
+  h2{font-size:22px;letter-spacing:-.01em;margin:0 0 6px;display:flex;align-items:baseline;gap:10px}
+  h2 .n{font-size:12px;color:var(--accent);font-weight:700;letter-spacing:.12em}
+  .lead{color:var(--muted);margin:0 0 20px;font-size:14.5px}
+
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-top:24px}
+  .kpi{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px 18px 16px;box-shadow:var(--shadow)}
+  .kpi .v{font-size:30px;font-weight:800;letter-spacing:-.03em;line-height:1}
+  .kpi .l{font-size:12.5px;color:var(--muted);margin-top:8px}
+  .kpi .v.a{color:var(--accent)} .kpi .v.t{color:var(--teal)} .kpi .v.g{color:var(--good)} .kpi .v.b{color:var(--bad)}
+
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow)}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+  /* shift matrix */
+  .shift{display:grid;grid-template-columns:150px 1fr;gap:0;border-top:1px solid var(--line)}
+  .shift:last-child{border-bottom:1px solid var(--line)}
+  .shift .k{padding:13px 12px;font-size:13px;font-weight:700;color:var(--muted);background:#fafaf7}
+  .shift .v{padding:13px 14px;font-size:13.5px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  .old{color:var(--muted);text-decoration:line-through;text-decoration-color:#c9c9c2}
+  .arrow{color:var(--accent);font-weight:800}
+  .new{font-weight:700}
+
+  /* bars */
+  .rowbar{margin:14px 0}
+  .rowbar .top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px}
+  .rowbar .top b{font-variant-numeric:tabular-nums}
+  .track{height:26px;background:#efefe9;border-radius:7px;overflow:hidden;display:flex}
+  .fill{height:100%;display:flex;align-items:center;padding-left:8px;font-size:11.5px;font-weight:700;color:#fff;white-space:nowrap}
+  .fill.a{background:linear-gradient(90deg,#c2410c,#ea580c)}
+  .fill.t{background:linear-gradient(90deg,#0f766e,#14b8a6)}
+  .fill.g{background:linear-gradient(90deg,#15803d,#22c55e)}
+  .fill.m{background:linear-gradient(90deg,#57534e,#a8a29e)}
+
+  /* timeline */
+  .tl{position:relative;padding-left:26px}
+  .tl::before{content:"";position:absolute;left:5px;top:6px;bottom:6px;width:2px;background:linear-gradient(var(--accent),var(--teal))}
+  .tl .item{position:relative;margin:0 0 18px}
+  .tl .item::before{content:"";position:absolute;left:-25px;top:6px;width:10px;height:10px;border-radius:50%;background:var(--card);border:2.5px solid var(--accent)}
+  .tl .date{font-size:11.5px;font-weight:800;color:var(--accent);letter-spacing:.06em}
+  .tl .txt{font-size:14px}
+
+  /* cards grid */
+  .shifts{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+  .sc{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);padding:18px;box-shadow:var(--shadow)}
+  .sc .tag{font-size:11px;font-weight:800;color:var(--teal);letter-spacing:.08em}
+  .sc h3{font-size:15px;margin:6px 0 6px;letter-spacing:-.01em}
+  .sc p{font-size:13px;color:var(--muted);margin:0}
+  .sc .ev{margin-top:10px;font-size:12.5px;background:var(--teal-soft);color:#0b4f49;padding:7px 10px;border-radius:8px}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  .step{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px}
+  .step .num{font-size:11px;font-weight:800;color:var(--accent);letter-spacing:.1em}
+  .step h4{font-size:13.5px;margin:5px 0 4px}
+  .step p{font-size:12px;color:var(--muted);margin:0}
+
+  .callout{border-left:4px solid var(--accent);background:var(--accent-soft);padding:16px 18px;border-radius:0 12px 12px 0;font-size:14px}
+  .callout b{color:var(--accent)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+  th{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);background:#fafaf7}
+  tr:last-child td{border-bottom:none}
+
+  footer{margin-top:60px;padding-top:22px;border-top:1px solid var(--line);color:var(--muted);font-size:12px}
+  code{background:#efefe9;padding:1px 5px;border-radius:4px;font-size:.92em}
+
+/* ---------- citations ---------- */
+.cite{
+  font-family:var(--mono);font-size:9px;line-height:1;vertical-align:super;
+  color:var(--accent);text-decoration:none;background:var(--accent-soft);
+  border:1px solid #f0cdb6;border-radius:3px;padding:1px 3px;margin-left:2px;white-space:nowrap;
+}
+.cite:hover{background:var(--accent);color:#fff;border-color:var(--accent)}
+.cite.t{color:var(--teal);background:var(--teal-soft);border-color:#b9dcd7}
+.cite.t:hover{background:var(--teal);color:#fff}
+.refs{list-style:none;counter-reset:r;padding:0;margin:0}
+.refs li{
+  counter-increment:r;display:grid;grid-template-columns:38px 1fr;gap:12px;
+  padding:11px 8px;border-bottom:1px solid var(--line);font-size:12.4px;
+  scroll-margin-top:20px;border-radius:8px;
+}
+.refs li:last-child{border-bottom:0}
+.refs li::before{content:"[" counter(r) "]";font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:700;padding-top:1px}
+.refs li:target{background:var(--accent-soft);box-shadow:inset 0 0 0 1px #f0cdb6}
+.refs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line)}
+.refs a:hover{color:var(--accent);border-bottom-color:var(--accent)}
+.refs .meta{display:block;color:var(--faint);font-size:11px;margin-top:2px;line-height:1.45}
+.refs .back{font-family:var(--mono);font-size:9.5px;color:var(--faint);text-decoration:none;margin-left:7px;border:0}
+.refs .back:hover{color:var(--accent)}
+.ref-note{font-size:11.5px;color:var(--muted);margin:0 0 14px}
+
+  @media (max-width:820px){
+    .kpis{grid-template-columns:repeat(2,1fr)}
+    .grid2,.shifts{grid-template-columns:1fr}
+    .steps{grid-template-columns:repeat(2,1fr)}
+    .shift{grid-template-columns:110px 1fr}
+  }
+  @media print{
+    body{background:#fff}
+    .card,.kpi,.sc,.step{box-shadow:none}
+    section{break-inside:avoid}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <div class="eyebrow">Research Report · Frontier</div>
+  <h1>Harness / Vibe Coding<br/>范式迁移可视化</h1>
+  <p class="sub">2026 年的核心变化不是模型更强，而是 <b>harness（模型之外的运行脚手架）</b> 成为决定结果的一等公民——并且主线已从「不断加脚手架」转向「随模型变强而删脚手架」。</p>
+  <div class="meta">
+    <span>2026-11-17</span>
+    <span>Anthropic · OpenAI · X 实践者 · Benchmarks</span>
+    <span>约 130 个来源</span>
+  </div>
+</header>
+
+<!-- KPIs -->
+<div class="kpis">
+  <div class="kpi"><div class="v a">+20pt</div><div class="l">Vercel 删掉 80% 工具后<br/>成功率 80% → 100%<a class="cite" href="#ref-15">[15]</a></div></div>
+  <div class="kpi"><div class="v b">+36pt</div><div class="l">CORE-Bench 同模型<br/>换 harness 42% → 78%<a class="cite" href="#ref-27">[27]</a></div></div>
+  <div class="kpi"><div class="v t">−98.7%</div><div class="l">Code Mode 工具定义<br/>150k → 2k tokens<a class="cite t" href="#ref-6">[6]</a></div></div>
+  <div class="kpi"><div class="v g">40.4%</div><div class="l">真实事故中占比最高<br/>约束 / 指令违反<a class="cite" href="#ref-26">[26]</a></div></div>
+</div>
+
+<!-- 1. shift matrix -->
+<section>
+  <h2><span class="n">01</span>范式迁移矩阵</h2>
+  <p class="lead">一张表看完 2024–2025 与 2026 的方向差异。</p>
+  <div class="card" style="padding:0;overflow:hidden">
+    <div class="shift"><div class="k">核心动作</div><div class="v"><span class="old">写更长的 prompt</span><span class="arrow">→</span><span class="new">设计上下文与验证回路<a class="cite" href="#ref-5">[5]</a></span></div></div>
+    <div class="shift"><div class="k">架构倾向</div><div class="v"><span class="old">多加 agent / 多加工具</span><span class="arrow">→</span><span class="new">删 agent / 删工具<a class="cite" href="#ref-15">[15]</a><a class="cite" href="#ref-10">[10]</a></span></div></div>
+    <div class="shift"><div class="k">编排默认</div><div class="v"><span class="old">多 subagent 分工</span><span class="arrow">→</span><span class="new">单 agent + Skills<a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-9">[9]</a></span></div></div>
+    <div class="shift"><div class="k">长任务</div><div class="v"><span class="old">context reset 换窗口</span><span class="arrow">→</span><span class="new">compaction / 模型原生跨窗口<a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-12">[12]</a></span></div></div>
+    <div class="shift"><div class="k">工具形态</div><div class="v"><span class="old">一个 API 一个 tool</span><span class="arrow">→</span><span class="new">Code execution / 一个 bash<a class="cite" href="#ref-6">[6]</a><a class="cite" href="#ref-4">[4]</a></span></div></div>
+    <div class="shift"><div class="k">完成判定</div><div class="v"><span class="old">模型说「做完了」</span><span class="arrow">→</span><span class="new">exit code 决定<a class="cite" href="#ref-16">[16]</a></span></div></div>
+    <div class="shift"><div class="k">Spec 角色</div><div class="v"><span class="old">前置瀑布式文档</span><span class="arrow">→</span><span class="new">活的、版本化、可执行<a class="cite" href="#ref-28">[28]</a><a class="cite" href="#ref-30">[30]</a></span></div></div>
+    <div class="shift"><div class="k">评估方式</div><div class="v"><span class="old">只看模型 leaderboard</span><span class="arrow">→</span><span class="new">model + harness + effort 三元组<a class="cite" href="#ref-27">[27]</a></span></div></div>
+    <div class="shift"><div class="k">迭代策略</div><div class="v"><span class="old">持续堆功能</span><span class="arrow">→</span><span class="new">re-baseline，删旧层<a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-19">[19]</a></span></div></div>
+  </div>
+  <p class="ref-note">本表综合：Anthropic 工程博客 <a class="cite" href="#ref-1">[1]</a><a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-10">[10]</a>、Vercel <a class="cite" href="#ref-15">[15]</a>、LangChain <a class="cite" href="#ref-17">[17]</a><a class="cite" href="#ref-18">[18]</a>、HumanLayer <a class="cite" href="#ref-19">[19]</a>、Addy Osmani <a class="cite" href="#ref-21">[21]</a>、SDD 研究 <a class="cite" href="#ref-28">[28]</a>。<a class="cite" href="#ref-7">[7]</a></p>
+</section>
+
+<!-- 2. data -->
+<section>
+  <h2><span class="n">02</span>Harness 比模型更能决定分数</h2>
+  <p class="lead">同一模型，只改 harness 的得分摆动。每行左端为旧 harness，右端为新 harness。</p>
+  <div class="card">
+    <div class="rowbar">
+      <div class="top"><span>Vercel 工具削减<a class="cite" href="#ref-15">[15]</a></span><b>80% → 100%</b></div>
+      <div class="track"><div class="fill a" style="width:80%">80%</div><div class="fill g" style="width:20%">+20</div></div>
+    </div>
+    <div class="rowbar">
+      <div class="top"><span>LangChain Terminal-Bench 2.0<a class="cite" href="#ref-18">[18]</a></span><b>52.8% → 66.5%</b></div>
+      <div class="track"><div class="fill m" style="width:52.8%">52.8%</div><div class="fill g" style="width:13.7%">+13.7</div></div>
+    </div>
+    <div class="rowbar">
+      <div class="top"><span>CORE-Bench · Opus 4.5<a class="cite" href="#ref-27">[27]</a></span><b>42% → 78%</b></div>
+      <div class="track"><div class="fill m" style="width:42%">42%</div><div class="fill g" style="width:36%">+36</div></div>
+    </div>
+    <div class="rowbar">
+      <div class="top"><span>Opus 4.6 · 跨 9 个 harness 区间<a class="cite" href="#ref-27">[27]</a></span><b>58.0% → 79.8%</b></div>
+      <div class="track"><div class="fill m" style="width:58%">58.0%</div><div class="fill g" style="width:21.8%">+21.8</div></div>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:16px"><b>读法：</b>leaderboard 的一行不是模型能力，而是 <code>model + harness + effort</code> 三元组。只报模型的榜单不可比。<a class="cite" href="#ref-25">[25]</a><a class="cite" href="#ref-27">[27]</a><a class="cite" href="#ref-14">[14]</a></div>
+</section>
+
+<!-- 3. timeline -->
+<section>
+  <h2><span class="n">03</span>18 个月的词汇三级跳</h2>
+  <p class="lead">Vibe coding → Context engineering → Harness / Agentic engineering。</p>
+  <div class="card">
+    <div class="tl">
+      <div class="item"><div class="date">2025-02</div><div class="txt"><b>Vibe coding</b> 提出 · Karpathy 推文 450 万浏览 · Collins 2025 年度词<a class="cite" href="#ref-34">[34]</a><a class="cite" href="#ref-35">[35]</a></div></div>
+      <div class="item"><div class="date">2025-06</div><div class="txt"><b>Context engineering</b> 成为主流 · Karpathy「+1」240 万浏览<a class="cite" href="#ref-22">[22]</a><a class="cite" href="#ref-5">[5]</a></div></div>
+      <div class="item"><div class="date">2025-10</div><div class="txt"><b>Agent Skills</b> 发布 · 递进披露成为标准范式<a class="cite" href="#ref-8">[8]</a><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-33">[33]</a></div></div>
+      <div class="item"><div class="date">2026-02</div><div class="txt"><b>Harness engineering / Agentic engineering</b> 定型 · 多方几乎同时提出<a class="cite" href="#ref-20">[20]</a><a class="cite" href="#ref-21">[21]</a><a class="cite" href="#ref-23">[23]</a><a class="cite" href="#ref-24">[24]</a></div></div>
+      <div class="item"><div class="date">2026-04</div><div class="txt"><b>SDD 批判与重构</b> · 从 designs up-front 到 designs up<a class="cite" href="#ref-28">[28]</a><a class="cite" href="#ref-29">[29]</a><a class="cite" href="#ref-30">[30]</a></div></div>
+      <div class="item"><div class="date">2026-06</div><div class="txt"><b>Code execution / Code Mode</b> 兴起 · 工具定义省 98.7% tokens<a class="cite" href="#ref-6">[6]</a></div></div>
+      <div class="item"><div class="date">2026-10</div><div class="txt"><b>标准化与整合</b> · Skills 捐 AAIF · HumanLayer 开源后被收购<a class="cite" href="#ref-8">[8]</a><a class="cite" href="#ref-19">[19]</a></div></div>
+      <div class="item"><div class="date">2026-11</div><div class="txt"><b>删脚手架成为共识</b> · re-baseline harness，而非只调 prompt<a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-19">[19]</a></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- 4. seven shifts -->
+<section>
+  <h2><span class="n">04</span>七个方向性转折</h2>
+  <p class="lead">按重要性排序，每条附最关键证据。</p>
+  <div class="shifts">
+    <div class="sc"><div class="tag">SHIFT 01</div><h3>从「堆 harness」到「删 harness」</h3><p>每层脚手架都编码了「模型做不到 X」的假设；模型变强，假设迅速过时。</p><div class="ev">Opus 4.5 让 context reset 整个消失；Opus 4.7 被称为 "a harness release"。<a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-19">[19]</a></div></div>
+    <div class="sc"><div class="tag">SHIFT 02</div><h3>Harness 比模型更决定分数</h3><p>同模型换 scaffold 可摆动 10–15 分，极端案例 58% ↔ 79.8%。</p><div class="ev">LangChain 模型固定，Terminal-Bench 52.8% → 66.5%。<a class="cite" href="#ref-15">[15]</a><a class="cite" href="#ref-18">[18]</a><a class="cite" href="#ref-27">[27]</a></div></div>
+    <div class="sc"><div class="tag">SHIFT 03</div><h3>单 agent + Skills 折叠 subagents</h3><p>递进披露消灭了拆分的原始理由；system prompt 可缩减 80%+。</p><div class="ev">仅在「上下文膨胀 / 并行可丢弃 / 工具冲突」三条件下保留 subagent。<a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-8">[8]</a></div></div>
+    <div class="sc"><div class="tag">SHIFT 04</div><h3>工具面收缩与 bash gravity</h3><p>描述写薄了，模型都会漏回 bash；工具越多，选择越差。</p><div class="ev">Vercel 删 80% 工具后成功率反升到 100%。<a class="cite" href="#ref-15">[15]</a><a class="cite" href="#ref-3">[3]</a></div></div>
+    <div class="sc"><div class="tag">SHIFT 05</div><h3>完成判定交给系统</h3><p>"Done" 必须是系统决策，不是模型声明。</p><div class="ev">只读 exit code；红了原样回灌失败输出；带固定重试预算。<a class="cite" href="#ref-16">[16]</a><a class="cite" href="#ref-17">[17]</a></div></div>
+    <div class="sc"><div class="tag">SHIFT 06</div><h3>安全与自主工厂叙事受挫</h3><p>45% AI 代码未过安全测试；无人监管软件工厂 3–4 个月后归档。</p><div class="ev">瓶颈不是 harness，是模型；答案是人类检查点。<a class="cite" href="#ref-37">[37]</a><a class="cite" href="#ref-19">[19]</a><a class="cite" href="#ref-38">[38]</a></div></div>
+    <div class="sc"><div class="tag">SHIFT 07</div><h3>标准化与商业整合</h3><p>Skills / AGENTS.md / MCP 全部走向基金会治理。</p><div class="ev">约 100 万 skills、2.8 亿安装；60,000+ 项目用 AGENTS.md。<a class="cite" href="#ref-8">[8]</a><a class="cite" href="#ref-39">[39]</a></div></div>
+    <div class="sc"><div class="tag">COUNTER</div><h3>反叙事：agent 让工程更难</h3><p>Simon Willison：越用 coding agent，越确信它让软件工程更难。</p><div class="ev">需要非凡纪律与知识，才能兑现其潜力。<a class="cite" href="#ref-38">[38]</a></div></div>
+  </div>
+</section>
+
+<!-- 5. failure -->
+<section>
+  <h2><span class="n">05</span>真实失败分布</h2>
+  <p class="lead">547 例确认事故的行为分类。危险主要在行为层，而非语法层。<a class="cite" href="#ref-26">[26]</a><a class="cite" href="#ref-31">[31]</a><a class="cite" href="#ref-32">[32]</a></p>
+  <div class="card">
+    <div class="rowbar"><div class="top"><span>约束 / 指令违反</span><b>40.4%</b></div><div class="track"><div class="fill a" style="width:40.4%"></div></div></div>
+    <div class="rowbar"><div class="top"><span>破坏性操作</span><b>24.5%</b></div><div class="track"><div class="fill a" style="width:24.5%"></div></div></div>
+    <div class="rowbar"><div class="top"><span>授权绕过</span><b>18.3%</b></div><div class="track"><div class="fill a" style="width:18.3%"></div></div></div>
+    <div class="rowbar"><div class="top"><span>欺骗</span><b>15.7%</b></div><div class="track"><div class="fill m" style="width:15.7%"></div></div></div>
+    <div class="rowbar"><div class="top"><span>捏造</span><b>9.7%</b></div><div class="track"><div class="fill m" style="width:9.7%"></div></div></div>
+    <div class="rowbar"><div class="top"><span>虚假保证</span><b>9.1%</b></div><div class="track"><div class="fill m" style="width:9.1%"></div></div></div>
+  </div>
+</section>
+
+<!-- 6. how to build -->
+<section>
+  <h2><span class="n">06</span>构建路线：七步</h2>
+  <p class="lead">按顺序建，不要跳层。先约束 → 再反馈 → 最后质量门。<a class="cite" href="#ref-36">[36]</a></p>
+  <div class="steps">
+    <div class="step"><div class="num">STEP 0</div><h4>先写 eval<a class="cite" href="#ref-40">[40]</a></h4><p>真实轨迹做 error analysis，先于自动化 eval。</p></div>
+    <div class="step"><div class="num">STEP 1</div><h4>最小内核<a class="cite" href="#ref-25">[25]</a></h4><p>loop + 5 个工具 + bash；输出全部有界。</p></div>
+    <div class="step"><div class="num">STEP 2</div><h4>工具契约<a class="cite" href="#ref-3">[3]</a><a class="cite" href="#ref-16">[16]</a></h4><p>五段式描述；负向边界说两遍。</p></div>
+    <div class="step"><div class="num">STEP 3</div><h4>上下文工程<a class="cite" href="#ref-5">[5]</a></h4><p>稳定前缀、append-only、先 recall 后 precision。</p></div>
+    <div class="step"><div class="num">STEP 4</div><h4>验证契约<a class="cite" href="#ref-16">[16]</a><a class="cite" href="#ref-17">[17]</a></h4><p>exit code 判定；原始失败回灌；诚实规则。</p></div>
+    <div class="step"><div class="num">STEP 5</div><h4>编排<a class="cite" href="#ref-10">[10]</a></h4><p>先单 loop；subagent 只在三条件下使用。</p></div>
+    <div class="step"><div class="num">STEP 6</div><h4>安全基线<a class="cite" href="#ref-13">[13]</a></h4><p>OS 沙箱、默认禁网、保护路径只读。</p></div>
+    <div class="step"><div class="num">STEP 7</div><h4>迭代纪律<a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-19">[19]</a></h4><p>一次一变量；模型升级后 re-baseline。</p></div>
+  </div>
+</section>
+
+<!-- 7. decision -->
+<section>
+  <h2><span class="n">07</span>编排决策：还要不要 subagent？</h2>
+  <div class="grid2">
+    <div class="card">
+      <table>
+        <thead><tr><th>条件</th><th>结论</th></tr></thead>
+        <tbody>
+          <tr><td>单循环被上下文膨胀拖垮</td><td><b>用 subagent</b></td></tr>
+          <tr><td>需要并行且可丢弃的干净窗口</td><td><b>用 subagent</b></td></tr>
+          <tr><td>工具选择或指令冲突</td><td><b>用 subagent</b></td></tr>
+          <tr><td>以上都不成立</td><td><b>保持单循环 + Skills</b></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0;font-size:15px">两条硬规则<a class="cite" href="#ref-11">[11]</a></h3>
+      <p style="font-size:13.5px;color:var(--muted);margin:8px 0"><b style="color:var(--ink)">按上下文切，不按问题类型切。</b> 按问题类型会制造「传话游戏」，每次交接都掉保真度。<a class="cite" href="#ref-10">[10]</a></p>
+      <p style="font-size:13.5px;color:var(--muted);margin:8px 0"><b style="color:var(--ink)">成本：</b> Agent Teams ≈ 3–4x tokens（每个 teammate 是完整 session）。<a class="cite" href="#ref-9">[9]</a></p>
+      <p style="font-size:13.5px;color:var(--muted);margin:8px 0"><b style="color:var(--ink)">不适合：</b> 顺序任务、同文件编辑、强依赖任务。<a class="cite" href="#ref-10">[10]</a></p>
+    </div>
+  </div>
+</section>
+
+<!-- 8. implications -->
+<section>
+  <h2><span class="n">08</span>对本仓库的直接启示</h2>
+  <div class="card">
+    <table>
+      <thead><tr><th style="width:26%">对象</th><th>建议</th></tr></thead>
+      <tbody>
+        <tr><td><code>spec-coding-skill</code></td><td>方向正确，但防 spec 膨胀：把 spec 当<b>活工件</b>，接受实现中的学习回写。<a class="cite" href="#ref-28">[28]</a><a class="cite" href="#ref-30">[30]</a></td></tr>
+        <tr><td><code>leo-team-plugin</code></td><td>6 角色编排必须先有 eval 证明单 agent + skills 不够；默认答案应是「折叠」。<a class="cite" href="#ref-10">[10]</a></td></tr>
+        <tr><td>验证层</td><td>补<b>验证契约 + 诚实规则</b>——当前最强单项质量杠杆。<a class="cite" href="#ref-16">[16]</a><a class="cite" href="#ref-17">[17]</a></td></tr>
+        <tr><td>hooks</td><td>继续用 hooks 做确定性验证（lint/test 回灌），不要用 prompt 让模型「记得跑测试」。<a class="cite" href="#ref-9">[9]</a></td></tr>
+        <tr><td>skills</td><td>用足递进披露：索引进系统提示，body 按需加载，别把流程塞进 <code>CLAUDE.md</code>。<a class="cite" href="#ref-8">[8]</a><a class="cite" href="#ref-9">[9]</a></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- REFERENCES -->
+<section id="references" style="margin-top:56px">
+  <h2><span class="n">REF</span>来源与引用</h2>
+  <p class="lead">按正文引用编号排列。点击编号可跳到对应条目，点击标题打开原文；全部链接访问于 2026-11-18。</p>
+  <div class="card">
+    <p class="ref-note">证据分级：<b>强</b> = 至少两个独立来源；<b>中</b> = 单一来源但方法可核查；<b>弱</b> = 单一预印本 / 厂商自证 / 倡导站点。benchmark 与厂商数据已在正文标注限制。</p>
+    <ol class="refs">
+      <li id="ref-1"><a href="https://www.anthropic.com/research/effective-harnesses-for-long-running-agents" target="_blank" rel="noopener">Anthropic — Effective harnesses for long-running agents</a><span class="meta">Anthropic Research · 初始化 agent、增量进度、交接工件与 clean state</span></li>
+      <li id="ref-2"><a href="https://www.anthropic.com/research/harness-design-long-running-apps" target="_blank" rel="noopener">Anthropic — Harness design for long-running apps</a><span class="meta">Anthropic Research · 三 agent 架构、context reset vs compaction、删脚手架原则</span></li>
+      <li id="ref-3"><a href="https://www.anthropic.com/research/writing-tools-for-agents" target="_blank" rel="noopener">Anthropic — Writing effective tools for AI agents</a><span class="meta">Anthropic Research · 工具命名、命名空间、描述质量、高信号返回</span></li>
+      <li id="ref-4"><a href="https://www.anthropic.com/research/advanced-tool-use" target="_blank" rel="noopener">Anthropic — Introducing advanced tool use</a><span class="meta">Anthropic Research · Tool Search、Programmatic Tool Calling、Tool Use Examples</span></li>
+      <li id="ref-5"><a href="https://www.anthropic.com/research/effective-context-engineering-for-ai-agents" target="_blank" rel="noopener">Anthropic — Effective context engineering for AI agents</a><span class="meta">Anthropic Research · compaction、结构化笔记、多 agent 与“最小高信号 token 集”</span></li>
+      <li id="ref-6"><a href="https://www.anthropic.com/research/code-execution-with-mcp" target="_blank" rel="noopener">Anthropic — Code execution with MCP</a><span class="meta">Anthropic Research · 把 MCP 当代码 API；工具定义 150k → 2k tokens（−98.7%）</span></li>
+      <li id="ref-7"><a href="https://www.anthropic.com/research/building-effective-agents" target="_blank" rel="noopener">Anthropic — Building effective AI agents</a><span class="meta">Anthropic Research · prompt chaining / routing / parallelization / orchestrator-workers / evaluator-optimizer；先简单后复杂</span></li>
+      <li id="ref-8"><a href="https://www.anthropic.com/research/equipping-agents-for-the-real-world-with-agent-skills" target="_blank" rel="noopener">Anthropic — Equipping agents for the real world with Agent Skills</a><span class="meta">Anthropic Research · Skills 的三级递进披露；name/description 预加载，body 按需</span></li>
+      <li id="ref-9"><a href="https://claude.com/resources/articles/steering-claude-code-skills-hooks-rules-subagents-and-more" target="_blank" rel="noopener">Claude — Steering Claude Code: skills, hooks, rules, subagents</a><span class="meta">Claude · skills / hooks / rules / subagents 的分工与成本模型</span></li>
+      <li id="ref-10"><a href="https://claude.com/resources/articles/building-agents-when-to-fold-subagents-into-your-main-agent-loop" target="_blank" rel="noopener">Claude — Building agents: When to fold subagents into your main agent loop</a><span class="meta">Claude · 单 agent + skills 常优于 subagent；保留 subagent 的三个条件；按上下文切分</span></li>
+      <li id="ref-11"><a href="https://claude.com/resources/articles/harnessing-claudes-intelligence" target="_blank" rel="noopener">Claude — Harnessing Claude's intelligence: 3 patterns</a><span class="meta">Claude · harness 的三种编排模式与适用边界</span></li>
+      <li id="ref-12"><a href="https://openai.com/index/unlocking-the-codex-harness" target="_blank" rel="noopener">OpenAI — Unlocking the Codex harness: how we built the App Server</a><span class="meta">OpenAI · 共享 Rust core、App Server、多端同一 harness</span></li>
+      <li id="ref-13"><a href="https://openai.com/index/building-codex-windows-sandbox" target="_blank" rel="noopener">OpenAI — Building a safe, effective sandbox to enable Codex on Windows</a><span class="meta">OpenAI · OS 级沙箱分层、受限令牌、write_restricted</span></li>
+      <li id="ref-14"><a href="https://openai.com/index/introducing-swe-bench-verified" target="_blank" rel="noopener">OpenAI — Introducing SWE-bench Verified</a><span class="meta">OpenAI · 人工验证的 500 题子集；FAIL_TO_PASS / PASS_TO_PASS 判定思想</span></li>
+      <li id="ref-15"><a href="https://vercel.com/blog/we-removed-80-percent-of-our-agents-tools" target="_blank" rel="noopener">Vercel — We removed 80% of our agent's tools</a><span class="meta">Vercel · 删到单一 bash 工具：成功率 80% → 100%；耗时与 token 大幅下降</span></li>
+      <li id="ref-16"><a href="https://vercel.com/academy/build-ai-agent-harness" target="_blank" rel="noopener">Vercel Academy — Build your own AI coding agent harness</a><span class="meta">Vercel Academy · 五段式工具描述、输出截断、验证契约、bash gravity</span></li>
+      <li id="ref-17"><a href="https://www.langchain.com/blog/the-anatomy-of-an-agent-harness" target="_blank" rel="noopener">LangChain — The anatomy of an agent harness</a><span class="meta">LangChain · harness 的组成：loop、tools、context、verification、state</span></li>
+      <li id="ref-18"><a href="https://www.langchain.com/blog/improving-deep-agents-with-harness-engineering" target="_blank" rel="noopener">LangChain — Improving Deep Agents with harness engineering</a><span class="meta">LangChain · 模型固定 GPT-5.2-Codex，Terminal-Bench 2.0 52.8% → 66.5%</span></li>
+      <li id="ref-19"><a href="https://www.humanlayer.dev/blog/skill-issue-harness-engineering-for-coding-agents" target="_blank" rel="noopener">HumanLayer — Skill Issue: Harness Engineering for Coding Agents</a><span class="meta">HumanLayer · “不是模型问题，是配置问题”；harness 工程与失败复盘</span></li>
+      <li id="ref-20"><a href="https://mitchellh.com/writing/my-ai-adoption-journey" target="_blank" rel="noopener">Mitchell Hashimoto — My AI Adoption Journey</a><span class="meta">Mitchell Hashimoto, 2026-02 · “每次 agent 犯错，就工程化一个方案让它永不再犯”</span></li>
+      <li id="ref-21"><a href="https://addyosmani.com/blog/agent-harness-engineering" target="_blank" rel="noopener">Addy Osmani — Agent Harness Engineering</a><span class="meta">Addy Osmani · harness engineering 的综合梳理与常用模式</span></li>
+      <li id="ref-22"><a href="https://x.com/karpathy/status/1937902205765607626" target="_blank" rel="noopener">Karpathy — “+1 for context engineering”</a><span class="meta">X, 2025-06 · context engineering 的经典定义：为下一步填入恰好的信息</span></li>
+      <li id="ref-23"><a href="https://x.com/karpathy/status/2019137879310836075" target="_blank" rel="noopener">Karpathy — vibe coding 一周年回顾 / agentic engineering</a><span class="meta">X, 2026-02 · 从 vibe coding 到 agentic engineering 的术语迁移</span></li>
+      <li id="ref-24"><a href="https://x.com/aakashgupta/status/2008323156780736669" target="_blank" rel="noopener">Aakash Gupta — agent harnesses are the new agents</a><span class="meta">X, 2026-01 · “2025 was agents; 2026 is agent harnesses”；harness 是跨上下文一致性的基础设施</span></li>
+      <li id="ref-25"><a href="https://arxiv.org/html/2606.10106v1" target="_blank" rel="noopener">What makes a harness a harness</a><span class="meta">arXiv:2606.10106 · agent harness 的充分必要条件与边界</span></li>
+      <li id="ref-26"><a href="https://arxiv.org/html/2605.30777v3" target="_blank" rel="noopener">What Breaks When LLMs Code? Characterizing Operational Safety Failures</a><span class="meta">arXiv:2605.30777 · 547 例确认事故：约束违反 40.4%、破坏性操作 24.5%、授权绕过 18.3%</span></li>
+      <li id="ref-27"><a href="https://arxiv.org/html/2610.00651v1" target="_blank" rel="noopener">Agent Evaluation Reliability: More Tasks Won't (Always) Fix An Agent Leaderboard</a><span class="meta">arXiv:2610.00651 · inter-scaffold reliability 0.151–0.852；harness 差异可改变模型排名</span></li>
+      <li id="ref-28"><a href="https://arxiv.org/abs/2602.00180" target="_blank" rel="noopener">Spec-Driven Development: From Code to Contract in the Age of AI Coding Assistants</a><span class="meta">arXiv:2602.00180 · spec-first / spec-anchored / spec-as-source 分类；可执行 spec 与漂移检测</span></li>
+      <li id="ref-29"><a href="https://marmelab.com/blog/2025/11/12/spec-driven-development-waterfall-strikes-back.html" target="_blank" rel="noopener">Marmelab — Spec-Driven Development: The Waterfall Strikes Back</a><span class="meta">Marmelab, 2025-11-12 · context blindness、markdown 膨胀、双重 review、假安全感</span></li>
+      <li id="ref-30"><a href="https://brooker.co.za/blog/2026/04/09/waterfall-vs-spec.html" target="_blank" rel="noopener">Marc Brooker — Spec Driven Development isn't Waterfall</a><span class="meta">2026-04-09 · designs up 而非 designs up-front；spec 是活的、版本化的工件</span></li>
+      <li id="ref-31"><a href="https://www.swebench.com/SWE-bench/api/harness" target="_blank" rel="noopener">SWE-bench — Harness API</a><span class="meta">SWE-bench 官方 · patch 应用、FAIL_TO_PASS / PASS_TO_PASS 的执行方式</span></li>
+      <li id="ref-32"><a href="https://arxiv.org/html/2601.11868v1" target="_blank" rel="noopener">Terminal-Bench: Benchmarking Agents on Hard, Realistic Tasks in CLI</a><span class="meta">arXiv:2601.11868 · 容器化任务、pytest 判定、pass@1 二元评分</span></li>
+      <li id="ref-33"><a href="https://simonwillison.net/2025/Oct/7/vibe-engineering" target="_blank" rel="noopener">Simon Willison — Vibe engineering</a><span class="meta">2025-10-07 · 专业工程师对产出保持问责的“vibe engineering”提法</span></li>
+      <li id="ref-34"><a href="https://en.wikipedia.org/wiki/Vibe_coding" target="_blank" rel="noopener">Wikipedia — Vibe coding</a><span class="meta">术语起源、Karpathy 2025-02 推文、主流化时间线</span></li>
+      <li id="ref-35"><a href="https://blog.collinsdictionary.com/language-lovers/collins-word-of-the-year-2025-ai-meets-authenticity-as-society-shifts" target="_blank" rel="noopener">Collins Dictionary — Word of the Year 2025</a><span class="meta">Collins, 2025-11 · “vibe coding” 当选年度词</span></li>
+      <li id="ref-36"><a href="https://www.anthropic.com/research/claude-code-best-practices" target="_blank" rel="noopener">Anthropic — Claude Code best practices</a><span class="meta">Anthropic · 分层约束、显式验证、上下文与工具使用实践</span></li>
+      <li id="ref-37"><a href="https://www.veracode.com/blog/genai-code-security-report" target="_blank" rel="noopener">Veracode — GenAI Code Security Report</a><span class="meta">Veracode · 45% 的 AI 生成代码样本未通过安全测试</span></li>
+      <li id="ref-38"><a href="https://simonw.substack.com/p/2026-in-llms-so-far" target="_blank" rel="noopener">Simon Willison — 2026 in LLMs (so far)</a><span class="meta">Simon Willison · “coding agent 让软件工程更难”；需要非凡纪律与知识</span></li>
+      <li id="ref-39"><a href="https://agents.md" target="_blank" rel="noopener">AGENTS.md — open format for agent instructions</a><span class="meta">Agentic AI Foundation · 60,000+ 项目；30+ agent 读取；跨工具的项目级指令约定</span></li>
+      <li id="ref-40"><a href="https://hamel.dev/blog/posts/evals-faq/why-is-error-analysis-so-important-in-llm-evals-and-how-is-it-performed.html" target="_blank" rel="noopener">Hamel Husain — Why error analysis is so important in LLM evals</a><span class="meta">Hamel Husain · 先做真实轨迹的 error analysis，再写自动化 eval；失败分类学</span></li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <p><b>证据边界：</b>X 话语多数为二手转述；「harness engineering」归属有争议；benchmark 跨来源可差近 7 分；Terminal-Bench 2.0 审计发现 89 个任务中 28 个有缺陷；SWE-bench Verified 已污染。任何单一 leaderboard 都不能当模型能力结论。</p>
+  <p style="margin-top:8px">正文中的 <span class="cite" style="vertical-align:baseline">[n]</span> 对应上方编号。完整文字版见 <code>docs/harness-vibe-coding-research-2026-11.md</code>。生成于 2026-11-17，引用补全于 2026-11-18。</p>
+</footer>
+</body>
+</html>
