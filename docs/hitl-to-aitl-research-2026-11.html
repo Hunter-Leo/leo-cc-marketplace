@@ -1,0 +1,984 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Human-in-the-Loop → Agent-in-the-Loop · 范式迁移调研报告</title>
+<style>
+:root{
+  --bg:#f5f3ee;
+  --paper:#fffdf9;
+  --ink:#151517;
+  --muted:#6d685f;
+  --faint:#9b958a;
+  --line:#e3ddd1;
+  --line2:#d4cdbe;
+
+  --amber:#c2740a;
+  --amber-bg:#fdf3e3;
+  --teal:#0f766e;
+  --teal-bg:#e3f3f0;
+  --blue:#1d4ed8;
+  --blue-bg:#e8eefc;
+  --red:#b42318;
+  --red-bg:#fdecea;
+  --purple:#6d28d9;
+  --purple-bg:#efe9fb;
+  --green:#15803d;
+  --green-bg:#e7f5ea;
+
+  --radius:14px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --shadow:0 1px 2px rgba(20,20,22,.05),0 10px 30px rgba(20,20,22,.05);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--sans);line-height:1.65;-webkit-font-smoothing:antialiased}
+
+/* ---------- hero ---------- */
+.hero{background:#141416;color:#f4f1ea;position:relative;overflow:hidden}
+.hero::before{
+  content:"";position:absolute;inset:0;
+  background-image:linear-gradient(rgba(255,255,255,.045) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.045) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(ellipse at 70% 20%,#000 20%,transparent 75%);
+}
+.hero-in{position:relative;max-width:1180px;margin:0 auto;padding:70px 32px 54px}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#e2a33a;font-weight:600}
+h1{font-size:clamp(30px,5.4vw,54px);line-height:1.06;letter-spacing:-.03em;margin:14px 0 16px;font-weight:800}
+h1 .arrow{color:#e2a33a}
+.hero p.lead{color:#b9b4a9;font-size:16px;max-width:760px;margin:0 0 26px}
+.hero p.lead b{color:#f4f1ea}
+.hero-stats{display:flex;flex-wrap:wrap;gap:10px}
+.hstat{border:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.045);border-radius:999px;padding:7px 15px;font-size:12.5px;color:#b9b4a9}
+.hstat b{color:#f4f1ea;font-family:var(--mono);font-size:13px}
+.hstat.amber{border-color:rgba(226,163,58,.4);background:rgba(226,163,58,.1);color:#e9bf74}
+
+/* ---------- nav ---------- */
+.nav{position:sticky;top:0;z-index:50;background:rgba(245,243,238,.9);backdrop-filter:blur(14px);border-bottom:1px solid var(--line)}
+.nav-in{max-width:1180px;margin:0 auto;padding:9px 32px;display:flex;gap:4px;overflow-x:auto}
+.nav a{font-size:12.5px;color:var(--muted);text-decoration:none;padding:6px 11px;border-radius:7px;white-space:nowrap;border-bottom:2px solid transparent}
+.nav a:hover{background:#ece7dc;color:var(--ink)}
+.nav a.active{color:var(--ink);font-weight:600;background:var(--paper);border-bottom-color:var(--amber);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+
+/* ---------- layout ---------- */
+.wrap{max-width:1180px;margin:0 auto;padding:44px 32px 100px}
+section{margin-bottom:56px;scroll-margin-top:70px}
+.sec-head{margin-bottom:20px}
+.sec-k{font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--amber);font-weight:700}
+h2{font-size:clamp(21px,3vw,29px);letter-spacing:-.02em;margin:6px 0 6px;font-weight:750}
+.sec-desc{color:var(--muted);font-size:14px;margin:0;max-width:820px}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:24px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+
+/* ---------- tl;dr ---------- */
+.tldr{display:grid;grid-template-columns:repeat(5,1fr);gap:10px}
+.tcard{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:16px 15px;box-shadow:var(--shadow);position:relative;overflow:hidden}
+.tcard::before{content:"";position:absolute;top:0;left:0;right:0;height:3px;background:var(--amber)}
+.tcard:nth-child(2)::before{background:var(--teal)}
+.tcard:nth-child(3)::before{background:var(--red)}
+.tcard:nth-child(4)::before{background:var(--purple)}
+.tcard:nth-child(5)::before{background:var(--blue)}
+.tcard .n{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.12em}
+.tcard p{font-size:13px;margin:8px 0 0;color:#3b372f;line-height:1.55}
+.tcard p b{color:var(--ink)}
+
+/* ---------- terms ---------- */
+.tabs{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
+.tab{font:inherit;font-size:12.5px;padding:7px 13px;border-radius:8px;border:1px solid var(--line2);background:#fff;color:var(--muted);cursor:pointer;transition:.15s;font-family:var(--mono)}
+.tab:hover{color:var(--ink);border-color:var(--faint)}
+.tab[aria-selected="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.term-panel{display:none}
+.term-panel.on{display:block;animation:fade .22s ease}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.term-top{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;margin-bottom:6px}
+.term-top .badge{font-family:var(--mono);font-size:10px;padding:3px 8px;border-radius:5px;background:var(--amber-bg);color:var(--amber);font-weight:700}
+.term-top h3{margin:0;font-size:17px}
+.term-def{font-size:14px;color:#3b372f;margin:8px 0 14px}
+.kv{display:grid;grid-template-columns:130px 1fr;gap:0;border-top:1px solid var(--line)}
+.kv:last-child{border-bottom:1px solid var(--line)}
+.kv .k{padding:9px 10px;font-size:11.5px;color:var(--faint);font-family:var(--mono);background:#faf8f3}
+.kv .v{padding:9px 12px;font-size:12.8px;color:#3b372f}
+.senses{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+.sense{border:1px solid var(--line);border-radius:9px;padding:12px;background:#fcfaf6}
+.sense .sn{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.1em;font-weight:700}
+.sense h4{font-size:13px;margin:4px 0 4px}
+.sense p{font-size:11.8px;color:var(--muted);margin:0}
+.sense.warn{border-color:#eccbbf;background:var(--red-bg)}
+
+/* ---------- lanes ---------- */
+.lanes{display:grid;gap:12px}
+.lane{display:grid;grid-template-columns:132px 1fr;border:1px solid var(--line);border-radius:11px;overflow:hidden;background:#fff}
+.lane .tag{padding:14px 12px;background:#faf8f3;border-right:1px solid var(--line)}
+.lane .tag b{display:block;font-family:var(--mono);font-size:11px;letter-spacing:.06em}
+.lane .tag span{font-size:11px;color:var(--faint)}
+.lane .body{padding:14px 16px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px}
+.node2{border:1px solid var(--line2);border-radius:7px;padding:6px 10px;background:#fff;font-size:12px;white-space:nowrap}
+.node2.human{border-color:#e5b48a;background:var(--amber-bg);color:#7c3d06;font-weight:600}
+.node2.agent{border-color:#a9d5cd;background:var(--teal-bg);color:#0b4f49;font-weight:600}
+.node2.gate{border-color:#c3d0f7;background:var(--blue-bg);color:#1e3a8a;font-weight:600}
+.arw{color:var(--faint);font-size:14px}
+.lane-note{font-size:11.5px;color:var(--faint);margin-left:4px}
+
+/* ---------- matrix table ---------- */
+table{width:100%;border-collapse:collapse;font-size:12.8px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);background:#faf8f3;font-weight:600}
+tr:last-child td{border-bottom:0}
+tbody tr:hover{background:#fbf9f4}
+td.hl{background:var(--amber-bg);color:#6f3506;font-weight:600}
+td.hl2{background:var(--teal-bg);color:#0b4f49;font-weight:600}
+
+/* ---------- consensus ---------- */
+.cons{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.cc{background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:17px;box-shadow:var(--shadow)}
+.cc-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.cc h3{font-size:14.5px;margin:0;letter-spacing:-.01em}
+.strength{font-family:var(--mono);font-size:9.5px;padding:3px 7px;border-radius:999px;white-space:nowrap}
+.strength.s{background:var(--green-bg);color:var(--green);border:1px solid #b9dfc2}
+.strength.m{background:var(--amber-bg);color:var(--amber);border:1px solid #eccb95}
+.strength.w{background:var(--red-bg);color:var(--red);border:1px solid #f0c6c0}
+.cc p{font-size:12.5px;color:var(--muted);margin:8px 0 10px}
+.evchips{display:flex;flex-wrap:wrap;gap:5px}
+.evchip{font-size:10.5px;background:#f2eee5;border:1px solid var(--line);border-radius:5px;padding:2px 7px;color:#5d584e;font-family:var(--mono)}
+.cc .verdict{font-size:11.5px;color:var(--green);margin-top:10px;font-weight:600}
+
+/* ---------- disagreement ---------- */
+.dis{display:grid;grid-template-columns:1fr 1fr;gap:0;border:1px solid var(--line);border-radius:12px;overflow:hidden;background:#fff}
+.dis .side{padding:16px}
+.dis .side.a{border-right:1px solid var(--line);background:#fcfaf6}
+.dis .side h4{font-size:12px;font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--faint);margin:0 0 6px}
+.dis .side p{font-size:12.8px;margin:0;color:#3b372f}
+.dis .judge{grid-column:1/-1;padding:12px 16px;background:var(--amber-bg);border-top:1px solid #eed9b5;font-size:12.5px;color:#6f3506}
+.dis .judge b{color:var(--amber)}
+
+/* ---------- ladder ---------- */
+.ladder{display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start}
+.steps{display:flex;flex-direction:column;gap:8px}
+.step2{display:grid;grid-template-columns:52px 1fr auto;gap:12px;align-items:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px 14px;cursor:pointer;font:inherit;text-align:left;transition:.15s}
+.step2:hover{border-color:var(--faint);transform:translateX(2px)}
+.step2[aria-pressed="true"]{border-color:var(--amber);background:var(--amber-bg);box-shadow:0 0 0 2px rgba(194,116,10,.12)}
+.step2 .lv{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--amber)}
+.step2 .ttl{font-size:13.5px;font-weight:600}
+.step2 .ttl small{display:block;font-weight:400;font-size:11.5px;color:var(--muted);margin-top:2px}
+.step2 .pop{font-family:var(--mono);font-size:10.5px;color:var(--faint)}
+.detail{background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;position:sticky;top:70px;box-shadow:var(--shadow)}
+.detail h3{font-size:15px;margin:0 0 4px}
+.detail .sub{font-family:var(--mono);font-size:10.5px;color:var(--amber);letter-spacing:.1em;margin-bottom:12px}
+.detail .row{display:grid;grid-template-columns:78px 1fr;gap:8px;padding:8px 0;border-top:1px solid var(--line);font-size:12.5px}
+.detail .row .k{color:var(--faint);font-family:var(--mono);font-size:10.5px;padding-top:2px}
+.detail .row .v{color:#3b372f}
+.meters{margin-top:14px;display:grid;gap:9px}
+.meter-row{font-size:11px;color:var(--muted)}
+.meter-row .lab{display:flex;justify-content:space-between;margin-bottom:3px;font-family:var(--mono);font-size:10px}
+.track{height:9px;background:#efebe2;border-radius:5px;overflow:hidden}
+.fill{height:100%;border-radius:5px;transition:width .35s cubic-bezier(.2,.8,.3,1)}
+.fill.h{background:linear-gradient(90deg,#c2740a,#e09a3a)}
+.fill.e{background:linear-gradient(90deg,#0f766e,#14b8a6)}
+.fill.i{background:linear-gradient(90deg,#b42318,#e0524a)}
+
+/* ---------- pipeline ---------- */
+.pipe{display:flex;gap:8px;align-items:stretch;flex-wrap:wrap}
+.pstep{flex:1 1 150px;min-width:140px;background:#fff;border:1px solid var(--line);border-radius:10px;padding:12px;position:relative}
+.pstep .pn{font-family:var(--mono);font-size:9.5px;color:var(--amber);letter-spacing:.1em;font-weight:700}
+.pstep h4{font-size:12.8px;margin:4px 0 4px}
+.pstep p{font-size:11.5px;color:var(--muted);margin:0}
+.pstep::after{content:"→";position:absolute;right:-12px;top:50%;transform:translateY(-50%);color:var(--line2);font-size:15px;z-index:2}
+.pstep:last-child::after{display:none}
+.pstep .nogo{display:block;margin-top:6px;font-size:10.5px;color:var(--red)}
+
+/* ---------- decision helper ---------- */
+.helper{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.controls{display:grid;gap:14px}
+.ctrl label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);margin-bottom:6px}
+.seg2{display:flex;gap:4px;background:#efebe2;border:1px solid var(--line2);border-radius:9px;padding:3px}
+.seg2 button{flex:1;font:inherit;font-size:12px;padding:6px 8px;border:0;border-radius:6px;background:transparent;color:var(--muted);cursor:pointer}
+.seg2 button[aria-pressed="true"]{background:#fff;color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.07)}
+.result{border-radius:12px;padding:20px;border:1px solid var(--line);background:#fff;display:flex;flex-direction:column;justify-content:center;min-height:180px;transition:.2s}
+.result .rk{font-family:var(--mono);font-size:10px;letter-spacing:.12em;text-transform:uppercase;margin-bottom:6px}
+.result h3{font-size:19px;margin:0 0 8px;letter-spacing:-.01em}
+.result p{font-size:13px;color:var(--muted);margin:0}
+.result.block{background:var(--red-bg);border-color:#edc4be}
+.result.block .rk{color:var(--red)}
+.result.warn{background:var(--amber-bg);border-color:#ebd3ab}
+.result.warn .rk{color:var(--amber)}
+.result.safe{background:var(--green-bg);border-color:#bfe0c8}
+.result.safe .rk{color:var(--green)}
+
+/* ---------- triggers ---------- */
+.trig{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.tg{border-radius:12px;padding:18px;border:1px solid var(--line);background:#fff;position:relative;overflow:hidden}
+.tg::before{content:"";position:absolute;left:0;top:0;bottom:0;width:4px}
+.tg.r::before{background:var(--red)}
+.tg.a::before{background:var(--amber)}
+.tg.p::before{background:var(--purple)}
+.tg h3{font-size:15px;margin:0 0 6px}
+.tg .ex{font-size:11.5px;color:var(--muted);margin:0 0 10px}
+.tg ul{margin:0;padding-left:16px;font-size:12px;color:#3b372f}
+.tg li{margin:3px 0}
+
+/* ---------- failure columns ---------- */
+.fails{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.fcol{border:1px solid var(--line);border-radius:12px;padding:17px;background:#fff}
+.fcol h3{font-size:13.5px;margin:0 0 4px;display:flex;align-items:center;gap:7px}
+.fcol h3 span{font-family:var(--mono);font-size:9.5px;padding:2px 6px;border-radius:4px}
+.fcol.h h3 span{background:var(--amber-bg);color:var(--amber)}
+.fcol.o h3 span{background:var(--blue-bg);color:var(--blue)}
+.fcol.ai h3 span{background:var(--red-bg);color:var(--red)}
+.fcol ul{margin:8px 0 0;padding-left:15px;font-size:12.2px;color:#3b372f}
+.fcol li{margin:5px 0}
+.fcol .worst{margin-top:11px;padding:8px 10px;border-radius:7px;font-size:11.5px;background:#faf5ea;color:#6f3506}
+.fcol.ai .worst{background:var(--red-bg);color:#7a1d14}
+
+/* ---------- architecture ---------- */
+.arch{display:grid;gap:10px}
+.layer{border:1px solid var(--line);border-radius:12px;padding:16px 18px;background:#fff;position:relative}
+.layer.human{border-color:#e5bd93;background:var(--amber-bg)}
+.layer.harness{border-color:#a9c4f0;background:var(--blue-bg)}
+.layer.agent{border-color:#a9d5cd;background:var(--teal-bg)}
+.layer h3{font-size:14px;margin:0 0 4px;display:flex;gap:9px;align-items:center}
+.layer h3 .tag{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;padding:2px 7px;border-radius:4px;background:rgba(0,0,0,.06);font-weight:700}
+.layer p{font-size:12.5px;color:#3b372f;margin:0}
+.down{text-align:center;color:var(--faint);font-size:16px;line-height:1}
+.esc{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:8px}
+.esc .node2{border-color:#e5b48a;background:#fff;color:#7c3d06}
+
+/* ---------- rules ---------- */
+.rules{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.rule{display:grid;grid-template-columns:34px 1fr;gap:11px;padding:12px 14px;border:1px solid var(--line);border-radius:10px;background:#fff}
+.rule .rn{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--amber);padding-top:2px}
+.rule h4{font-size:12.8px;margin:0 0 2px}
+.rule p{font-size:11.5px;color:var(--muted);margin:0}
+
+/* ---------- evidence ---------- */
+.evrow{display:grid;grid-template-columns:1.6fr 1fr 1.2fr;gap:12px;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:12.5px}
+.evrow:last-child{border-bottom:0}
+.evrow .claim{font-weight:600}
+.evbar{display:flex;align-items:center;gap:8px}
+.evbar .t{height:8px;width:100%;background:#efebe2;border-radius:4px;overflow:hidden}
+.evbar .f{height:100%;border-radius:4px}
+.evbar .f.s{background:linear-gradient(90deg,#15803d,#22c55e)}
+.evbar .f.m{background:linear-gradient(90deg,#b45309,#f59e0b)}
+.evbar .f.w{background:linear-gradient(90deg,#b42318,#ef4444)}
+.evrow .limit{font-size:11.5px;color:var(--muted)}
+
+.callout{border-left:4px solid var(--amber);background:var(--amber-bg);padding:16px 18px;border-radius:0 10px 10px 0;font-size:13.5px;color:#5a2f07}
+.callout b{color:var(--amber)}
+.callout.teal{border-left-color:var(--teal);background:var(--teal-bg);color:#0b4f49}
+.callout.teal b{color:var(--teal)}
+.callout.red{border-left-color:var(--red);background:var(--red-bg);color:#7a1d14}
+.callout.red b{color:var(--red)}
+
+footer{max-width:1180px;margin:0 auto;padding:26px 32px 70px;border-top:1px solid var(--line);color:var(--faint);font-size:11.5px}
+code{background:#efebe2;padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:.92em}
+
+/* ---------- citations ---------- */
+.cite{
+  font-family:var(--mono);font-size:9px;line-height:1;vertical-align:super;
+  color:var(--amber);text-decoration:none;background:var(--amber-bg);
+  border:1px solid #eed3a8;border-radius:3px;padding:1px 3px;margin-left:2px;
+  white-space:nowrap;
+}
+.cite:hover{background:var(--amber);color:#fff;border-color:var(--amber)}
+.cite.s{color:var(--teal);background:var(--teal-bg);border-color:#b9dcd7}
+.cite.s:hover{background:var(--teal);color:#fff}
+.refs{list-style:none;counter-reset:r;padding:0;margin:0}
+.refs li{
+  counter-increment:r;display:grid;grid-template-columns:38px 1fr;gap:12px;
+  padding:11px 8px;border-bottom:1px solid var(--line);font-size:12.4px;scroll-margin-top:80px;
+  border-radius:8px;
+}
+.refs li:last-child{border-bottom:0}
+.refs li::before{content:"[" counter(r) "]";font-family:var(--mono);font-size:11px;color:var(--amber);font-weight:700;padding-top:1px}
+.refs li:target{background:var(--amber-bg);box-shadow:inset 0 0 0 1px #eed3a8}
+.refs a{color:var(--ink);text-decoration:none;border-bottom:1px solid var(--line2)}
+.refs a:hover{color:var(--amber);border-bottom-color:var(--amber)}
+.refs .meta{display:block;color:var(--faint);font-size:11px;margin-top:2px;line-height:1.45}
+.refs .back{font-family:var(--mono);font-size:9.5px;color:var(--faint);text-decoration:none;margin-left:7px;border:0}
+.refs .back:hover{color:var(--amber)}
+.ref-note{font-size:11.5px;color:var(--muted);margin:0 0 14px}
+
+@media (max-width:980px){
+  .tldr{grid-template-columns:1fr 1fr}
+  .cons,.grid2,.helper,.rules{grid-template-columns:1fr}
+  .grid3,.grid4,.trig,.fails,.senses{grid-template-columns:1fr}
+  .ladder{grid-template-columns:1fr}
+  .detail{position:static}
+  .hero-in,.nav-in,.wrap,footer{padding-left:18px;padding-right:18px}
+  .lane{grid-template-columns:1fr}
+  .lane .tag{border-right:0;border-bottom:1px solid var(--line)}
+  .evrow{grid-template-columns:1fr;gap:5px}
+}
+@media print{
+  body{background:#fff}
+  .nav{display:none}
+  section{break-inside:avoid}
+  .detail{position:static}
+}
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="hero-in">
+    <div class="eyebrow">Research Report · Paradigm Shift</div>
+    <h1>Human-in-the-Loop<br/><span class="arrow">→</span> Agent-in-the-Loop</h1>
+    <p class="lead">迁移的本质不是「把人拿掉」，而是<b>把人的位置从执行路径移到设计路径</b>。人从逐动作批准，变成定义边界、验收标准与异常裁决。</p>
+    <div class="hero-stats">
+      <span class="hstat amber">5 路独立检索</span>
+      <span class="hstat">7 个交叉验证共识</span>
+      <span class="hstat">4 个真实分歧</span>
+      <span class="hstat">5 级迁移阶梯</span>
+      <span class="hstat">3 类硬升级触发</span>
+    </div>
+  </div>
+</header>
+
+<nav class="nav">
+  <div class="nav-in">
+    <a href="#tldr">结论</a>
+    <a href="#terms">术语</a>
+    <a href="#lanes">控制权</a>
+    <a href="#matrix">差异矩阵</a>
+    <a href="#consensus">共识</a>
+    <a href="#disagree">分歧</a>
+    <a href="#ladder">迁移阶梯</a>
+    <a href="#order">迁移顺序</a>
+    <a href="#decision">升级决策</a>
+    <a href="#failure">失败模式</a>
+    <a href="#arch">插件架构</a>
+    <a href="#evidence">证据</a>
+    <a href="#references">来源</a>
+  </div>
+</nav>
+
+<div class="wrap">
+
+<!-- TL;DR -->
+<section id="tldr">
+  <div class="sec-head">
+    <div class="sec-k">TL;DR</div>
+    <h2>五条结论</h2>
+    <p class="sec-desc">如果只读一段，读这五条。</p>
+  </div>
+  <div class="tldr">
+    <div class="tcard"><div class="n">01</div><p><b>迁移的是位置，不是人。</b>人从执行路径移到设计路径。</p></div>
+    <div class="tcard"><div class="n">02</div><p><b>先有验证，才敢放手。</b>没有可执行的 DoD，自主化只是把风险后移。</p></div>
+    <div class="tcard"><div class="n">03</div><p><b>可逆性不交给信任分。</b>不可逆动作永远保留硬门禁。</p></div>
+    <div class="tcard"><div class="n">04</div><p><b>AITL 没有统一术语。</b>至少三种含义，项目内必须先定义。</p></div>
+    <div class="tcard"><div class="n">05</div><p><b>最优中间态是 HOTL + Agent 自验证。</b>不是全自主。</p></div>
+  </div>
+</section>
+
+<!-- TERMS -->
+<section id="terms">
+  <div class="sec-head">
+    <div class="sec-k">Definitions</div>
+    <h2>术语清理：先拆掉三个歧义</h2>
+    <p class="sec-desc">「AITL」在不同材料里指向完全不同的东西。点标签查看定义。</p>
+  </div>
+  <div class="card">
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" data-term="hitl" aria-selected="true">HITL · 运行时</button>
+      <button class="tab" role="tab" data-term="hitlt" aria-selected="false">HITL · 训练时</button>
+      <button class="tab" role="tab" data-term="hotl" aria-selected="false">HOTL</button>
+      <button class="tab" role="tab" data-term="hic" aria-selected="false">HIC</button>
+      <button class="tab" role="tab" data-term="hootl" aria-selected="false">HOOTL</button>
+      <button class="tab" role="tab" data-term="aitl" aria-selected="false">AITL</button>
+    </div>
+
+    <div class="term-panel on" id="term-hitl">
+      <div class="term-top"><span class="badge">运行时</span><h3>Human-in-the-Loop</h3></div>
+      <p class="term-def">人必须在 agent 提议的动作执行前批准、编辑或拒绝；批准位于执行路径内，拒绝即中止。<a class="cite" href="#ref-10" title="Thoughtworks：in-the-loop 的守门人定义">[10]</a><a class="cite" href="#ref-16" title="OWASP：高影响动作需人工批准">[16]</a></p>
+      <div class="kv"><div class="k">时机</div><div class="v">动作前，阻塞式</div></div>
+      <div class="kv"><div class="k">人的角色</div><div class="v">批准者 / 守门人</div></div>
+      <div class="kv"><div class="k">主要优势</div><div class="v">高风险动作有明确的人类授权链</div></div>
+      <div class="kv"><div class="k">主要弱点</div><div class="v">批准疲劳、延迟、成为吞吐瓶颈</div></div>
+      <div class="kv"><div class="k">适用</div><div class="v">不可逆、强监管、首次部署</div></div>
+    </div>
+
+    <div class="term-panel" id="term-hitlt">
+      <div class="term-top"><span class="badge">训练时</span><h3>Human-in-the-Loop (ML)</h3></div>
+      <p class="term-def">标注者标注样本、专家复核边缘案例、评分者排序输出以训练奖励模型。部署前发生，与运行时 HITL 互补而非竞争。<a class="cite" href="#ref-27" title="CopilotKit：训练时与运行时 HITL 的区分">[27]</a></p>
+      <div class="kv"><div class="k">时机</div><div class="v">模型训练 / 对齐阶段</div></div>
+      <div class="kv"><div class="k">产物</div><div class="v">标注数据、偏好数据、奖励模型</div></div>
+      <div class="kv"><div class="k">与 AITL 的关系</div><div class="v">无关；它改进模型，不治理单次运行</div></div>
+    </div>
+
+    <div class="term-panel" id="term-hotl">
+      <div class="term-top"><span class="badge">监督</span><h3>Human-on-the-Loop</h3></div>
+      <p class="term-def">agent 自主执行，人在旁边观察执行流，异常时介入。非阻塞；不介入则继续。<a class="cite" href="#ref-10" title="Thoughtworks：human-on-the-loop 的元层操控">[10]</a><a class="cite" href="#ref-19" title="Hyperdev：HITL was never the destination">[19]</a><a class="cite" href="#ref-20" title="Waxell：HITL vs HOTL">[20]</a><a class="cite" href="#ref-21" title="Braingrid：on-the-loop 的监督语义">[21]</a></p>
+      <div class="kv"><div class="k">时机</div><div class="v">执行中，非阻塞</div></div>
+      <div class="kv"><div class="k">人的角色</div><div class="v">监督者 / 异常处理者</div></div>
+      <div class="kv"><div class="k">主要弱点</div><div class="v">警报被忽略；不看的监督者等于缺席</div></div>
+      <div class="kv"><div class="k">适用</div><div class="v">高量、可逆、可验证</div></div>
+    </div>
+
+    <div class="term-panel" id="term-hic">
+      <div class="term-top"><span class="badge">治理</span><h3>Human-in-Command</h3></div>
+      <p class="term-def">人设定策略、预算、权限与问责，位于执行之上；决定「是否用、何时用、用到什么程度」。<a class="cite" href="#ref-4" title="CSA：L0–L5 自主等级与治理">[4]</a><a class="cite" href="#ref-7" title="AWS：分级自主与策略执行层">[7]</a><a class="cite" href="#ref-17" title="EU AI Act Article 14：高风险系统的有效人类监督">[17]</a></p>
+      <div class="kv"><div class="k">时机</div><div class="v">执行前 + 执行之上</div></div>
+      <div class="kv"><div class="k">人的角色</div><div class="v">治理者 / 责任承担者</div></div>
+      <div class="kv"><div class="k">关键问题</div><div class="v">策略缺口往往很晚才暴露</div></div>
+    </div>
+
+    <div class="term-panel" id="term-hootl">
+      <div class="term-top"><span class="badge">事后</span><h3>Human-out-of-the-Loop</h3></div>
+      <p class="term-def">全自主执行，人只在事后审计结果。没有机会在执行中阻止损害。<a class="cite" href="#ref-4" title="CSA：L5 全自主的定义与风险">[4]</a></p>
+      <div class="kv"><div class="k">时机</div><div class="v">事后</div></div>
+      <div class="kv"><div class="k">适用</div><div class="v">低风险、沙箱、严格时限</div></div>
+      <div class="kv"><div class="k">主要弱点</div><div class="v">损害已发生</div></div>
+    </div>
+
+    <div class="term-panel" id="term-aitl">
+      <div class="term-top"><span class="badge">本报告关注</span><h3>Agent-in-the-Loop</h3></div>
+      <p class="term-def">目前没有统一术语。至少存在三种互不兼容的用法，只有第一种是 HITL 的直接对应物。</p>
+      <div class="senses">
+        <div class="sense"><div class="sn">SENSE A · 运营范式</div><h4>agent 主导，关键点咨询人</h4><p>agent 规划、执行、适应；在边界内自主决策，关键动作找人。本报告采用此定义。<a class="cite" href="#ref-18">[18]</a></p></div>
+        <div class="sense warn"><div class="sn">SENSE B · 数据飞轮</div><h4>人类客服在环</h4><p>EMNLP 2025：在真实客服运营中采集四类标注，反馈训练模型。这里的 "agent" 是 human support agent。<a class="cite" href="#ref-22">[22]</a></p></div>
+        <div class="sense warn"><div class="sn">SENSE C · AIL-ML</div><h4>人与大模型共同在环</h4><p>Springer 2025：agent 同时指人与大模型，协作构建垂直模型。与 AI agent 治理无关。<a class="cite" href="#ref-23">[23]</a></p></div>
+      </div>
+      <div class="callout teal" style="margin-top:14px"><b>本项目工作定义：</b>AITL = agent 是主要执行者；harness 负责验证、策略与升级；人类只在「不可逆、越界、定义缺失」三类点介入。它更接近 HOTL + agentic verification，而不是「无人」。<a class="cite s" href="#ref-2" title="Anthropic：人只在需要时进入 loop">[2]</a><a class="cite s" href="#ref-4" title="CSA：L3 边界内自主 + 越界升级">[4]</a><a class="cite s" href="#ref-11" title="Fowler/Morris：人构建并管理 loop">[11]</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- LANES -->
+<section id="lanes">
+  <div class="sec-head">
+    <div class="sec-k">Control Location</div>
+    <h2>控制权在哪里</h2>
+    <p class="sec-desc">三种范式最直观的差别，不是「有没有人」，而是「人站在路径的哪个位置」。</p>
+  </div>
+  <div class="lanes">
+    <div class="lane">
+      <div class="tag"><b>HITL</b><span>阻塞式</span></div>
+      <div class="body">
+        <span class="node2">意图</span><span class="arw">→</span>
+        <span class="node2 human">人批准</span><span class="arw">→</span>
+        <span class="node2 agent">执行</span><span class="arw">→</span>
+        <span class="node2">结果</span>
+        <span class="lane-note">每个高影响动作都要停；拒绝即中止</span>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="tag"><b>HOTL</b><span>非阻塞</span></div>
+      <div class="body">
+        <span class="node2">意图</span><span class="arw">→</span>
+        <span class="node2 agent">执行</span><span class="arw">→</span>
+        <span class="node2">结果</span>
+        <span class="lane-note">人观察流，可随时打断；不打断则继续</span>
+      </div>
+    </div>
+    <div class="lane">
+      <div class="tag"><b>AITL</b><span>目标态</span></div>
+      <div class="body">
+        <span class="node2">意图</span><span class="arw">→</span>
+        <span class="node2 agent">agent 规划</span><span class="arw">→</span>
+        <span class="node2 agent">执行</span><span class="arw">→</span>
+        <span class="node2 gate">自检</span><span class="arw">→</span>
+        <span class="node2">结果</span>
+        <span class="lane-note">仅在不可逆 / 越界 / 定义缺失时找人</span>
+      </div>
+    </div>
+  </div>
+  <div class="callout" style="margin-top:16px"><b>关键纠正：</b>HITL 不是「更安全」的同义词。看得越多，反而越不看——Anthropic 遥测显示用户批准了约 93% 的权限提示；医疗警报研究里 override 率 10 年升至约 88%。</div>
+</section>
+
+<!-- MATRIX -->
+<section id="matrix">
+  <div class="sec-head">
+    <div class="sec-k">Comparison</div>
+    <h2>范式差异矩阵</h2>
+    <p class="sec-desc">同一维度横向对比，琥珀色为 HITL，青色为 AITL。</p>
+  </div>
+  <div class="card" style="padding:0;overflow:hidden">
+    <table>
+      <thead><tr><th style="width:18%">维度</th><th>HITL</th><th>HOTL</th><th>AITL（工作定义）</th></tr></thead>
+      <tbody>
+        <tr><td>决策权</td><td class="hl">人决定每个动作</td><td>agent 执行，人保留打断权</td><td class="hl2">agent 在边界内决定；人定边界</td></tr>
+        <tr><td>时机</td><td class="hl">动作前，阻塞</td><td>执行中，非阻塞</td><td class="hl2">计划前 + 异常时</td></tr>
+        <tr><td>人的角色</td><td class="hl">批准者 / 守门人</td><td>监督者 / 异常处理者</td><td class="hl2">目标设定者 / 边界设计者</td></tr>
+        <tr><td>记忆</td><td class="hl">会话级</td><td>会话级 + 监控流</td><td class="hl2">持久化，跨会话</td></tr>
+        <tr><td>失败处理</td><td class="hl">拒绝，停下</td><td>打断，回滚</td><td class="hl2">自修复 → 升级</td></tr>
+        <tr><td>扩展性</td><td class="hl">受人的吞吐限制</td><td>受监控带宽限制</td><td class="hl2">受验证质量限制</td></tr>
+        <tr><td>主要成本</td><td class="hl">批准疲劳、延迟</td><td>警报遗漏、监控衰减</td><td class="hl2">验证建设、信任校准</td></tr>
+        <tr><td>适用</td><td class="hl">不可逆、强监管</td><td>高量、可逆</td><td class="hl2">可验证、可回滚、边界清晰</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- CONSENSUS -->
+<section id="consensus">
+  <div class="sec-head">
+    <div class="sec-k">Cross-validation</div>
+    <h2>七个共识</h2>
+    <p class="sec-desc">每条至少两个独立来源；绿色 = 强证据，琥珀 = 部分依赖厂商数据。</p>
+  </div>
+  <div class="cons">
+    <div class="cc">
+      <div class="cc-top"><h3>1 · 逐动作 HITL 不可扩展</h3><span class="strength s">强</span></div>
+      <p>批准疲劳与吞吐瓶颈同时出现；干预频率本身会损害性能。<a class="cite" href="#ref-3">[3]</a><a class="cite" href="#ref-14">[14]</a><a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-15">[15]</a><a class="cite" href="#ref-1">[1]</a></p>
+      <div class="evchips"><span class="evchip">Anthropic 93%</span><span class="evchip">医疗 override 88%</span><span class="evchip">Intervention Penalty</span><span class="evchip">Thoughtworks</span><span class="evchip">METR −19%</span></div>
+      <div class="verdict">判定：强共识</div>
+    </div>
+    <div class="cc">
+      <div class="cc-top"><h3>2 · HOTL 是现实中间态</h3><span class="strength s">强</span></div>
+      <p>人监督执行流、异常介入；但「不看的监督者等于缺席」。<a class="cite" href="#ref-11">[11]</a><a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-19">[19]</a><a class="cite" href="#ref-2">[2]</a></p>
+      <div class="evchips"><span class="evchip">Fowler / Morris</span><span class="evchip">Thoughtworks</span><span class="evchip">Hyperdev</span><span class="evchip">Anthropic Trends</span></div>
+      <div class="verdict">判定：强共识</div>
+    </div>
+    <div class="cc">
+      <div class="cc-top"><h3>3 · 边界必须技术强制</h3><span class="strength s">强</span></div>
+      <p>写在文档里的权限边界，如果架构拦不住，就等于不存在。<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a></p>
+      <div class="evchips"><span class="evchip">CSA</span><span class="evchip">AWS Cedar</span><span class="evchip">Codex</span><span class="evchip">Cursor</span></div>
+      <div class="verdict">判定：强共识</div>
+    </div>
+    <div class="cc">
+      <div class="cc-top"><h3>4 · 不可逆动作永远需要硬门禁</h3><span class="strength s">强</span></div>
+      <p>可逆性是动作的属性，不是 agent 的属性；信任等级不能为它投票。<a class="cite" href="#ref-16">[16]</a><a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-12">[12]</a><a class="cite" href="#ref-8">[8]</a></p>
+      <div class="evchips"><span class="evchip">OWASP</span><span class="evchip">CSA</span><span class="evchip">Magentic-UI</span><span class="evchip">AgentRex</span></div>
+      <div class="verdict">判定：强共识</div>
+    </div>
+    <div class="cc">
+      <div class="cc-top"><h3>5 · 自我报告不可信</h3><span class="strength s">强</span></div>
+      <p>agent 可以失败却报告成功；verifier 必须独立于 executor。<a class="cite" href="#ref-13">[13]</a><a class="cite" href="#ref-3">[3]</a><a class="cite" href="#ref-24">[24]</a></p>
+      <div class="evchips"><span class="evchip">Verifier Agent</span><span class="evchip">Anthropic 审计</span><span class="evchip">Executive Disposes</span><span class="evchip">DAPLab</span></div>
+      <div class="verdict">判定：强共识</div>
+    </div>
+    <div class="cc">
+      <div class="cc-top"><h3>6 · Review 是新的瓶颈</h3><span class="strength s">强</span></div>
+      <p>生成被压到分钟级，review 仍是小时/天级；跳过 review 事故率上升。<a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-1">[1]</a><a class="cite" href="#ref-10">[10]</a></p>
+      <div class="evchips"><span class="evchip">HumanLayer</span><span class="evchip">Faros AI</span><span class="evchip">Anthropic 60% / 0–20%</span></div>
+      <div class="verdict">判定：强共识</div>
+    </div>
+    <div class="cc">
+      <div class="cc-top"><h3>7 · 验证必须先于放手</h3><span class="strength s">强</span></div>
+      <p>没有快速质量 oracle，是软件工厂失败的根本原因之一。<a class="cite" href="#ref-11">[11]</a><a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-9">[9]</a></p>
+      <div class="evchips"><span class="evchip">Fowler</span><span class="evchip">Anthropic 分层验证</span><span class="evchip">AWS 交付门禁</span><span class="evchip">HumanLayer</span></div>
+      <div class="verdict">判定：强共识</div>
+    </div>
+    <div class="cc" style="border-color:#ecd6b0;background:#fffdf7">
+      <div class="cc-top"><h3>附 · 干预频率影响性能</h3><span class="strength w">弱</span></div>
+      <p>「干预频率可能比模型残余能力更能预测退化」——但来自单一模拟论文，无公开数值。<a class="cite" href="#ref-14">[14]</a></p>
+      <div class="evchips"><span class="evchip">Intervention Penalty</span></div>
+      <div class="verdict" style="color:var(--red)">方向可信，数值待验证</div>
+    </div>
+  </div>
+</section>
+
+<!-- DISAGREEMENT -->
+<section id="disagree">
+  <div class="sec-head">
+    <div class="sec-k">Disagreements</div>
+    <h2>四个真实分歧</h2>
+    <p class="sec-desc">这些不是「谁对谁错」，而是做插件前必须自己拍板的定义问题。</p>
+  </div>
+  <div style="display:grid;gap:12px">
+    <div class="dis">
+      <div class="side a"><h4>一方</h4><p>AITL = 运营范式：agent 主导，关键点咨询人（agentintheloop.org，单一倡导站点）。<a class="cite" href="#ref-18">[18]</a></p></div>
+      <div class="side"><h4>另一方</h4><p>AITL = 数据飞轮（EMNLP 2025）或 AIL-ML（Springer 2025），"agent" 甚至不是 AI。<a class="cite" href="#ref-22">[22]</a><a class="cite" href="#ref-23">[23]</a></p></div>
+      <div class="judge"><b>判断：</b>术语未统一。项目内必须先写死定义，否则所有讨论都会漂移。</div>
+    </div>
+    <div class="dis">
+      <div class="side a"><h4>一方</h4><p>CSA：L0–L5，L1 最严（逐动作批准），L5 全自主。<a class="cite" href="#ref-4">[4]</a></p></div>
+      <div class="side"><h4>另一方</h4><p>云运维 rubric：L1 = 建议，L4 = 自主；AITL 2.0 又是另一套编号。<a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-18">[18]</a></p></div>
+      <div class="judge"><b>判断：</b>编号不可跨框架比较。只看机制：审批粒度、升级条件、执行边界。</div>
+    </div>
+    <div class="dis">
+      <div class="side a"><h4>一方</h4><p>厂商按「模型能力」宣传自主等级：越强越自主。</p></div>
+      <div class="side"><h4>另一方</h4><p>Capability ≠ Permission：ACL 是技术能力，AAL 是组织授权，两者可长期分离。<a class="cite" href="#ref-6">[6]</a></p></div>
+      <div class="judge"><b>判断：</b>不要用「模型变强了」推导「应该放开权限」。权限是治理决策。</div>
+    </div>
+    <div class="dis">
+      <div class="side a"><h4>一方</h4><p>Karpathy / 部分 X 话语：agentic engineering，人应退出细节。<a class="cite" href="#ref-1">[1]</a></p></div>
+      <div class="side"><h4>另一方</h4><p>HumanLayer / Fowler / Anthropic：人退出执行，但保留设计与验收。<a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-11">[11]</a><a class="cite" href="#ref-2">[2]</a></p></div>
+      <div class="judge"><b>判断：</b>当前证据支持后者。全退出的反例（lights-off 工厂）已有明确失败记录。<a class="cite" href="#ref-9">[9]</a></div>
+    </div>
+  </div>
+</section>
+
+<!-- LADDER -->
+<section id="ladder">
+  <div class="sec-head">
+    <div class="sec-k">Transition</div>
+    <h2>五级迁移阶梯</h2>
+    <p class="sec-desc">点击任意一级，查看人工角色、证据要求与前置条件。注意：不可逆门槛始终是 100%。</p>
+  </div>
+  <div class="ladder">
+    <div class="steps" id="steps">
+      <button class="step2" data-lv="1" aria-pressed="true"><span class="lv">L1</span><span class="ttl">逐动作批准<small>人看 diff，逐个放行</small></span><span class="pop">人工 100%</span></button>
+      <button class="step2" data-lv="2" aria-pressed="false"><span class="lv">L2</span><span class="ttl">计划批准 + 批量执行<small>人审计划，执行在计划内</small></span><span class="pop">人工 70%</span></button>
+      <button class="step2" data-lv="3" aria-pressed="false"><span class="lv">L3</span><span class="ttl">边界内自主 + 越界升级<small>人设边界，越界才找人</small></span><span class="pop">人工 45%</span></button>
+      <button class="step2" data-lv="4" aria-pressed="false"><span class="lv">L4</span><span class="ttl">最小监督 + 异常处理<small>人看异常，不看常规</small></span><span class="pop">人工 20%</span></button>
+      <button class="step2" data-lv="5" aria-pressed="false"><span class="lv">L5</span><span class="ttl">自主组织<small>人定目标，系统自运行</small></span><span class="pop">人工 8%</span></button>
+    </div>
+    <div class="detail" id="ladder-detail">
+      <div class="sub">LEVEL 1</div>
+      <h3>逐动作批准</h3>
+      <div class="row"><div class="k">人的角色</div><div class="v">批准者 / 守门人</div></div>
+      <div class="row"><div class="k">证据</div><div class="v">人看 diff，逐条判断</div></div>
+      <div class="row"><div class="k">适用</div><div class="v">不可逆、强监管、首次部署</div></div>
+      <div class="row"><div class="k">前置</div><div class="v">无（这是起点）</div></div>
+      <div class="meters">
+        <div class="meter-row"><div class="lab"><span>人工介入</span><span>100%</span></div><div class="track"><div class="fill h" style="width:100%"></div></div></div>
+        <div class="meter-row"><div class="lab"><span>证据强度要求</span><span>20%</span></div><div class="track"><div class="fill e" style="width:20%"></div></div></div>
+        <div class="meter-row"><div class="lab"><span>不可逆动作门槛</span><span>100%</span></div><div class="track"><div class="fill i" style="width:100%"></div></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ORDER -->
+<section id="order">
+  <div class="sec-head">
+    <div class="sec-k">Sequence</div>
+    <h2>迁移顺序：不可跳步</h2>
+    <p class="sec-desc">直接从 L1 跳到 L4，是「lights-off 工厂」失败的标准路径。</p>
+  </div>
+  <div class="card">
+    <div class="pipe">
+      <div class="pstep"><div class="pn">STEP 1</div><h4>写清 DoD</h4><p>可执行、可判定、可否定。</p><span class="nogo">没有它 → 全是主观判断</span></div>
+      <div class="pstep"><div class="pn">STEP 2</div><h4>确定性验证</h4><p>build / typecheck / lint / test。</p><span class="nogo">没有它 → 无法判定完成</span></div>
+      <div class="pstep"><div class="pn">STEP 3</div><h4>独立 verifier</h4><p>对照 AC，不看执行者自述。</p><span class="nogo">没有它 → 自报不可信</span></div>
+      <div class="pstep"><div class="pn">STEP 4</div><h4>风险分类 + 升级</h4><p>不可逆 / 越界 / 定义缺失。</p><span class="nogo">没有它 → 无法安全放手</span></div>
+      <div class="pstep"><div class="pn">STEP 5</div><h4>信任账本</h4><p>慢授快收，迟滞防抖。</p><span class="nogo">没有它 → 无法证明可放手</span></div>
+      <div class="pstep"><div class="pn">STEP 6</div><h4>减少人工点</h4><p>只减可逆、可验证的部分。</p></div>
+    </div>
+    <div class="callout red" style="margin-top:16px"><b>常见错误：</b>因为模型变强了，从 L1 直接跳到 L4，跳过 2–5。HumanLayer 的 lights-off 实验就是这么失败的：代码库膨胀到 3–4 万行、出现复杂状态机，最终归档。<a class="cite" href="#ref-9">[9]</a></div>
+  </div>
+</section>
+
+<!-- DECISION HELPER -->
+<section id="decision">
+  <div class="sec-head">
+    <div class="sec-k">Interactive</div>
+    <h2>升级决策助手</h2>
+    <p class="sec-desc">选择动作属性，看看它应该自动执行、边界内执行，还是硬门禁。规则优先级：不可逆 &gt; 风险 &gt; 信任等级。</p>
+  </div>
+  <div class="helper">
+    <div class="card controls">
+      <div class="ctrl">
+        <label>动作可逆性</label>
+        <div class="seg2" data-group="rev">
+          <button data-val="yes" aria-pressed="true">可逆</button>
+          <button data-val="no" aria-pressed="false">不可逆</button>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>风险等级</label>
+        <div class="seg2" data-group="risk">
+          <button data-val="low" aria-pressed="true">低</button>
+          <button data-val="high" aria-pressed="false">高</button>
+        </div>
+      </div>
+      <div class="ctrl">
+        <label>Agent 信任等级</label>
+        <div class="seg2" data-group="trust">
+          <button data-val="t1" aria-pressed="false">T1 只读</button>
+          <button data-val="t2" aria-pressed="true">T2 受监督</button>
+          <button data-val="t3" aria-pressed="false">T3 可信</button>
+          <button data-val="t4" aria-pressed="false">T4 自主</button>
+        </div>
+      </div>
+      <div class="callout" style="margin-top:4px"><b>注意：</b>信任等级只能放宽「可逆」动作；它永远不会为「不可逆」动作投票。</div>
+    </div>
+    <div class="result safe" id="decision-result">
+      <div class="rk" id="dr-k">自动执行</div>
+      <h3 id="dr-title">自动执行 + 事后审计</h3>
+      <p id="dr-desc">可逆、低风险：让 agent 直接执行，记录审计轨迹，事后抽检。</p>
+    </div>
+  </div>
+</section>
+
+<!-- TRIGGERS -->
+<section id="triggers">
+  <div class="sec-head">
+    <div class="sec-k">Escalation</div>
+    <h2>三类升级触发</h2>
+    <p class="sec-desc">AITL 的核心不是「不问人」，而是「只在正确的地方问人」。</p>
+  </div>
+  <div class="trig">
+    <div class="tg r"><h3>① 不可逆<a class="cite" href="#ref-16" title="OWASP：不可逆动作需人工批准">[16]</a><a class="cite" href="#ref-8" title="AgentRex：可逆性不在信任分内">[8]</a></h3><p class="ex">无论信任等级多高，都必须硬门禁。</p><ul><li>删除、force-push</li><li>付款、发邮件、改权限</li><li>发布、合并主干</li></ul></div>
+    <div class="tg a"><h3>② 越界<a class="cite" href="#ref-4" title="CSA：L3 越界升级">[4]</a><a class="cite" href="#ref-7" title="AWS：策略执行层">[7]</a></h3><p class="ex">超出预先定义的边界，必须停下来。</p><ul><li>超出 owned_files</li><li>超出预算 / 时间</li><li>访问生产或新依赖</li></ul></div>
+    <div class="tg p"><h3>③ 定义缺失<a class="cite" href="#ref-11" title="Fowler/Morris：人定义 loop 的目标">[11]</a><a class="cite" href="#ref-2" title="Anthropic：agent 学会何时求助">[2]</a></h3><p class="ex">这是人真正的价值所在。</p><ul><li>AC 冲突或歧义</li><li>架构取舍无先例</li><li>业务规则缺失</li></ul></div>
+  </div>
+  <div class="callout teal" style="margin-top:16px"><b>不属于升级触发：</b>代码风格、命名、常规测试失败、可回滚的重构——这些应该由 agent 自修复，不应该消耗人的注意力。</div>
+</section>
+
+<!-- FAILURE MODES -->
+<section id="failure">
+  <div class="sec-head">
+    <div class="sec-k">Failure Modes</div>
+    <h2>三种范式各自的失败方式</h2>
+    <p class="sec-desc">迁移不是消除失败，而是换一种失败方式。要选自己能承受的那种。</p>
+  </div>
+  <div class="fails">
+    <div class="fcol h">
+      <h3><span>HITL</span>阻塞式<a class="cite" href="#ref-3">[3]</a><a class="cite" href="#ref-14">[14]</a></h3>
+      <ul><li>批准疲劳（93% 批准率）</li><li>人类漏检（13.6%）</li><li>干预惩罚</li><li>成为吞吐瓶颈</li><li>自动化偏见</li></ul>
+      <div class="worst">最坏情况：人以为自己在把关，实际上在盖章。</div>
+    </div>
+    <div class="fcol o">
+      <h3><span>HOTL</span>监督式<a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-21">[21]</a></h3>
+      <ul><li>警报被忽略</li><li>监控衰减为缺席</li><li>标准本身写错</li><li>事后才发现</li><li>看板代替判断</li></ul>
+      <div class="worst">最坏情况：on-the-loop 衰减为 out-of-the-loop，没人发现自己已经不在环里。</div>
+    </div>
+    <div class="fcol ai">
+      <h3><span>AITL</span>自主式<a class="cite" href="#ref-13">[13]</a><a class="cite" href="#ref-8">[8]</a><a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-24">[24]</a></h3>
+      <ul><li>自我报告造假</li><li>不可逆动作越界</li><li>代码库质量无快速 oracle</li><li>信任分掩盖单次灾难</li><li>verifier 与 executor 同源</li></ul>
+      <div class="worst">最坏情况：系统报告一切正常，而代码库已经在无人察觉中腐化。</div>
+    </div>
+  </div>
+</section>
+
+<!-- ARCHITECTURE -->
+<section id="arch">
+  <div class="sec-head">
+    <div class="sec-k">Design Implications</div>
+    <h2>新插件架构：把权威放在 agent 之外</h2>
+    <p class="sec-desc">agent 可以在执行路径里自由行动，但不能修改权威层。</p>
+  </div>
+  <div class="arch">
+    <div class="layer human">
+      <h3><span class="tag">HUMAN</span>设计路径，不是执行路径</h3>
+      <p>目标 / 非目标 / AC / 风险偏好 / 预算 / 不可逆清单</p>
+    </div>
+    <div class="down">▼</div>
+    <div class="layer harness">
+      <h3><span class="tag">HARNESS</span>权威层，agent 改不了<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-7">[7]</a></h3>
+      <p>AAL 权限 · 风险分类 · 升级策略 · 信任账本 · 审计 · 紧急停止</p>
+    </div>
+    <div class="down">▼</div>
+    <div class="layer agent">
+      <h3><span class="tag">AGENT</span>执行路径<a class="cite" href="#ref-13">[13]</a><a class="cite" href="#ref-11">[11]</a></h3>
+      <p>plan → act → verify → repair → report</p>
+      <p style="margin-top:8px;font-size:11.8px;color:#0b4f49">内建：确定性门禁 · 独立 verifier（不同上下文）</p>
+    </div>
+    <div class="down">▼</div>
+    <div class="esc">
+      <span class="node2">① 不可逆<a class="cite" href="#ref-16">[16]</a></span>
+      <span class="node2">② 越界<a class="cite" href="#ref-4">[4]</a></span>
+      <span class="node2">③ 定义缺失<a class="cite" href="#ref-12">[12]</a></span>
+      <span style="font-size:12px;color:var(--muted);align-self:center">只在三类点升级到人</span>
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:18px">
+    <h3 style="font-size:15px;margin:0 0 12px">八条设计规则</h3>
+    <div class="rules">
+      <div class="rule"><div class="rn">01</div><div><h4>人类定义 DoD，agent 在 DoD 内自主<a class="cite" href="#ref-11">[11]</a></h4><p>人给标准，不给步骤。</p></div></div>
+      <div class="rule"><div class="rn">02</div><div><h4>权限与能力分离<a class="cite" href="#ref-6">[6]</a></h4><p>ACL 高不等于 AAL 高。</p></div></div>
+      <div class="rule"><div class="rn">03</div><div><h4>不可逆动作永在信任分之外<a class="cite" href="#ref-8">[8]</a><a class="cite" href="#ref-16">[16]</a></h4><p>可逆性是动作属性。</p></div></div>
+      <div class="rule"><div class="rn">04</div><div><h4>验证器独立于执行器<a class="cite" href="#ref-13">[13]</a></h4><p>不同上下文、不同证据。</p></div></div>
+      <div class="rule"><div class="rn">05</div><div><h4>完成由系统判定<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-7">[7]</a></h4><p>exit code / 产物 / 审计记录。</p></div></div>
+      <div class="rule"><div class="rn">06</div><div><h4>升级请求必须结构化<a class="cite" href="#ref-12">[12]</a><a class="cite" href="#ref-2">[2]</a><a class="cite" href="#ref-25">[25]</a></h4><p>尝试、证据、选项、推荐、置信度。</p></div></div>
+      <div class="rule"><div class="rn">07</div><div><h4>信任要慢授快收<a class="cite" href="#ref-7">[7]</a></h4><p>长窗口晋升、即时降级、迟滞防抖。</p></div></div>
+      <div class="rule"><div class="rn">08</div><div><h4>人工注意力是预算<a class="cite" href="#ref-3">[3]</a><a class="cite" href="#ref-14">[14]</a></h4><p>每个检查点都要问「值不值得一个人工回合」。</p></div></div>
+    </div>
+  </div>
+
+  <div class="callout teal" style="margin-top:16px"><b>迁移的第一个可交付物：</b>不是「自动批准」，而是一份机器可读的 DoD。有了它，agent 才能自检，harness 才能判定，人类才能退出执行路径。<b>没有它，AITL 只是更快的失控。</b></div>
+</section>
+
+<!-- EVIDENCE -->
+<section id="evidence">
+  <div class="sec-head">
+    <div class="sec-k">Evidence</div>
+    <h2>证据强度与空白</h2>
+    <p class="sec-desc">这张表决定了哪些结论可以直接写进插件，哪些只能作为方向。</p>
+  </div>
+  <div class="card">
+    <div class="evrow" style="font-family:var(--mono);font-size:10px;color:var(--faint);text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--line2)">
+      <div>结论</div><div>强度</div><div>限制</div>
+    </div>
+    <div class="evrow"><div class="claim">逐动作 HITL 不可扩展<a class="cite" href="#ref-3">[3]</a><a class="cite" href="#ref-14">[14]</a><a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-15">[15]</a></div><div class="evbar"><div class="t"><div class="f s" style="width:92%"></div></div><span>强</span></div><div class="limit">93% / 13.6% 来自单一厂商</div></div>
+    <div class="evrow"><div class="claim">HOTL 是现实中间态<a class="cite" href="#ref-11">[11]</a><a class="cite" href="#ref-10">[10]</a><a class="cite" href="#ref-19">[19]</a></div><div class="evbar"><div class="t"><div class="f s" style="width:88%"></div></div><span>强</span></div><div class="limit">多为实践者论述</div></div>
+    <div class="evrow"><div class="claim">边界必须技术强制<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-7">[7]</a></div><div class="evbar"><div class="t"><div class="f s" style="width:90%"></div></div><span>强</span></div><div class="limit">—</div></div>
+    <div class="evrow"><div class="claim">不可逆动作需硬门禁<a class="cite" href="#ref-16">[16]</a><a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-12">[12]</a><a class="cite" href="#ref-8">[8]</a></div><div class="evbar"><div class="t"><div class="f s" style="width:94%"></div></div><span>强</span></div><div class="limit">—</div></div>
+    <div class="evrow"><div class="claim">自我报告不可信<a class="cite" href="#ref-13">[13]</a><a class="cite" href="#ref-3">[3]</a><a class="cite" href="#ref-24">[24]</a></div><div class="evbar"><div class="t"><div class="f s" style="width:86%"></div></div><span>强</span></div><div class="limit">Verifier 论文样本小</div></div>
+    <div class="evrow"><div class="claim">Review 是瓶颈<a class="cite" href="#ref-9">[9]</a><a class="cite" href="#ref-1">[1]</a></div><div class="evbar"><div class="t"><div class="f s" style="width:84%"></div></div><span>强</span></div><div class="limit">部分数据来自厂商</div></div>
+    <div class="evrow"><div class="claim">干预频率影响性能<a class="cite" href="#ref-14">[14]</a></div><div class="evbar"><div class="t"><div class="f w" style="width:34%"></div></div><span>弱</span></div><div class="limit">单一模拟论文，无公开数值</div></div>
+    <div class="evrow"><div class="claim">AITL 定义<a class="cite" href="#ref-18">[18]</a><a class="cite" href="#ref-22">[22]</a><a class="cite" href="#ref-23">[23]</a></div><div class="evbar"><div class="t"><div class="f w" style="width:18%"></div></div><span>无共识</span></div><div class="limit">三种用法未调和</div></div>
+    <div class="evrow"><div class="claim">自主等级阈值<a class="cite" href="#ref-5">[5]</a><a class="cite" href="#ref-7">[7]</a></div><div class="evbar"><div class="t"><div class="f w" style="width:12%"></div></div><span>无</span></div><div class="limit">只有机制，没有验证过的数值门槛</div></div>
+  </div>
+  <div class="callout" style="margin-top:16px"><b>未解决：</b>没有可靠的「agent 已 earning 到下一级」的量化阈值；没有针对自主 coding agent 的长期质量指标；大多数 AITL 证据来自厂商或单一试点；长期依赖 AI 可能削弱人的监督能力（Microsoft Research 立场论文）。</div>
+</section>
+
+<!-- SUMMARY -->
+<section id="summary">
+  <div class="sec-head">
+    <div class="sec-k">Summary</div>
+    <h2>一句话总结</h2>
+  </div>
+  <div class="card" style="background:#141416;color:#f4f1ea;border-color:#141416">
+    <p style="font-size:clamp(17px,2.4vw,23px);line-height:1.5;margin:0;letter-spacing:-.015em">
+      Human → Agent 的迁移，不是把审批按钮交给 agent，而是把「判断是否完成」从人的直觉，
+      换成可执行的 DoD + 独立验证 + 风险升级；
+      人从执行路径退出，但保留<span style="color:#e2a33a">边界设计</span>与<span style="color:#e2a33a">不可逆裁决</span>。
+    </p>
+  </div>
+</section>
+
+<!-- REFERENCES -->
+<section id="references">
+  <div class="sec-head">
+    <div class="sec-k">References</div>
+    <h2>来源与引用</h2>
+    <p class="sec-desc">按正文引用编号排列。点击编号可回跳到对应段落，点击标题打开原文；全部链接访问于 2026-11-18。</p>
+  </div>
+  <div class="card">
+    <p class="ref-note">证据分级：<b>强</b> = 至少两个独立来源；<b>中</b> = 单一来源但方法可核查；<b>弱</b> = 单一预印本 / 厂商自证 / 倡导站点。厂商数据已在正文单独标注。</p>
+    <ol class="refs">
+      <li id="ref-1"><a href="https://resources.anthropic.com/hubfs/2026%20Agentic%20Coding%20Trends%20Report.pdf" target="_blank" rel="noopener">Anthropic — 2026 Agentic Coding Trends Report</a><span class="meta">Anthropic, 2026 · 60% 工作使用 AI，但仅 0–20% 可完全委托；人类监督通过智能协作扩展</span><a class="back" href="#consensus">↩ 共识</a></li>
+      <li id="ref-2"><a href="https://claude.com/resources/guides/2026-agentic-coding-trends-report/capability-trends-what-agents-can-do" target="_blank" rel="noopener">Anthropic — Capability trends: What agents can do</a><span class="meta">Anthropic, 2026 · Agent 学会何时求助；人只在需要时进入 loop</span><a class="back" href="#consensus">↩ 共识</a></li>
+      <li id="ref-3"><a href="https://www.anthropic.com/research/how-we-contain-claude" target="_blank" rel="noopener">Anthropic — How we contain Claude</a><span class="meta">Anthropic, 2026 · 约 93% 权限提示被批准；自动分类器 89% vs 人类 13.6%</span><a class="back" href="#consensus">↩ 共识</a></li>
+      <li id="ref-4"><a href="https://cloudsecurityalliance.org/blog/2026/01/28/levels-of-autonomy" target="_blank" rel="noopener">Cloud Security Alliance — Levels of Autonomy</a><span class="meta">CSA, 2026-01-28 · L0–L5；L3 越界升级；边界必须技术强制</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-5"><a href="https://arxiv.org/abs/2506.12469" target="_blank" rel="noopener">Feng, McDonald &amp; Zhang — Levels of Autonomy for AI Agents</a><span class="meta">arXiv:2506.12469 · 以用户角色划分 Operator / Collaborator / Consultant / Approver / Observer；自主是设计选择而非能力</span><a class="back" href="#disagree">↩ 分歧</a></li>
+      <li id="ref-6"><a href="https://arxiv.org/abs/2607.23438" target="_blank" rel="noopener">Zheng et al. — Separating Capability from Permission</a><span class="meta">arXiv:2607.23438, 2026-07-26 · AAL（允许自主）≠ ACL（技术能力）</span><a class="back" href="#disagree">↩ 分歧</a></li>
+      <li id="ref-7"><a href="https://aws.amazon.com/blogs/architecture/closing-the-ai-agent-trust-gap-with-graduated-autonomy/" target="_blank" rel="noopener">AWS — Closing the AI agent trust gap with graduated autonomy</a><span class="meta">AWS Architecture Blog, 2026-08-26 · T1–T4 信任分层；安全独立地板；Cedar deny-by-default；慢授快收</span><a class="back" href="#arch">↩ 架构</a></li>
+      <li id="ref-8"><a href="https://agentrex.ai/blog/earned-autonomy-grades-the-last-run/" target="_blank" rel="noopener">AgentRex — A Trust Score Grades the Last 50 Actions, Not the Next One</a><span class="meta">2026-08-29 · 信任分评的是过去；可逆性不在评分维度；不可逆动作必须保留独立门禁</span><a class="back" href="#decision">↩ 决策</a></li>
+      <li id="ref-9"><a href="https://github.com/humanlayer/advanced-context-engineering-for-coding-agents/blob/main/wsff.md" target="_blank" rel="noopener">Dex Horthy / HumanLayer — Why Software Factories Fail</a><span class="meta">HumanLayer · lights-off 工厂失败；review 是新瓶颈；30 分钟规划省数小时返工；目标是 2–3× 而非 10–100×</span><a class="back" href="#order">↩ 顺序</a></li>
+      <li id="ref-10"><a href="https://thoughtworks.com/en-us/insights/blog/generative-ai/cybernetics-and-human-on-the-loop-in-agentic-coding" target="_blank" rel="noopener">Dirk Lässig / Thoughtworks — Cybernetics and the “human-on-the-loop” in agentic coding</a><span class="meta">2026-04-20 · 逐行 review 使人从瓶颈变成断裂点；元层操控；必要多样性</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-11"><a href="https://martinfowler.com/articles/exploring-gen-ai/humans-and-agents.html" target="_blank" rel="noopener">Kief Morris / Martin Fowler — Humans and Agents in Software Engineering Loops</a><span class="meta">2026-03-04 · why loop / how loop / middle loop；in-the-loop 改产物，on-the-loop 改 harness</span><a class="back" href="#arch">↩ 架构</a></li>
+      <li id="ref-12"><a href="https://arxiv.org/abs/2507.22358" target="_blank" rel="noopener">Microsoft Research — Magentic-UI: Towards Human-in-the-loop Agentic Systems</a><span class="meta">arXiv:2507.22358 · co-planning / co-tasking / action guards / multi-tasking / long-term memory / answer verification；动作可逆性三分类</span><a class="back" href="#triggers">↩ 升级</a></li>
+      <li id="ref-13"><a href="https://zenodo.org/doi/10.5281/zenodo.17265872" target="_blank" rel="noopener">The Verifier Agent: A Lightweight Architectural Pattern for Mitigating Task Verification Failures</a><span class="meta">Zenodo 17265872 · Task Verification Failure Mode；Planner / Executor / Verifier 三角色；独立 verifier 消除 false positive（小样本）</span><a class="back" href="#consensus">↩ 共识</a></li>
+      <li id="ref-14"><a href="https://zenodo.org/doi/10.5281/zenodo.19457264" target="_blank" rel="noopener">The Intervention Penalty: A Simulation Study of Human Checkpoint Costs in AI Coding Governance</a><span class="meta">Zenodo 19457264, 2026-04 · 干预频率可能比模型残余能力更能预测退化；倡导结构化自治理</span><a class="back" href="#consensus">↩ 共识</a></li>
+      <li id="ref-15"><a href="https://metr.org/blog/2025-07-10-early-2025-ai-experienced-os-dev-study/" target="_blank" rel="noopener">METR — Measuring the Impact of Early-2025 AI on Experienced Open-Source Developer Productivity</a><span class="meta">METR, 2025-07-10 · 有经验开发者在熟悉代码库上慢 19%；自评仍认为快了 20%</span><a class="back" href="#consensus">↩ 共识</a></li>
+      <li id="ref-16"><a href="https://genai.owasp.org/llmrisk/llm062025-excessive-agency/" target="_blank" rel="noopener">OWASP — LLM06:2025 Excessive Agency</a><span class="meta">OWASP LLM Top 10 2026 · Excessive Agency 从第 6 升至第 3；不可逆动作需人工批准并展示原始操作</span><a class="back" href="#triggers">↩ 升级</a></li>
+      <li id="ref-17"><a href="https://ai-act-service-desk.ec.europa.eu/en/ai-act/article-14" target="_blank" rel="noopener">EU AI Act — Article 14: Human oversight</a><span class="meta">欧盟 · 高风险系统须可被自然人有效监督、理解、干预、覆盖、逆转或停止；点名自动化偏见</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-18"><a href="https://agentintheloop.org" target="_blank" rel="noopener">Agent-in-the-Loop — the paradigm</a><span class="meta">倡导站点 · AITL 用法 A：agent 主导，人在关键决策点被咨询；L1–L5（Embedded Assistant → Autonomous Organization）</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-19"><a href="https://hyperdev.matsuoka.com/p/the-age-of-the-cli-part-2" target="_blank" rel="noopener">Robert Matsuoka / Hyperdev — The Age of the CLI, Part 2</a><span class="meta">2026-01-08 · “HITL was never the destination”；HOTL = set and verify；minimal trust surface</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-20"><a href="https://waxell.ai/blog/human-in-the-loop-vs-human-on-the-loop-ai-agents" target="_blank" rel="noopener">Logan Kelly / Waxell — Human-in-the-Loop vs Human-on-the-Loop for AI Agents</a><span class="meta">2026-04-27 · HOTL 适用于更大类别的动作；非阻塞监督</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-21"><a href="https://dev.to/braingrid/human-in-the-loop-vs-on-the-loop-where-you-belong-when-agents-build-4hk2" target="_blank" rel="noopener">Braingrid / DEV — Human in the Loop vs On the Loop: Where You Belong When Agents Build</a><span class="meta">2026-08-03 · on-the-loop 需要可独立检查的“完成定义”；可能衰减为 out-of-the-loop</span><a class="back" href="#failure">↩ 失败</a></li>
+      <li id="ref-22"><a href="https://arxiv.org/abs/2510.06674" target="_blank" rel="noopener">Agent-in-the-Loop: A Data Flywheel for LLM-based Customer Support</a><span class="meta">EMNLP 2025 Industry Track, arXiv:2510.06674 · AITL 用法 B：人类客服在环采集标注；+11.7% recall@75 等（单一美国试点）</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-23"><a href="https://link.springer.com/article/10.1007/s10462-025-11255-1" target="_blank" rel="noopener">Agent-in-the-Loop Machine Learning (AIL-ML)</a><span class="meta">Artificial Intelligence Review, Springer, 2025 · AITL 用法 C：agent 同时指人与大模型</span><a class="back" href="#terms">↩ 术语</a></li>
+      <li id="ref-24"><a href="https://www.microsoft.com/en-us/research/publication/ai-agents-push-humans-out-of-the-loop/" target="_blank" rel="noopener">Microsoft Research — AI agents push humans out of the loop</a><span class="meta">立场论文 · 当前 agent 设计阻碍有效监督；长期使用可能削弱人的监督能力</span><a class="back" href="#failure">↩ 失败</a></li>
+      <li id="ref-25"><a href="https://fast.io/resources/openclaw-human-in-the-loop-review-workflow" target="_blank" rel="noopener">OpenClaw — Human-in-the-loop review workflow</a><span class="meta">持久化 HITL 实现 · 写 typed artifact → pipeline 暂停 → 审核状态为 approved 后才触发副作用；needs_input 按 JSON Schema 校验</span><a class="back" href="#arch">↩ 架构</a></li>
+      <li id="ref-26"><a href="https://augmentable.ai/blog/devin-desktop-vs-autonomous-agent" target="_blank" rel="noopener">Augmentable — Devin Desktop vs Autonomous Agent</a><span class="meta">2026 · “steering vs delegating” 是两种产品的主架构分界线；计划批准 + PR 审查是编码 agent 的主流 HITL 设计</span><a class="back" href="#ladder">↩ 阶梯</a></li>
+      <li id="ref-27"><a href="https://www.copilotkit.ai/learning/what-is-human-in-the-loop" target="_blank" rel="noopener">CopilotKit — What is human-in-the-loop</a><span class="meta">训练时 HITL 与运行时 HITL 的区分；agent 发起暂停 vs 用户主动 steering</span><a class="back" href="#terms">↩ 术语</a></li>
+    </ol>
+  </div>
+</section>
+
+</div>
+
+<footer>
+  <p><b>引用说明：</b>正文中的 <span class="cite" style="vertical-align:baseline">[n]</span> 对应上方编号；同一结论尽量给出多个独立来源。厂商自证数据（93% / 13.6% / 89% / 84% 等）已在正文标注，不作为独立证据使用。</p>
+  <p style="margin-top:8px">报告生成于 2026-11-18 · 证据分级：强 / 中 / 弱 · 所有链接访问于 2026-11-18。</p>
+</footer>
+
+<script>
+/* ---------- nav scroll spy ---------- */
+const navLinks = Array.from(document.querySelectorAll('.nav a'));
+const secs = navLinks.map(a => document.querySelector(a.getAttribute('href')));
+const io = new IntersectionObserver(es => {
+  es.forEach(e => {
+    if(e.isIntersecting){
+      navLinks.forEach(a => a.classList.toggle('active', a.getAttribute('href') === '#' + e.target.id));
+    }
+  });
+}, {rootMargin:'-70px 0px -55% 0px', threshold:0});
+secs.forEach(s => s && io.observe(s));
+
+/* ---------- term tabs ---------- */
+document.querySelectorAll('.tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(t => t.setAttribute('aria-selected','false'));
+    tab.setAttribute('aria-selected','true');
+    document.querySelectorAll('.term-panel').forEach(p => p.classList.remove('on'));
+    const panel = document.getElementById('term-' + tab.dataset.term);
+    if(panel) panel.classList.add('on');
+  });
+});
+
+/* ---------- ladder ---------- */
+const LADDER = {
+  1: { title:'逐动作批准', role:'批准者 / 守门人', ev:'人看 diff，逐条判断', fit:'不可逆、强监管、首次部署', pre:'无（这是起点）', h:100, e:20, i:100, src:'<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-12">[12]</a>' },
+  2: { title:'计划批准 + 批量执行', role:'计划审阅者', ev:'计划 + 批量门禁', fit:'多文件重构、迁移', pre:'AC 可执行、测试可跑', h:70, e:45, i:100, src:'<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-26">[26]</a><a class="cite" href="#ref-12">[12]</a>' },
+  3: { title:'边界内自主 + 越界升级', role:'边界设计者', ev:'确定性门禁 + 异常升级', fit:'常规功能开发', pre:'门禁覆盖主要风险', h:45, e:65, i:100, src:'<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-7">[7]</a>' },
+  4: { title:'最小监督 + 异常处理', role:'异常处理者', ev:'分层验证 + 审计', fit:'高量、可逆、可验证', pre:'独立 verifier + 风险分类', h:20, e:85, i:100, src:'<a class="cite" href="#ref-7">[7]</a><a class="cite" href="#ref-8">[8]</a><a class="cite" href="#ref-2">[2]</a>' },
+  5: { title:'自主组织', role:'目标设定者', ev:'自评 + 外部审计', fit:'实验性；不建议生产', pre:'信任账本 + 长期质量指标', h:8, e:100, i:100, src:'<a class="cite" href="#ref-4">[4]</a><a class="cite" href="#ref-18">[18]</a>' }
+};
+const detail = document.getElementById('ladder-detail');
+function renderLadder(lv){
+  const d = LADDER[lv];
+  detail.innerHTML = `
+    <div class="sub">LEVEL ${lv}</div>
+    <h3>${d.title}</h3>
+    <div class="row"><div class="k">人的角色</div><div class="v">${d.role}</div></div>
+    <div class="row"><div class="k">证据</div><div class="v">${d.ev}</div></div>
+    <div class="row"><div class="k">适用</div><div class="v">${d.fit}</div></div>
+    <div class="row"><div class="k">前置</div><div class="v">${d.pre}</div></div>
+    <div class="row"><div class="k">出处</div><div class="v">${d.src || '—'}</div></div>
+    <div class="meters">
+      <div class="meter-row"><div class="lab"><span>人工介入</span><span>${d.h}%</span></div><div class="track"><div class="fill h" style="width:${d.h}%"></div></div></div>
+      <div class="meter-row"><div class="lab"><span>证据强度要求</span><span>${d.e}%</span></div><div class="track"><div class="fill e" style="width:${d.e}%"></div></div></div>
+      <div class="meter-row"><div class="lab"><span>不可逆动作门槛</span><span>${d.i}%</span></div><div class="track"><div class="fill i" style="width:${d.i}%"></div></div></div>
+    </div>`;
+}
+document.querySelectorAll('.step2').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.step2').forEach(b => b.setAttribute('aria-pressed','false'));
+    btn.setAttribute('aria-pressed','true');
+    renderLadder(btn.dataset.lv);
+  });
+});
+
+/* ---------- decision helper ---------- */
+const state = { rev:'yes', risk:'low', trust:'t2' };
+function renderDecision(){
+  const rev = state.rev, risk = state.risk, trust = state.trust;
+  let cls, k, title, desc;
+  if(rev === 'no'){
+    cls = 'block';
+    k = '硬门禁';
+    title = '必须人工 / 策略批准';
+    desc = '不可逆动作永远不交给信任分。无论 T' + trust.slice(1) + '，都必须停下来，由人或硬策略放行。';
+    if(risk === 'high') desc += ' 高风险叠加：建议双人 / 双签。';
+  } else if(risk === 'high'){
+    cls = 'warn';
+    k = '边界内执行';
+    title = '边界内执行 + 抽检 / 双签';
+    desc = '可逆但高风险：允许在预设边界内执行，配合抽检、双签或分阶段放量。';
+  } else if(trust === 't1'){
+    cls = 'warn';
+    k = '受限';
+    title = '只读，或先积累信任';
+    desc = 'T1 阶段只允许读取；要执行写入，先通过评估晋升到 T2。';
+  } else if(trust === 't2'){
+    cls = 'warn';
+    k = '受监督';
+    title = '执行 + 高风险人工批准';
+    desc = '可逆、低风险可自动执行；高风险动作仍需人工批准。';
+  } else {
+    cls = 'safe';
+    k = '自动执行';
+    title = '自动执行 + 事后审计';
+    desc = '可逆、低风险：让 agent 直接执行，记录审计轨迹，事后抽检。';
+  }
+  const r = document.getElementById('decision-result');
+  r.className = 'result ' + cls;
+  document.getElementById('dr-k').textContent = k;
+  document.getElementById('dr-title').textContent = title;
+  document.getElementById('dr-desc').textContent = desc;
+}
+document.querySelectorAll('.seg2').forEach(seg => {
+  seg.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      seg.querySelectorAll('button').forEach(b => b.setAttribute('aria-pressed','false'));
+      btn.setAttribute('aria-pressed','true');
+      state[seg.dataset.group] = btn.dataset.val;
+      renderDecision();
+    });
+  });
+});
+renderDecision();
+</script>
+</body>
+</html>

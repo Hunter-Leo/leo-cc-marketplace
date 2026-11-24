@@ -21,6 +21,9 @@ Thumbs.db
 .omc/
 .cache/
 
+# AITL local run state and audit artifacts
+.aitl/
+
 # Language / package caches
 node_modules/
 __pycache__/

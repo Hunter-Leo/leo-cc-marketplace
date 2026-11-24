@@ -1,0 +1,1333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>leo-team-plugin · spec 流程交互拆解</title>
+<style>
+:root{
+  --bg:#f7f5f0;
+  --paper:#fffdf9;
+  --ink:#191919;
+  --muted:#6f6b62;
+  --faint:#9a958a;
+  --line:#e5e0d4;
+  --line-2:#d6d0c1;
+
+  --orange:#c2410c;
+  --orange-bg:#fdf0e7;
+  --teal:#0f766e;
+  --teal-bg:#e6f4f1;
+  --blue:#1d4ed8;
+  --blue-bg:#e8eefc;
+  --purple:#6d28d9;
+  --purple-bg:#f0eafa;
+  --red:#b91c1c;
+
+  --radius:12px;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  --shadow:0 1px 2px rgba(25,25,25,.05),0 10px 30px rgba(25,25,25,.045);
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;background:var(--bg);color:var(--ink);
+  font-family:var(--sans);line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ---------- hero ---------- */
+.hero{padding:56px 32px 28px;max-width:1320px;margin:0 auto}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--orange);font-weight:600}
+h1{font-size:clamp(26px,4vw,40px);line-height:1.12;letter-spacing:-.025em;margin:10px 0 10px}
+.hero p{color:var(--muted);font-size:15px;max-width:760px;margin:0}
+.hero .em{color:var(--ink);font-weight:600}
+.stats{display:flex;gap:10px;flex-wrap:wrap;margin-top:22px}
+.stat{background:var(--paper);border:1px solid var(--line);border-radius:999px;padding:6px 14px;font-size:12.5px;color:var(--muted)}
+.stat b{color:var(--ink);font-family:var(--mono);font-size:13px}
+.stat.h{border-color:#f0cdb6;background:var(--orange-bg);color:#8a3711}
+.stat.m{border-color:#c3d0f7;background:var(--blue-bg);color:#1e3a8a}
+
+/* ---------- toolbar ---------- */
+.toolbar{
+  position:sticky;top:0;z-index:40;
+  background:rgba(247,245,240,.88);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--line);
+}
+.toolbar-in{max-width:1320px;margin:0 auto;padding:10px 32px;display:flex;gap:16px;align-items:center;flex-wrap:wrap}
+.seg{display:flex;background:#efebe2;border:1px solid var(--line-2);border-radius:10px;padding:3px;gap:2px}
+.seg button{
+  border:0;background:transparent;font:inherit;font-size:12.5px;color:var(--muted);
+  padding:6px 13px;border-radius:7px;cursor:pointer;white-space:nowrap;transition:.16s;
+}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--paper);color:var(--ink);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;color:var(--faint);margin-left:auto}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.legend .l-pm i{background:#c9c4b8}
+.legend .l-role i{background:var(--teal)}
+.legend .l-human i{background:var(--orange)}
+.legend .l-mech i{background:var(--blue)}
+.legend .l-dec i{background:var(--purple)}
+
+/* ---------- shell ---------- */
+.shell{max-width:1320px;margin:0 auto;padding:28px 32px 100px;display:grid;grid-template-columns:190px 1fr;gap:34px;align-items:start}
+
+/* ---------- rail ---------- */
+.rail{position:sticky;top:76px;display:flex;flex-direction:column;gap:2px}
+.rail .rh{font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:0 0 8px 10px}
+.rail a{
+  display:flex;align-items:center;gap:10px;text-decoration:none;color:var(--muted);
+  padding:8px 10px;border-radius:8px;font-size:13px;border-left:2px solid transparent;transition:.15s;
+}
+.rail a:hover{background:#efebe2;color:var(--ink)}
+.rail a.active{background:var(--paper);color:var(--ink);font-weight:600;border-left-color:var(--orange);box-shadow:0 1px 2px rgba(0,0,0,.05)}
+.rail a .id{font-family:var(--mono);font-size:11px;color:var(--faint);min-width:24px}
+.rail a.active .id{color:var(--orange)}
+.rail a .dot{margin-left:auto;display:flex;gap:2px}
+.rail a .dot s{width:5px;height:5px;border-radius:50%;background:var(--orange);text-decoration:none;display:block}
+.rail a .dot s.m{background:var(--blue)}
+
+/* ---------- phase ---------- */
+.phase{margin-bottom:34px;scroll-margin-top:80px}
+.phase-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:4px}
+.phase-num{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--orange)}
+.phase-head h2{font-size:19px;margin:0;letter-spacing:-.01em}
+.mission{font-family:var(--mono);font-size:11px;color:var(--muted);background:#efebe2;border:1px solid var(--line-2);padding:2px 8px;border-radius:5px}
+.phase-sub{color:var(--muted);font-size:13px;margin:0 0 14px}
+
+.card{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px 16px 14px}
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.chev{display:flex;align-items:center;color:var(--line-2);font-size:15px;padding:0 1px;user-select:none}
+
+/* ---------- nodes ---------- */
+.node{
+  flex:1 1 168px;max-width:250px;min-width:150px;
+  text-align:left;font:inherit;cursor:pointer;
+  background:#fff;border:1px solid var(--line-2);border-radius:10px;
+  padding:9px 11px 10px;display:flex;flex-direction:column;gap:3px;
+  transition:transform .14s, box-shadow .14s, opacity .2s, border-color .2s;
+  position:relative;
+}
+.node:hover{transform:translateY(-2px);box-shadow:0 6px 18px rgba(25,25,25,.09);border-color:var(--faint)}
+.node:focus-visible{outline:2px solid var(--orange);outline-offset:2px}
+.node .k{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--faint);display:flex;gap:6px;align-items:center}
+.node .t{font-size:12.8px;font-weight:600;line-height:1.35;letter-spacing:-.005em}
+.node .s{font-size:11px;color:var(--muted);line-height:1.4}
+
+.node.k-pm{background:#fffdf9}
+.node.k-pm .k{color:#a9a294}
+.node.k-role{border-color:#a9d5cd;background:var(--teal-bg)}
+.node.k-role .k{color:var(--teal)}
+.node.k-role .t{color:#0b4f49}
+.node.k-human{border-color:#eab896;background:var(--orange-bg);border-width:1.5px}
+.node.k-human .k{color:var(--orange);font-weight:700}
+.node.k-human .t{color:#7c2d0b}
+.node.k-human::after{
+  content:"";position:absolute;inset:-1px;border-radius:10px;pointer-events:none;
+  border:1.5px solid transparent;
+}
+.node.k-mech{border-left:3px solid var(--blue);background:var(--blue-bg)}
+.node.k-mech .k{color:var(--blue)}
+.node.k-mech .t{color:#1e3a8a}
+.node.k-dec{border-style:dashed;border-color:#c3b2e6;background:var(--purple-bg)}
+.node.k-dec .k{color:var(--purple)}
+.node.k-dec .t{color:#4c1d95}
+
+/* view modes */
+body[data-view="human"] .node:not(.k-human){opacity:.22;filter:saturate(.4)}
+body[data-view="human"] .node.k-human{box-shadow:0 0 0 3px rgba(194,65,12,.16),0 8px 24px rgba(194,65,12,.14)}
+body[data-view="machine"] .node:not(.k-mech){opacity:.22;filter:saturate(.4)}
+body[data-view="machine"] .node.k-mech{box-shadow:0 0 0 3px rgba(29,78,216,.14),0 8px 24px rgba(29,78,216,.12)}
+body[data-view="happy"] .node[data-exc="1"]{opacity:.16;filter:saturate(.3)}
+body[data-view="happy"] .node:not([data-exc="1"]){border-color:var(--teal);box-shadow:0 0 0 2px rgba(15,118,110,.12)}
+
+/* exception box */
+.exc{margin-top:10px;border:1px dashed var(--line-2);border-radius:9px;padding:9px 12px;background:#fbf9f4;font-size:11.8px;color:var(--muted)}
+.exc b{color:var(--orange);font-weight:600}
+.exc code{font-family:var(--mono);font-size:11px;background:#efebe2;padding:1px 5px;border-radius:4px;color:#4a463d}
+
+/* gate meter */
+.meter{display:flex;gap:16px;margin-top:10px;font-size:11px;color:var(--faint);flex-wrap:wrap}
+.meter span{display:flex;align-items:center;gap:5px}
+.meter .bar{display:inline-flex;gap:2px}
+.meter .bar s{width:6px;height:6px;border-radius:2px;background:var(--line-2);text-decoration:none;display:block}
+.meter .bar s.on-h{background:var(--orange)}
+.meter .bar s.on-m{background:var(--blue)}
+
+/* ---------- state machine ---------- */
+.sm-wrap{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sm{background:var(--paper);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);padding:16px}
+.sm h3{font-size:13px;margin:0 0 4px}
+.sm p.hint{font-size:11.5px;color:var(--faint);margin:0 0 12px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{
+  font:inherit;font-size:11.5px;font-family:var(--mono);
+  border:1px solid var(--line-2);background:#fff;border-radius:6px;padding:4px 9px;cursor:pointer;
+  color:var(--muted);transition:.14s;
+}
+.chip:hover{border-color:var(--faint);color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:#fff}
+.chip.reach{background:var(--teal-bg);border-color:#a9d5cd;color:#0b4f49;font-weight:600}
+.chip.dead{opacity:.35;text-decoration:line-through}
+.sm-readout{margin-top:12px;font-size:12px;color:var(--muted);min-height:38px;border-top:1px solid var(--line);padding-top:10px}
+.sm-readout b{color:var(--ink);font-family:var(--mono);font-size:11.5px}
+.sm-readout .no{color:var(--red)}
+
+/* ---------- table ---------- */
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th,td{text-align:left;padding:9px 11px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-family:var(--mono);font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--faint);background:#faf8f3;font-weight:600}
+tr:last-child td{border-bottom:0}
+td .hid{font-family:var(--mono);font-size:11px;color:var(--orange);font-weight:700;margin-right:6px}
+tbody tr:hover{background:#fbf9f4}
+
+/* ---------- drawer ---------- */
+.scrim{position:fixed;inset:0;background:rgba(25,25,25,.28);opacity:0;pointer-events:none;transition:.22s;z-index:60}
+.scrim.on{opacity:1;pointer-events:auto}
+.drawer{
+  position:fixed;top:0;right:0;height:100dvh;width:min(440px,94vw);z-index:70;
+  background:var(--paper);border-left:1px solid var(--line-2);
+  box-shadow:-20px 0 60px rgba(25,25,25,.14);
+  transform:translateX(102%);transition:transform .26s cubic-bezier(.22,.8,.3,1);
+  display:flex;flex-direction:column;
+}
+.drawer.on{transform:none}
+.drawer-top{padding:20px 22px 14px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.drawer-top .close{margin-left:auto;border:1px solid var(--line-2);background:#fff;border-radius:7px;width:30px;height:30px;cursor:pointer;color:var(--muted);font-size:15px;line-height:1;flex:none}
+.drawer-top .close:hover{color:var(--ink);border-color:var(--faint)}
+.dk{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;padding:2px 7px;border-radius:4px;display:inline-block;margin-bottom:6px}
+.dk.pm{background:#efebe2;color:#6b6558}
+.dk.role{background:var(--teal-bg);color:var(--teal)}
+.dk.human{background:var(--orange-bg);color:var(--orange);font-weight:700}
+.dk.mech{background:var(--blue-bg);color:var(--blue)}
+.dk.dec{background:var(--purple-bg);color:var(--purple)}
+.drawer h3{font-size:16px;margin:0;line-height:1.35;letter-spacing:-.01em}
+.drawer-body{overflow-y:auto;padding:18px 22px 40px;flex:1}
+.fld{margin-bottom:16px}
+.fld .lb{font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:4px}
+.fld .vl{font-size:12.8px;color:#3a362e;line-height:1.6}
+.fld .vl ul{margin:0;padding-left:16px}
+.fld .vl li{margin:2px 0}
+.fld.hi .lb{color:var(--orange)}
+.fld.hi .vl{background:var(--orange-bg);border:1px solid #f0d3bd;border-radius:8px;padding:9px 11px;color:#6f2c0a}
+.fld.mc .lb{color:var(--blue)}
+.fld.mc .vl{background:var(--blue-bg);border:1px solid #c9d5f8;border-radius:8px;padding:9px 11px;color:#1c3579}
+.fld .src{font-family:var(--mono);font-size:11px;color:var(--faint);background:#f2eee5;border-radius:4px;padding:2px 6px;display:inline-block;margin-top:5px}
+.drawer-nav{display:flex;gap:8px;border-top:1px solid var(--line);padding:12px 22px}
+.drawer-nav button{flex:1;font:inherit;font-size:12px;padding:7px;border-radius:7px;border:1px solid var(--line-2);background:#fff;color:var(--muted);cursor:pointer}
+.drawer-nav button:hover{color:var(--ink);border-color:var(--faint)}
+
+/* ---------- cost ---------- */
+.cost{display:grid;gap:9px}
+.cost .row{display:grid;grid-template-columns:96px 1fr 74px;gap:10px;align-items:center;font-size:12px}
+.cost .tr{height:22px;background:#efebe2;border-radius:5px;overflow:hidden}
+.cost .fl{height:100%;border-radius:5px;display:flex;align-items:center;padding-left:8px;font-family:var(--mono);font-size:10.5px;color:#fff;font-weight:600}
+.cost .fl.a{background:linear-gradient(90deg,#c2410c,#ea580c)}
+.cost .fl.b{background:linear-gradient(90deg,#0f766e,#14b8a6)}
+.cost .fl.c{background:linear-gradient(90deg,#57534e,#a8a29e)}
+.cost .num{font-family:var(--mono);font-size:11.5px;color:var(--muted);text-align:right}
+
+/* ---------- misc ---------- */
+.note{font-size:12px;color:var(--muted);margin-top:12px;padding-left:12px;border-left:2px solid var(--line-2)}
+.note b{color:var(--ink)}
+h2.sec{font-size:16px;margin:44px 0 12px;letter-spacing:-.01em;display:flex;align-items:center;gap:10px}
+h2.sec .n{font-family:var(--mono);font-size:10.5px;color:var(--orange);letter-spacing:.12em}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+footer{max-width:1320px;margin:0 auto;padding:24px 32px 60px;color:var(--faint);font-size:11.5px;border-top:1px solid var(--line)}
+
+@media (max-width:960px){
+  .shell{grid-template-columns:1fr;padding:20px 18px 80px}
+  .rail{position:static;flex-direction:row;overflow-x:auto;gap:4px;padding-bottom:8px}
+  .rail .rh,.rail a .dot{display:none}
+  .rail a{border-left:0;border-bottom:2px solid transparent;white-space:nowrap}
+  .rail a.active{border-left:0;border-bottom-color:var(--orange)}
+  .hero,.toolbar-in,footer{padding-left:18px;padding-right:18px}
+  .sm-wrap,.two{grid-template-columns:1fr}
+  .legend{display:none}
+}
+@media print{
+  body{background:#fff}
+  .toolbar,.rail,.drawer,.scrim{display:none}
+  .shell{grid-template-columns:1fr;padding:0}
+  .phase{break-inside:avoid}
+}
+</style>
+</head>
+<body data-view="default">
+
+<header class="hero">
+  <div class="eyebrow">leo-team-plugin · spec-coding-team-skill</div>
+  <h1>流程交互拆解</h1>
+  <p>点击任意节点查看<b>输入 / 产出 / 人工动作 / 机械强制 / 回退路径</b>。切换顶部视图模式，可以看清这套流程里<span class="em">哪些是脚本真的拦得住的，哪些只靠纪律</span>。</p>
+  <div class="stats">
+    <div class="stat">阶段 <b>7</b> 个（N0–N6）</div>
+    <div class="stat h">人工门 <b>12</b> 处</div>
+    <div class="stat m">脚本强制 <b>10</b> 处</div>
+    <div class="stat">顺利走完只需 <b>2</b> 次确认</div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="toolbar-in">
+    <div class="seg" role="group" aria-label="视图模式">
+      <button data-mode="default" aria-pressed="true">默认</button>
+      <button data-mode="human" aria-pressed="false">只看人工门</button>
+      <button data-mode="machine" aria-pressed="false">只看机械强制</button>
+      <button data-mode="happy" aria-pressed="false">顺畅路径</button>
+    </div>
+    <div class="legend">
+      <span class="l-pm"><i></i>PM</span>
+      <span class="l-role"><i></i>角色</span>
+      <span class="l-human"><i></i>人工</span>
+      <span class="l-mech"><i></i>脚本</span>
+      <span class="l-dec"><i></i>判定</span>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <nav class="rail" aria-label="阶段导航">
+    <div class="rh">Phases</div>
+    <a href="#p0" data-nav="p0"><span class="id">N0</span>Precheck<span class="dot"><s></s><s></s><s></s><s class="m"></s></span></a>
+    <a href="#p1" data-nav="p1"><span class="id">N1</span>Phase A</a>
+    <a href="#p2" data-nav="p2"><span class="id">N2</span>Hard Gate<span class="dot"><s></s></span></a>
+    <a href="#p3" data-nav="p3"><span class="id">N3</span>Formation<span class="dot"><s></s></span></a>
+    <a href="#p4" data-nav="p4"><span class="id">N4</span>Execution<span class="dot"><s></s><s></s><s></s><s class="m"></s><s class="m"></s></span></a>
+    <a href="#p5" data-nav="p5"><span class="id">N5</span>Round Review<span class="dot"><s></s><s></s><s></s></span></a>
+    <a href="#p6" data-nav="p6"><span class="id">N6</span>Verification<span class="dot"><s></s><s class="m"></s><s class="m"></s></span></a>
+  </nav>
+
+  <main>
+
+    <!-- ================= N0 ================= -->
+    <section class="phase" id="p0">
+      <div class="phase-head">
+        <span class="phase-num">N0</span>
+        <h2>Precheck · 值不值得组队</h2>
+        <span class="mission">mission=planning</span>
+      </div>
+      <p class="phase-sub">在花掉任何团队成本之前做成本判断。不建分支、不写业务代码、不 spawn 队友。</p>
+      <div class="card">
+        <div class="flow">
+          <button class="node k-pm" data-node="n0-run"><span class="k">PM</span><span class="t">分配 .dev/&lt;run&gt;</span><span class="s">扫描 [0-9]{3}-* 取最大号 +1</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n0-size"><span class="k">PM</span><span class="t">Task Sizing</span><span class="s">XS / S / M / L，取最高档</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n0-trig"><span class="k">PM</span><span class="t">四触发判定</span><span class="s">T1 规模 · T2 并行 · T3 独立验证 · T4 用户要队</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H1"><span class="k">◆ HUMAN</span><span class="t">H1 · Agent Teams 检测</span><span class="s">A 启用 / B subagent / C 单 agent</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H2"><span class="k">◆ HUMAN</span><span class="t">H2 · science_gate 四选一</span><span class="s">A 全关 · B 只研究 · C 只审计 · D 双开</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n0-init"><span class="k">SCRIPT</span><span class="t">flow.sh init</span><span class="s">建 flow.json，写 science_gate</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H3" data-exc="1"><span class="k">◆ HUMAN · 异常</span><span class="t">H3 · XS/S 仍要组队</span><span class="s">写 D-NNN 覆盖记录</span></button>
+        </div>
+        <div class="exec">
+          <div class="exc"><b>并行分支：</b>XS/S 或 T1 不成立 → 退回 <code>spec-coding-skill</code>，不创建 flow.json。用户坚持组队 → 写 <code>D-NNN</code> 覆盖记录，最小队 <code>executor + reviewer</code>，science 全关。</div>
+          <div class="exc"><b>硬编码入口条件：</b>必须同时满足 <code>T1 ∧ (T2 ∨ T3 ∨ T4)</code>，否则不进入 team 流程。</div>
+        </div>
+        <div class="meter">
+          <span>人工 <span class="bar"><s class="on-h"></s><s class="on-h"></s><s class="on-h"></s></span></span>
+          <span>机械 <span class="bar"><s class="on-m"></s></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= N1 ================= -->
+    <section class="phase" id="p1">
+      <div class="phase-head">
+        <span class="phase-num">N1</span>
+        <h2>Phase A · 需求构建</h2>
+        <span class="mission">mission=planning</span>
+      </div>
+      <p class="phase-sub">把用户需求变成可执行、可验证、可交接的磁盘文件。仍然不建分支、不写业务代码。</p>
+      <div class="card">
+        <div class="flow">
+          <button class="node k-pm" data-node="n1-init"><span class="k">PM</span><span class="t">写 init.md</span><span class="s">Goal / Non-goals / AC / Constraints / Risks</span></button>
+          <span class="chev">›</span>
+          <button class="node k-dec" data-node="n1-spawn"><span class="k">DECISION</span><span class="t">Spawn 决策</span><span class="s">上限 3；P0 researcher 不让位</span></button>
+          <span class="chev">›</span>
+          <button class="node k-role" data-node="r-explorer"><span class="k">ROLE</span><span class="t">explorer</span><span class="s">→ inspect.md · 只读代码地图</span></button>
+          <span class="chev">›</span>
+          <button class="node k-role" data-node="r-architect"><span class="k">ROLE</span><span class="t">architect</span><span class="s">→ architecture-review.md · 依赖 inspect.md</span></button>
+          <span class="chev">›</span>
+          <button class="node k-role" data-node="r-researcher"><span class="k">ROLE</span><span class="t">science-researcher</span><span class="s">→ research.md + fixtures/ · 条件启用</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n1-synth"><span class="k">PM</span><span class="t">合成三件套</span><span class="s">plan.md / tasks.md / decisions.md</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n1-gate"><span class="k">SCRIPT</span><span class="t">transition --to gate</span><span class="s">提交 N2 模板后立即执行</span></button>
+        </div>
+        <div class="exec">
+          <div class="exc"><b>让位规则：</b>槽位不足时按 P0 researcher → P1 explorer → P2 architect 让位；让位 ≠ 取消，PM 必须写「谁让位、第二批何时启动」进 <code>decisions.md</code>。</div>
+          <div class="exc"><b>BLOCKED 语义：</b>输入缺失 → 队友立刻 BLOCKED，PM 不得猜着补写。</div>
+        </div>
+        <div class="meter">
+          <span>人工 <span class="bar"><s></s><s></s><s></s></span></span>
+          <span>机械 <span class="bar"><s class="on-m"></s></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= N2 ================= -->
+    <section class="phase" id="p2">
+      <div class="phase-head">
+        <span class="phase-num">N2</span>
+        <h2>Hard Gate · 唯一一次总授权</h2>
+        <span class="mission">mission=gate</span>
+      </div>
+      <p class="phase-sub">在创建分支、组队、写代码之前，拿到用户对本轮计划的明确授权。这是整个流程最硬的一道门。</p>
+      <div class="card">
+        <div class="flow">
+          <button class="node k-pm" data-node="n2-submit"><span class="k">PM</span><span class="t">单条消息提交模板</span><span class="s">含分支 / 队伍 / 成本 / science gate / sha256</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H4"><span class="k">◆ HUMAN</span><span class="t">H4 · 亲口回 confirmed</span><span class="s">"okay / 看起来行 / 沉默" 都不算</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n2-semantics"><span class="k">SCRIPT</span><span class="t">确认语义硬编码</span><span class="s">仅 confirmed / confirm execution / approve execution</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n2-record"><span class="k">PM</span><span class="t">写 decisions 原文</span><span class="s">用户原话 + 时间 + 快照 sha256</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n2-actions"><span class="k">SCRIPT</span><span class="t">6 步顺序不可换</span><span class="s">decisions → 建分支 → primer → checkpoint → 工作区检查</span></button>
+          <span class="chev">›</span>
+          <button class="node k-dec" data-node="n2-reject"><span class="k">DECISION</span><span class="t">用户要改？</span><span class="s">留在 gate 改 / blocked→recover→planning</span></button>
+        </div>
+        <div class="exec">
+          <div class="exc"><b>三不原则：</b>不自动确认、不超时放行、不代答。用户不确认就永远停在 gate。</div>
+          <div class="exc"><b>确认作废：</b>plan / tasks / decisions / 分支名 / science gate 任一实质变化 → 旧确认失效，必须重提重确认。</div>
+          <div class="exc"><b>合法回退：</b>禁止 <code>gate → planning</code>；必须 <code>transition --to blocked</code> 再 <code>flow.sh recover</code>。</div>
+        </div>
+        <div class="meter">
+          <span>人工 <span class="bar"><s class="on-h"></s></span></span>
+          <span>机械 <span class="bar"><s class="on-m"></s><s class="on-m"></s></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= N3 ================= -->
+    <section class="phase" id="p3">
+      <div class="phase-head">
+        <span class="phase-num">N3</span>
+        <h2>Formation · 切单元与组队</h2>
+        <span class="mission">mission=gate → executing</span>
+      </div>
+      <p class="phase-sub">把 tasks.md 变成可机械调度的 team-plan：每个单元一个 owner、一个写集、一条验收命令。</p>
+      <div class="card">
+        <div class="flow">
+          <button class="node k-pm" data-node="n3-count"><span class="k">PM</span><span class="t">统计 task 类型</span><span class="s">implementation / verification / research</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n3-split"><span class="k">PM</span><span class="t">按 owned_files 切单元</span><span class="s">≤5 文件 · ≤200 行 · 测试与代码同单元</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n3-lanes"><span class="k">SCRIPT</span><span class="t">check-lanes.sh</span><span class="s">exit 1 = 确定重叠，必须重切</span></button>
+          <span class="chev">›</span>
+          <button class="node k-dec" data-node="n3-overlap"><span class="k">DECISION</span><span class="t">重叠处置</span><span class="s">合并 → 唯一所有权 → 串行</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n3-roles"><span class="k">PM</span><span class="t">选择角色 2–4</span><span class="s">executor 1 · reviewer ≥1 · auditor 不可裁</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n3-plan"><span class="k">PM</span><span class="t">写 team-plan + prompt 文件</span><span class="s">每单元五要素</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H5"><span class="k">◆ HUMAN</span><span class="t">H5 · 再次 confirmed</span><span class="s">角色数或 science gate 变了 → N2 作废</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n3-addunit"><span class="k">SCRIPT</span><span class="t">add-unit ×N</span><span class="s">写入 flow.json.units</span></button>
+        </div>
+        <div class="exec">
+          <div class="exc"><b>硬规则：</b>共享可变文件（index / router / types / schema / migration）只能有一个 owner，其他单元通过接口消费。</div>
+          <div class="exc"><b>并行幻觉：</b>owned_files 不相交只是「允许调度」的前提，不是「可以同时写」的许可；全局永远只有一个 claim。</div>
+        </div>
+        <div class="meter">
+          <span>人工 <span class="bar"><s class="on-h"></s></span></span>
+          <span>机械 <span class="bar"><s class="on-m"></s><s class="on-m"></s></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= N4 ================= -->
+    <section class="phase" id="p4">
+      <div class="phase-head">
+        <span class="phase-num">N4</span>
+        <h2>Execution · 调度与执行</h2>
+        <span class="mission">mission=executing</span>
+      </div>
+      <p class="phase-sub">PM 只做编排、验收、记录。实现单元永远串行；并行只发生在只读分析 vs 写入之间。</p>
+      <div class="card">
+        <div class="flow">
+          <button class="node k-mech" data-node="n4-claim"><span class="k">SCRIPT</span><span class="t">claim</span><span class="s">全局唯一写锁</span></button>
+          <span class="chev">›</span>
+          <button class="node k-role" data-node="r-executor"><span class="k">ROLE</span><span class="t">executor 实现</span><span class="s">只写 owned_files 内</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n4-accept"><span class="k">PM</span><span class="t">亲跑 acceptance</span><span class="s">不看队友自述，只读 exit code</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n4-release"><span class="k">SCRIPT</span><span class="t">release → for_review</span><span class="s">release 只放锁，不改状态</span></button>
+          <span class="chev">›</span>
+          <button class="node k-role" data-node="r-reviewer"><span class="k">ROLE</span><span class="t">reviewer 双轴审</span><span class="s">Axis 1 标准与 OOP · Axis 2 规格与验收</span></button>
+          <span class="chev">›</span>
+          <button class="node k-dec" data-node="n4-verdict"><span class="k">DECISION</span><span class="t">PASS / FAIL / BLOCKED</span><span class="s">FAIL → failures+1</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H6"><span class="k">◆ HUMAN</span><span class="t">H6 · 偏差裁决</span><span class="s">改规格 / 接受为债 / 全停</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H7"><span class="k">◆ HUMAN</span><span class="t">H7 · failures ≥ 3</span><span class="s">blocked，人裁决后才可 --force</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H8" data-exc="1"><span class="k">◆ HUMAN · 异常</span><span class="t">H8 · 用户撤销确认</span><span class="s">转 blocked 等裁决</span></button>
+        </div>
+        <div class="exec">
+          <div class="exc"><b>checkpoint：</b>每 3 个单元一次；executor 先 commit，reviewer 绑定固定 commit 审 —— 禁止审还在变动的工作区。</div>
+          <div class="exc"><b>PreCompact：</b>executing / reviewing 期间 checkpoint 必须 ≤30 分钟，否则 hook 拦截压缩。</div>
+          <div class="exc"><b>PM 等待期间禁令：</b>不分析、不代写、不代判、不抢先推进、不重复催问、不开第二个同名角色。</div>
+        </div>
+        <div class="meter">
+          <span>人工 <span class="bar"><s class="on-h"></s><s class="on-h"></s><s class="on-h"></s></span></span>
+          <span>机械 <span class="bar"><s class="on-m"></s><s class="on-m"></s><s class="on-m"></s><s class="on-m"></s></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= N5 ================= -->
+    <section class="phase" id="p5">
+      <div class="phase-head">
+        <span class="phase-num">N5</span>
+        <h2>Round Review · 轮次收口</h2>
+        <span class="mission">mission=reviewing</span>
+      </div>
+      <p class="phase-sub">用独立上下文判断本轮能否进 N6；不能就在同 session 开 Round N+1。</p>
+      <div class="card">
+        <div class="flow">
+          <button class="node k-mech" data-node="n5-count"><span class="k">SCRIPT</span><span class="t">计数 B / C / M / A</span><span class="s">blocker · critical · 未接受 major · 审计结论</span></button>
+          <span class="chev">›</span>
+          <button class="node k-dec" data-node="n5-table"><span class="k">DECISION</span><span class="t">决策表</span><span class="s">B&gt;0 或 C&gt;0 → 开下一轮</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H9"><span class="k">◆ HUMAN</span><span class="t">H9 · major 接受为债</span><span class="s">唯一能绕过 B/C/M=0 的路径</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H10"><span class="k">◆ HUMAN</span><span class="t">H10 · UNVERIFIABLE</span><span class="s">只有人能关闭，且必须留痕</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H11"><span class="k">◆ HUMAN</span><span class="t">H11 · 轮次熔断</span><span class="s">round≥3 且未降 / 同错复现 / 只剩 nit</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n5-increment"><span class="k">PM</span><span class="t">开 Round N+1</span><span class="s">不重写 plan；只追加增量任务</span></button>
+        </div>
+        <div class="exec">
+          <div class="exc"><b>增量原则：</b>mission 保持 reviewing，禁止 <code>reviewing → executing</code>；新任务 ID 用 <code>R&lt;N&gt;-U&lt;k&gt;</code> 并写 <code>supersedes</code>。</div>
+          <div class="exc"><b>易漏一步：</b>修复单元复审 PASS 后，PM 必须把对应 finding 的 Status 改为 <code>fixed</code> / <code>accepted</code> 并附证据，否则 check-team-complete 会一直判为未闭合。</div>
+        </div>
+        <div class="meter">
+          <span>人工 <span class="bar"><s class="on-h"></s><s class="on-h"></s><s class="on-h"></s></span></span>
+          <span>机械 <span class="bar"><s class="on-m"></s></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= N6 ================= -->
+    <section class="phase" id="p6">
+      <div class="phase-head">
+        <span class="phase-num">N6</span>
+        <h2>Verification · 集成验收</h2>
+        <span class="mission">mission=reviewing → verified</span>
+      </div>
+      <p class="phase-sub">把「审过了」推进到「可审计地合并并验收」。三态必须按序到达，禁止合并声明。</p>
+      <div class="card">
+        <div class="flow">
+          <button class="node k-mech" data-node="n6-states"><span class="k">SCRIPT</span><span class="t">approved → merged → verified</span><span class="s">状态机禁止跳步</span></button>
+          <span class="chev">›</span>
+          <button class="node k-human" data-node="H12"><span class="k">◆ HUMAN</span><span class="t">H12 · 授权合并</span><span class="s">队友禁止 push / merge 主干</span></button>
+          <span class="chev">›</span>
+          <button class="node k-pm" data-node="n6-ac"><span class="k">PM</span><span class="t">AC ↔ 证据一行一条</span><span class="s">删除类需求另跑负向不变量</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n6-stop"><span class="k">SCRIPT</span><span class="t">Stop hook 拦截</span><span class="s">mission≠verified 时不许结束会话</span></button>
+          <span class="chev">›</span>
+          <button class="node k-mech" data-node="n6-complete"><span class="k">SCRIPT</span><span class="t">check-team-complete.sh</span><span class="s">输出 OK 才可宣布完成</span></button>
+        </div>
+        <div class="exec">
+          <div class="exc"><b>负向不变量：</b>删除类 AC 必须验证 symbol 消失、入口不可达、契约同步、无静默回退、消费者已迁移 —— 只证明新功能可用不算通过。</div>
+          <div class="exc"><b>反作弊：</b>禁止删 flow.json、改 mission、跳过 hook、伪造 verified；脚本没有 abandon 白名单。</div>
+        </div>
+        <div class="meter">
+          <span>人工 <span class="bar"><s class="on-h"></s></span></span>
+          <span>机械 <span class="bar"><s class="on-m"></s><s class="on-m"></s><s class="on-m"></s></span></span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ================= STATE MACHINES ================= -->
+    <h2 class="sec" id="sm"><span class="n">STATE</span>状态机 · 点一个状态看它能去哪</h2>
+    <div class="sm-wrap">
+      <div class="sm">
+        <h3>Mission</h3>
+        <p class="hint">flow.sh 的 mission 迁移白名单</p>
+        <div class="chips" id="sm-mission"></div>
+        <div class="sm-readout" id="sm-mission-out">点击任意状态</div>
+      </div>
+      <div class="sm">
+        <h3>Unit</h3>
+        <p class="hint">单个工作单元的生命周期</p>
+        <div class="chips" id="sm-unit"></div>
+        <div class="sm-readout" id="sm-unit-out">点击任意状态</div>
+      </div>
+    </div>
+
+    <!-- ================= HITL TABLE ================= -->
+    <h2 class="sec"><span class="n">HITL</span>12 个人工介入点</h2>
+    <div class="card" style="padding:0;overflow:hidden">
+      <table>
+        <thead>
+          <tr><th style="width:64px">#</th><th style="width:56px">阶段</th><th>人要做什么</th><th style="width:120px">强度</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><span class="hid">H1</span></td><td>N0</td><td>选启用 Agent Teams / subagent / 单 agent</td><td>硬：不选就停</td></tr>
+          <tr><td><span class="hid">H2</span></td><td>N0</td><td>选 science_gate A/B/C/D</td><td>硬：不选就停</td></tr>
+          <tr><td><span class="hid">H3</span></td><td>N0</td><td>XS/S 仍要组队时给覆盖授权</td><td>软：靠记录自觉</td></tr>
+          <tr><td><span class="hid">H4</span></td><td>N2</td><td>亲口回 confirmed 才建分支</td><td><b>最硬：三不原则</b></td></tr>
+          <tr><td><span class="hid">H5</span></td><td>N3</td><td>再次 confirmed 才写单元</td><td>硬</td></tr>
+          <tr><td><span class="hid">H6</span></td><td>N4</td><td>偏差裁决：改规格 / 接受为债 / 全停</td><td>软 → 半硬</td></tr>
+          <tr><td><span class="hid">H7</span></td><td>N4</td><td>failures≥3 后决定继续 / 拆单元 / 终止</td><td>半硬：需 --force</td></tr>
+          <tr><td><span class="hid">H8</span></td><td>N4</td><td>撤销确认</td><td>半硬：转 blocked</td></tr>
+          <tr><td><span class="hid">H9</span></td><td>N5</td><td>major 接受为债</td><td>软：唯一绕过公式的路径</td></tr>
+          <tr><td><span class="hid">H10</span></td><td>N5</td><td>关闭 UNVERIFIABLE</td><td>硬：语义层</td></tr>
+          <tr><td><span class="hid">H11</span></td><td>N5</td><td>轮次熔断后的裁决</td><td>半硬</td></tr>
+          <tr><td><span class="hid">H12</span></td><td>N6</td><td>授权合并</td><td>硬边界</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="note"><b>关键事实：</b>只有 H4、H5 是「不给人就物理走不下去」的门。一切顺利的话，从 N0 到 verified 只需要人按两次 confirmed —— 其余 10 个 H 点全部只在异常路径上触发。</div>
+
+    <!-- ================= COST ================= -->
+    <h2 class="sec"><span class="n">COST</span>三种模式的成本倍率</h2>
+    <div class="two">
+      <div class="card">
+        <div class="cost">
+          <div class="row"><span>单 agent</span><div class="tr"><div class="fl c" style="width:10%">1×</div></div><span class="num">baseline</span></div>
+          <div class="row"><span>subagent 串行</span><div class="tr"><div class="fl b" style="width:30%">2–3×</div></div><span class="num">每单元重建上下文</span></div>
+          <div class="row"><span>Agent Teams</span><div class="tr"><div class="fl a" style="width:100%">3–10×</div></div><span class="num">每个 teammate 是完整 session</span></div>
+        </div>
+        <div class="note">N2 模板里的 <code>Estimated cost</code> 是估算字段，执行期没有硬性中断。当前设计里没有 cost cap 的机械拦截。</div>
+      </div>
+      <div class="card">
+        <h3 style="font-size:13px;margin:0 0 8px">人工介入密度</h3>
+        <div class="cost" style="gap:7px">
+          <div class="row"><span style="font-family:var(--mono);font-size:11px">N0</span><div class="tr" style="height:16px"><div class="fl a" style="width:100%;font-size:9px">3</div></div><span></span></div>
+          <div class="row"><span style="font-family:var(--mono);font-size:11px">N1</span><div class="tr" style="height:16px"><div class="fl c" style="width:3%;background:#e5e0d4"></div></div><span class="num">0</span></div>
+          <div class="row"><span style="font-family:var(--mono);font-size:11px">N2</span><div class="tr" style="height:16px"><div class="fl a" style="width:34%;font-size:9px">1</div></div><span></span></div>
+          <div class="row"><span style="font-family:var(--mono);font-size:11px">N3</span><div class="tr" style="height:16px"><div class="fl a" style="width:34%;font-size:9px">1</div></div><span></span></div>
+          <div class="row"><span style="font-family:var(--mono);font-size:11px">N4</span><div class="tr" style="height:16px"><div class="fl a" style="width:100%;font-size:9px">3</div></div><span></span></div>
+          <div class="row"><span style="font-family:var(--mono);font-size:11px">N5</span><div class="tr" style="height:16px"><div class="fl a" style="width:100%;font-size:9px">3</div></div><span></span></div>
+          <div class="row"><span style="font-family:var(--mono);font-size:11px">N6</span><div class="tr" style="height:16px"><div class="fl a" style="width:34%;font-size:9px">1</div></div><span></span></div>
+        </div>
+        <div class="note">N4 / N5 的人工点最密，但全部是异常触发；顺畅路径上不会出现。</div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" aria-hidden="true" role="dialog" aria-labelledby="drawer-title">
+  <div class="drawer-top">
+    <div>
+      <span class="dk" id="drawer-kind">—</span>
+      <h3 id="drawer-title">—</h3>
+    </div>
+    <button class="close" id="drawer-close" aria-label="关闭">✕</button>
+  </div>
+  <div class="drawer-body" id="drawer-body"></div>
+  <div class="drawer-nav">
+    <button id="prev-node">← 上一个</button>
+    <button id="next-node">下一个 →</button>
+  </div>
+</aside>
+
+<footer>
+  拆解自 <code>plugins/leo-team-plugin</code>：SKILL.md、phases/00–06、references/essence.md、references/rails.md、scripts/flow.sh、scripts/check-lanes.sh、scripts/validate-lane-write.sh、hooks/hooks.json。
+  页内判断均可在上述文件中逐条核对。
+</footer>
+
+<script>
+/* ---------------- node data ---------------- */
+const NODES = {
+  "n0-run": {
+    kind:"pm", title:"分配 .dev/{run} 需求编号",
+    fields:[
+      ["阶段","N0 Precheck"],
+      ["谁执行","PM（主会话）"],
+      ["目标","为本次运行确定唯一标识，后续所有路径都基于它。"],
+      ["做法",["扫描 .dev/ 下匹配 [0-9]{3}-* 的目录","取最大编号 +1，补零到三位","不存在 .dev/ 则先创建","目录名即全程使用的 <code>&lt;run&gt;</code>"]],
+      ["产出","<code>.dev/&lt;run&gt;/generated/</code>"],
+      ["人工动作","无"]
+    ],
+    src:"phases/00-precheck.md § Steps 1–2"
+  },
+  "n0-size": {
+    kind:"pm", title:"Task Sizing 任务定级",
+    fields:[
+      ["阶段","N0 Precheck"],
+      ["谁执行","PM"],
+      ["目标","在花钱之前判断这是不是一件值得组队的工作。"],
+      ["分档",["XS：≤1 文件 且 ≤30 行 且 单一行为","S：2–5 文件 或 ≤150 行，不跨模块接口","M：6–20 文件 或 151–800 行 或 跨 2–3 模块","L：>20 文件 或 >800 行 或 跨 ≥4 模块/仓库"]],
+      ["判定规则","任一命中取最高档；行数按「净新增 + 净修改」计，排除生成文件与锁文件。"],
+      ["人工动作","无 —— 定级由 PM 自己判，没有人工复核点"]
+    ],
+    src:"phases/00-precheck.md § Task Sizing"
+  },
+  "n0-trig": {
+    kind:"pm", title:"四触发判定 T1–T4",
+    fields:[
+      ["阶段","N0 Precheck"],
+      ["谁执行","PM"],
+      ["目标","确认「规模够大」之外，是否还有并行、独立验证或用户意图的理由。"],
+      ["四项",["T1 规模达到 M/L","T2 存在并行收益（≥2 个 owned_files 互斥的初步单元）","T3 需要独立验证上下文（外部事实审计 / 跨模块接口审查 / 双轴审查）","T4 用户明确要求组队"]],
+      ["入口条件","硬编码 <code>T1 ∧ (T2 ∨ T3 ∨ T4)</code>，缺一不进队"],
+      ["人工动作","无"]
+    ],
+    src:"phases/00-precheck.md § Four triggers"
+  },
+  "H1": {
+    kind:"human", title:"H1 · Agent Teams 检测不通过",
+    fields:[
+      ["阶段","N0 Precheck"],
+      ["触发条件","<code>CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS≠1</code>，或当前不是交互式终端（claude -p / Agent SDK 不算）"],
+      ["人要做什么",["A：启用 Agent Teams 并重启会话（推荐）","B：用 subagent 串行执行（省 token，无并行，每单元重建上下文）","C：退回单 agent 的 spec-coding-skill"]],
+      ["为什么必须问","静默降级是被明令禁止的；必须逐条说明丢失的能力。"],
+      ["丢失的能力","队友无法直接通信（无 mailbox）；无 SendMessage / TaskCreate；上下文不持久。"],
+      ["仍保留","共享文件纪律、状态机、hooks、验收流程"]
+    ],
+    src:"references/degradation.md · commands/spec-team.md § 2"
+  },
+  "H2": {
+    kind:"human", title:"H2 · science_gate 四选一",
+    fields:[
+      ["阶段","N0 Precheck"],
+      ["提问方式","AskUserQuestion，只问一次"],
+      ["问题","需求是否涉及科学算法、公式、数值结论、语料/benchmark，或需要为用户声称的效果（如「提升 X%」）提供依据？"],
+      ["四个选项",["A（默认）：全关 —— 常规工程需求","B：只开 researcher —— 需要文献结论或语料","C：只开 auditor —— 有外部共识可比对，无需专项调研","D：双开 —— 科学计算、算法实现、论文复现、指标声称"]],
+      ["默认 A 的理由","常规需求不付科学通道的成本。"],
+      ["变更规则","N1 期间用户改选项 → 更新 flow.json + 写 decisions.md；运行时关闭或降级 → 必须用户 confirmed"]
+    ],
+    src:"phases/00-precheck.md § science_gate 四选项"
+  },
+  "H3": {
+    kind:"human", title:"H3 · XS/S 仍要组队",
+    fields:[
+      ["阶段","N0 Precheck（异常路径）"],
+      ["触发条件","PM 已判定 XS 或 S，用户仍坚持组队"],
+      ["人要做什么","明确覆盖授权，并已知晓 3–10× token 成本"],
+      ["必须做的事","在 decisions.md 写 <code>D-NNN</code>：trigger=user_override / decision / context / approved_by"],
+      ["执行方式","最小队 spec-executor + spec-reviewer，science 通道全关，N3 规模 2"],
+      ["强度","软 —— 只靠记录自觉，没有机械拦截"]
+    ],
+    src:"phases/00-precheck.md § User insists on forming a team"
+  },
+  "n0-init": {
+    kind:"mech", title:"flow.sh init + set science-gate",
+    fields:[
+      ["阶段","N0 → N1 之间"],
+      ["谁执行","PM 运行脚本"],
+      ["命令","<code>flow.sh init --run \"&lt;run&gt;\"</code><br/><code>flow.sh set --science-gate-researcher … --science-gate-auditor …</code>"],
+      ["产出","<code>.team/&lt;run&gt;/flow.json</code>：mission=planning、branch=feat/&lt;run&gt;、units=[]、claim=null"],
+      ["机械保证","之后所有 mission / unit 迁移只能走白名单，非法跳转直接报错。"],
+      ["注意","XS/S 退回时不得创建 flow.json"]
+    ],
+    src:"scripts/flow.sh · cmd_init"
+  },
+
+  "n1-init": {
+    kind:"pm", title:"写 init.md 七节",
+    fields:[
+      ["阶段","N1 Phase A"],
+      ["谁执行","PM（独占写）"],
+      ["必填节",["Goal：一句话可判成败","Non-goals：至少 1 条，明确不做什么","Acceptance Criteria：AC-1..n，每条带可执行判定方法","Constraints：技术栈 / 兼容性 / 时间 / 不可变接口","Glossary：易混术语的项目内定义","Risks：风险 → 触发信号 → 缓解","N0 Precheck Determination：N0 写入，不得删改"]],
+      ["硬规则","AC 缺判定方法 → PM 先补，不得 spawn"],
+      ["人工动作","无（内容质量靠 PM 自觉）"]
+    ],
+    src:"phases/01-phase-a.md § 1"
+  },
+  "n1-spawn": {
+    kind:"dec", title:"Spawn 决策与让位",
+    fields:[
+      ["阶段","N1 Phase A"],
+      ["并发上限","同时最多 3 个 teammate"],
+      ["优先级","P0 science-researcher（不让位） → P1 explorer（让位给 P0） → P2 architect（最先让位，进第二批）"],
+      ["跳过要求","不起某角色必须在 decisions.md 写原因（如「全新项目，全部新文件，跳过 explorer」）"],
+      ["依赖","architect 依赖 inspect.md；inspect.md 不存在时必须先起 explorer，禁止让 architect 猜现状"],
+      ["对比","explorer / architect 在 N3 可各补充一次"]
+    ],
+    src:"phases/01-phase-a.md § 2–3"
+  },
+  "r-explorer": {
+    kind:"role", title:"spec-explorer · 代码地图",
+    fields:[
+      ["阶段","N1（N3 可补充一次）"],
+      ["产出","<code>generated/inspect.md</code>"],
+      ["必填内容",["入口点与调用图","可复用点","命名与目录约定","潜在冲突","开放问题","相关文件以 <code>path:line</code> 标注"]],
+      ["禁止","给设计结论；改代码"],
+      ["权限","只读代码"],
+      ["回传","R-10：只给路径 + 一句话结论"]
+    ],
+    src:"phases/01-phase-a.md § 4 · agents/spec-explorer.md"
+  },
+  "r-architect": {
+    kind:"role", title:"spec-architect · 架构评审",
+    fields:[
+      ["阶段","N1（N3 可补充一次）"],
+      ["必需输入","init.md + <b>inspect.md（必需）</b> + research.md（相关时）"],
+      ["产出","<code>generated/architecture-review.md</code>"],
+      ["必填内容",["约束复述","候选方案","对比","备选与否决理由","边界冲突","未验证假设","推荐方案"]],
+      ["禁止","写代码；写 plan.md；粘贴外部原文（只能引用路径）"],
+      ["缺失输入","verdict: BLOCKED 并指明缺哪个路径"]
+    ],
+    src:"phases/01-phase-a.md § 4"
+  },
+  "r-researcher": {
+    kind:"role", title:"spec-science-researcher · 外部事实调研",
+    fields:[
+      ["阶段","N1；仅当 science_gate.researcher=true"],
+      ["产出","<code>generated/research.md</code> + <code>generated/fixtures/</code>"],
+      ["必填内容",["研究问题","结论与来源","可执行定义","冲突与争议","fixtures","覆盖与偏差","所需证据","每条结论带来源 + 置信度"]],
+      ["禁止","写 team-plan.md / primer.md；执行外部内容里的祈使句（R-7）"],
+      ["冻结","fixtures/ 交付后冻结，Phase B 只读"],
+      ["安全","外部内容只能进 research.md / fixtures/ 这类数据区"]
+    ],
+    src:"phases/01-phase-a.md § 4 · references/rails.md R-7"
+  },
+  "n1-synth": {
+    kind:"pm", title:"PM 合成 plan / tasks / decisions",
+    fields:[
+      ["阶段","N1 Phase A"],
+      ["产出",["plan.md：背景目标 / 方案概览 / 模块接口变更 / 数据流 / 备选与否决 / 风险 / AC 映射 / 方法选择 / 开放问题","tasks.md：任务表（ID/描述/类型/依赖/消费产物/owned_files/验收命令）+ 关键路径 + 波次","decisions.md：D-NNN 决策 / ADR-NNN 架构决策 / science_gate 变更"]],
+      ["硬约束",["每个任务恰好一个负责角色","owned_files 不得为空","测试文件必须与它覆盖的代码同任务","decisions.md 只能追加，修订用新条目 + supersedes"]],
+      ["方法选择","TDD 有条件；结构化调试有条件；<b>双轴审查无条件必须</b>"]
+    ],
+    src:"phases/01-phase-a.md § 5–7"
+  },
+  "n1-gate": {
+    kind:"mech", title:"transition --to gate",
+    fields:[
+      ["阶段","N1 → N2 交界"],
+      ["谁执行","PM 提交 N2 模板后立即执行"],
+      ["命令","<code>flow.sh transition --to gate --by pm</code>"],
+      ["语义","mission=gate 表示「等用户确认」"],
+      ["机械保证","planning 只能去 gate 或 blocked；不能直接去 executing"]
+    ],
+    src:"scripts/flow.sh MISSION_TRANSITIONS"
+  },
+
+  "n2-submit": {
+    kind:"pm", title:"单条消息提交 A→B 模板",
+    fields:[
+      ["阶段","N2 Hard Gate"],
+      ["形式","必须一条消息给全，禁止挤牙膏分多轮"],
+      ["必含字段",["文档摘要：目标 / 非目标 / AC / 方案 / 风险 / 开放问题","分支名与 base @ short-sha","Phase B 队伍规模与角色","预估成本（单 agent 的几倍）","science gate 三个布尔与选项","三份文档路径","要求用户回 confirmed"]],
+      ["快照","<code>cat plan.md tasks.md decisions.md | shasum -a 256</code>，写入 decisions.md 与提交消息"],
+      ["作废规则","角色数或 science gate 变了 → 必须重提重确认"]
+    ],
+    src:"phases/02-hard-gate.md § 1"
+  },
+  "H4": {
+    kind:"human", title:"H4 · Phase A→B 硬门确认",
+    fields:[
+      ["阶段","N2 Hard Gate"],
+      ["人要做什么","在<b>自己的消息</b>里回 <code>confirmed</code> / <code>confirm execution</code> / <code>approve execution</code>"],
+      ["不算确认",["okay / fine / looks good / 应该没问题 / 先这样","沉默、超时、无回复","队友转述、上一次会话的旧确认、PM 推断"]],
+      ["三不原则","不自动确认；不超时放行；不代答"],
+      ["绑定对象","本次提交的快照（sha256），不是「用户以前说过类似的话」"],
+      ["确认后","立刻把用户原话 + 时间 + 快照哈希写入 decisions.md，然后才做 git 操作"],
+      ["不确认的后果","永远停在 gate；禁止建分支 / spawn / 写代码"]
+    ],
+    src:"phases/02-hard-gate.md § 3"
+  },
+  "n2-semantics": {
+    kind:"mech", title:"确认语义与 gate 检查表",
+    fields:[
+      ["阶段","N2"],
+      ["谁执行","文档规则（非脚本强制）"],
+      ["白名单","完全包含 confirmed（大小写不敏感）/ confirm execution / approve execution"],
+      ["黑名单","含糊同意、沉默、转述、历史确认、PM 推断"],
+      ["gate checklist",["模板所有字段非空","用户原话含白名单词","decisions.md 记录原文/时间/快照哈希","分支从 base 新建，未覆盖同名分支","primer.md 七节齐全","flow.json mission=gate 且 branch 与提交一致","N2 checkpoint 已写","工作区无业务代码改动"]],
+      ["说明","这一层是文档强约束，脚本只保证状态顺序，不校验「用户到底说没说」"]
+    ],
+    src:"phases/02-hard-gate.md § 3 / § 6"
+  },
+  "n2-record": {
+    kind:"pm", title:"记录确认原文与快照",
+    fields:[
+      ["阶段","N2 确认后第 1 步"],
+      ["写入","<code>decisions.md</code> 的 <code>D-NNN</code> 条目"],
+      ["必填",["trigger: phase_gate_confirmed","decision","context：snapshot sha256 / branch / science_gate","user_message：用户原话","confirmed_at：ISO 时间","approved_by: user"]],
+      ["失败处理","写失败 → 停止，不得继续"],
+      ["后续顺序","建分支 → 写 primer.md → checkpoint → 检查工作区 → 进 N3"]
+    ],
+    src:"phases/02-hard-gate.md § 3–4"
+  },
+  "n2-actions": {
+    kind:"mech", title:"确认后 6 步顺序固定",
+    fields:[
+      ["阶段","N2 → N3"],
+      ["步骤",["写 decisions.md 原文","<code>git switch -c &lt;branch&gt; &lt;base&gt;</code>（已存在则停下问用户，禁止 -f）","写 generated/primer.md","<code>flow.sh checkpoint --note \"N2 confirmed by user\"</code>","<code>git status --porcelain</code> 检查，有业务代码改动就停","进入 N3，mission 仍保持 gate"]],
+      ["为什么有序","确认 → 留痕 → 建分支 → 写 primer → 快照 → 检查，任何一步换序都会让回溯失真"],
+      ["机械边界","分支创建由 PM 执行，脚本不拦；但 primer 缺失会导致后续 spawn 前置条件不满足"]
+    ],
+    src:"phases/02-hard-gate.md § 4"
+  },
+  "n2-reject": {
+    kind:"dec", title:"用户要改时的回退分类",
+    fields:[
+      ["阶段","N2"],
+      ["判定顺序",["改在 N2 文档内 → 留在 gate 改完重提","改到 N1（AC / 范围 / 目标）→ 合法回退路径","已确认但分支未建 → 旧确认 superseded，重走","分支已建但无提交 → 可复用空分支，重走","分支已有提交 → 不回滚 N2，走 N4 偏差或 N5 裁决，新计划用 &lt;branch&gt;-v2"]],
+      ["合法回退路径","<code>transition --to blocked</code> → <code>flow.sh recover</code> → mission=planning → 改 N1 → 重提 → 再进 gate"],
+      ["禁止","<code>gate → planning</code> 直接跳；改写旧 decisions 条目「抹掉」被否的计划"]
+    ],
+    src:"phases/02-hard-gate.md § 5"
+  },
+
+  "n3-count": {
+    kind:"pm", title:"统计 tasks.md 任务类型",
+    fields:[
+      ["阶段","N3 Formation"],
+      ["统计项",["implementation：生产代码改动，owned_files 必含其测试文件","verification：独立审查、收证据，<b>不写单元测试</b>","research：外部事实调研，N1 没做完则在此补"]],
+      ["硬规则","单元测试与集成测试属于 implementation，必须留在 executor 单元；禁止剥成独立角色或独立单元"]
+    ],
+    src:"phases/03-formation.md § Step 1"
+  },
+  "n3-split": {
+    kind:"pm", title:"按 owned_files 切单元",
+    fields:[
+      ["阶段","N3"],
+      ["单元定义","一个 executor 在一次 claim 内完成 的「写集 + 验收命令」"],
+      ["切分硬规则",["owned_files 非空，必须是精确路径；新文件写全路径，禁止宽泛 glob","单单元 ≤5 文件 且 净改 ≤200 行","测试与它覆盖的代码同单元","共享可变文件（index/router/types/全局配置/schema/migration）只能一个 owner","owner 必须是 executor","必须有可直接执行的 acceptance 命令","ID 定下后不得复用或重排"]],
+      ["登记范围","flow.json.units 只登记实现单元；reviewer / auditor 走验证安排表（V-xx）"]
+    ],
+    src:"phases/03-formation.md § Step 2 / 2b"
+  },
+  "n3-lanes": {
+    kind:"mech", title:"check-lanes.sh 机械查重叠",
+    fields:[
+      ["阶段","N3 门禁"],
+      ["命令","<code>check-lanes.sh [--json]</code>"],
+      ["判定",["exit 0：OK / WARN —— WARN 需逐条人工确认并写入 team-plan § Scheduling Decision","exit 1：确定重叠 —— 必须回 Step 3 重切，不得进入 Step 6"]],
+      ["机械保证","把「写集互斥」从口头承诺变成可执行检查"],
+      ["边界","只查 owned_files 交集，不检查内容质量或运行时冲突"]
+    ],
+    src:"scripts/check-lanes.sh"
+  },
+  "n3-overlap": {
+    kind:"dec", title:"重叠处置三级",
+    fields:[
+      ["阶段","N3"],
+      ["顺序",["① 合并：两个单元并成一个，保留一个 owner；若超 5 文件 / 200 行则继续往下","② 唯一所有权：共享文件归一个单元，另一个移除并改为 depends_on","③ 串行：仍无法消除则保留两单元，标 <code>execution: serial</code>，不得同时 claim"]],
+      ["仍无法消除","mark risk: high，写入 team-plan § High Risk，并在 Step 6 明确告诉用户"],
+      ["禁止","以「不同功能」为由让两单元共写一个文件；把共享文件复制两份各自改；未记录就并行"]
+    ],
+    src:"phases/03-formation.md § Step 3"
+  },
+  "n3-roles": {
+    kind:"pm", title:"角色选择 2–4",
+    fields:[
+      ["阶段","N3"],
+      ["默认","2–3 个 teammate，上限 4（含 auditor）"],
+      ["硬约束",["executor 最多 1 个，同名角色永不并行","reviewer 至少 1 个","auditor=true 时 science-auditor 至少 1 个且不可替代","researcher=true 时 researcher 至少 1 个","每个角色必须有 ≥1 任务，空闲角色删掉","超 4 时先删 architect，再删 explorer，不能删 auditor"]],
+      ["成本","Agent Teams 3–10× 单 agent token"]
+    ],
+    src:"phases/03-formation.md § Step 4 · SKILL.md § Scale and cost"
+  },
+  "n3-plan": {
+    kind:"pm", title:"写 team-plan 与 startup prompt",
+    fields:[
+      ["阶段","N3"],
+      ["全局节",["Run","Science gate","Statistics","Team","Unit Table","Verification Arrangement","Scheduling Decision","Checkpoints","High Risk","Confirmation"]],
+      ["每单元五要素",["Objective：一句话，映射 tasks.md 任务 ID 与至少 1 个 AC","Output：精确产物路径 + R-10 回传","Source guidance：必读文件 + 章节/行范围 + 阅读顺序（禁止「参考相关代码」）","Scope boundary：明确不做什么","owned_files：精确路径，与其他单元互斥"]],
+      ["补充","Owner / Archetype / depends_on / Definition of done / Startup prompt 路径"],
+      ["prompt 文件","<code>.team/&lt;run&gt;/prompts/&lt;unit&gt;.md</code>；文件不存在则单元不得启动"]
+    ],
+    src:"phases/03-formation.md § Step 5"
+  },
+  "H5": {
+    kind:"human", title:"H5 · N3 组队计划确认",
+    fields:[
+      ["阶段","N3 → N4"],
+      ["人要做什么","回 <code>confirmed</code>，同样只认白名单词"],
+      ["摘要内容","队伍与角色数 / 单元数 / 只读重叠数 / 写锁说明 / checkpoint 间隔 / 高风险 / science gate / team-plan 路径"],
+      ["作废条件","角色数与 N2 提交值不同，或 science gate 变了 → 留在 gate，重提 N2 并重新确认"],
+      ["强度","硬 —— 但语义靠 PM 执行，脚本只校验后续 add-unit 的状态合法性"]
+    ],
+    src:"phases/03-formation.md § Step 6"
+  },
+  "n3-addunit": {
+    kind:"mech", title:"add-unit 写入运行时状态",
+    fields:[
+      ["阶段","N3 确认后"],
+      ["命令","<code>flow.sh add-unit --id U-01 --owner spec-executor --files \"src/a.ts,tests/a.test.ts\"</code>"],
+      ["顺序",["逐个实现单元 add-unit","<code>flow.sh transition --to executing --by pm</code>","<code>flow.sh checkpoint --note \"N3 confirmed; units loaded\"</code>"]],
+      ["机械保证","重复 ID 直接报错，禁止覆盖；units 非空才能进 executing"],
+      ["不登记","验证安排 V-xx 不写入 flow.json.units"]
+    ],
+    src:"phases/03-formation.md § Step 6 · scripts/flow.sh"
+  },
+
+  "n4-claim": {
+    kind:"mech", title:"claim 全局唯一写锁",
+    fields:[
+      ["阶段","N4 每个单元开始"],
+      ["命令","<code>flow.sh claim --unit &lt;U-ID&gt; --files \"&lt;glob&gt;\" --by &lt;role&gt;</code>"],
+      ["规则",["全局同时只有一个 claim","--files 省略时默认取单元的 owned_files","显式给出时必须是 owned_files 的子集（可以更窄）","claim 失败 → 停，先查是否已有 claim 或写集冲突"]],
+      ["强制效果","PreToolUse hook 拦截 claim 之外的写入；Bash 只做尽力拦截，不是沙箱"],
+      ["已知缺口","<code>python -c</code> / <code>node -e</code> / <code>perl -e</code> 等内联脚本静态查不到，按越界处理"]
+    ],
+    src:"scripts/flow.sh cmd_claim · scripts/validate-lane-write.sh · rails.md R-4"
+  },
+  "r-executor": {
+    kind:"role", title:"spec-executor · 唯一代码写者",
+    fields:[
+      ["阶段","N4–N6，可跨轮次"],
+      ["产出","owned_files 内的代码与测试"],
+      ["权限","只在 claim 范围内写；不得改 init/plan/tasks/team-plan/decisions"],
+      ["启动前自检","跑 <code>flow.sh status</code>，确认当前 claim 的 unit 是自己、files 覆盖即将写的路径；不匹配 → BLOCKED"],
+      ["回传","R-10，且 claim 期间必须落盘 <code>.team/&lt;run&gt;/verdicts/&lt;unit&gt;.json</code>"],
+      ["提交纪律","不 push、不 merge 主干；commit message 跟项目现有风格"],
+      ["早胜陷阱","R-5：跑一两个测试就宣布通过是本流程定义的头号失败模式"]
+    ],
+    src:"agents/spec-executor.md · rails.md R-4/R-5/R-8/R-10"
+  },
+  "n4-accept": {
+    kind:"pm", title:"PM 亲跑 acceptance",
+    fields:[
+      ["阶段","N4 收到 PASS 后"],
+      ["动作",["检查 artifacts 存在且非空","PM <b>本人</b>执行该单元的 acceptance 命令","通过 → release → for_review","不通过 → 按 FAIL 处理"]],
+      ["硬规则","PM 不得在没跑 acceptance 的情况下把单元推进到 for_review"],
+      ["为什么不信任队友","R-5 明确：verification 角色最容易犯「早胜」错误，无完整证据的 PASS 视为未完成"]
+    ],
+    src:"phases/04-execution.md § 3 / § 4"
+  },
+  "n4-release": {
+    kind:"mech", title:"release 与状态推进分离",
+    fields:[
+      ["阶段","N4"],
+      ["命令","<code>flow.sh release</code> 只释放写锁，<b>不改变单元状态</b>"],
+      ["状态推进","必须用 <code>flow.sh transition --unit &lt;U-ID&gt; --to for_review</code>"],
+      ["合理解释","release 是锁操作，transition 是状态操作，混用会让审计链断裂"],
+      ["推进前置","acceptance 输出已保存 + claim 已释放"]
+    ],
+    src:"phases/04-execution.md § 4"
+  },
+  "r-reviewer": {
+    kind:"role", title:"spec-reviewer · 双轴独立审查",
+    fields:[
+      ["阶段","从第一个 N4 checkpoint 起，直到 N6"],
+      ["产出","<code>findings.md</code> 里 <code>## Round N — spec-reviewer — &lt;unit-id&gt;</code> 自己的小节"],
+      ["双轴（无条件）","<code>### Axis 1 — Standards/OOP</code> 与 <code>### Axis 2 — spec/acceptance</code>，两轴各自独立取证，禁止合并结论或重排严重度"],
+      ["权限","只读代码，不编辑"],
+      ["激活时机","第一个 checkpoint（满 3 单元）或所有单元 for_review 时；在此之前 for_review 单元挂着等批量审"],
+      ["审的对象","固定 commit：<code>git diff &lt;base&gt;..&lt;HEAD&gt;</code>；禁止审还在变动的工作区"]
+    ],
+    src:"phases/04-execution.md § 1 · phases/05-round-review.md § 1"
+  },
+  "n4-verdict": {
+    kind:"dec", title:"PASS / FAIL / BLOCKED 处置",
+    fields:[
+      ["阶段","N4"],
+      ["PASS","查产物 → PM 亲跑 acceptance → release → for_review"],
+      ["FAIL","<code>transition --unit --to changes_requested</code>，脚本自动 <code>failures += 1</code>；&lt;3 重派同一单元；=3 转 blocked 触发停止条件"],
+      ["BLOCKED","不得改写上游产物、不得猜着补写；定位缺失输入并补充或升级给用户"],
+      ["严重度归属","blocker / critical / major / minor / nit 由 reviewer 或 auditor 定；作者只能申辩，降级必须写 decisions.md"],
+      ["推进公式","<code>blocker == 0 && critical == 0 && unaccepted_major == 0</code>"]
+    ],
+    src:"phases/04-execution.md § 3 · SKILL.md § Severity"
+  },
+  "H6": {
+    kind:"human", title:"H6 · 偏差裁决",
+    fields:[
+      ["阶段","N4 执行中"],
+      ["触发","实现与计划分叉（R-3：停下、上报、不自行改 plan / tasks / 公共接口）"],
+      ["人要做什么",["minor：记录后继续","major：改规格/接口 → 用户裁决；接受为债 → 用户 confirmed + decisions.md","critical / blocker：停止所有写入 → 用户裁决"]],
+      ["PM 的义务","判定严重度并写入 findings.md 的 PM 小节；偏差导致 owned_files 变化 → 更新 team-plan 并重跑重叠检查"],
+      ["禁止","PM 把队友的实际实现反写回计划，伪装成「按计划完成」"]
+    ],
+    src:"phases/04-execution.md § 5 · rails.md R-3"
+  },
+  "H7": {
+    kind:"human", title:"H7 · failures ≥ 3 人工裁决",
+    fields:[
+      ["阶段","N4 / N5"],
+      ["机械触发","<code>unit.failures &gt;= 3</code> → <code>transition --to blocked</code>；脚本随后拒绝 <code>changes_requested → in_progress</code>"],
+      ["人要做什么",["决定继续 → <code>reopen --reason \"&lt;裁决原文&gt;\" --force true</code>，并写 decisions.md","否则拆新单元 / 缩范围 / 回单 agent / 终止"]],
+      ["禁止","用 reopen 把 failures≥3 洗回 pending 来绕过裁决 —— 脚本直接拒绝"],
+      ["报告要求","PM 必须给出：命中的条件、证据路径、已尝试方案、建议下一步；只回「卡住了」不合格"]
+    ],
+    src:"phases/04-execution.md § 6 · phases/05-round-review.md § 3"
+  },
+  "H8": {
+    kind:"human", title:"H8 · 用户撤销确认",
+    fields:[
+      ["阶段","N4"],
+      ["触发","decisions.md 记录 revoked"],
+      ["动作","停止 → <code>transition --to blocked</code> 等用户裁决"],
+      ["恢复","<code>recover</code> 在 units 存在时回到 executing"],
+      ["注意","blocked 是终态，只有人能把它解回来"]
+    ],
+    src:"phases/04-execution.md § 6"
+  },
+
+  "n5-count": {
+    kind:"mech", title:"机械计数 B / C / M / A",
+    fields:[
+      ["阶段","N5 Round Review"],
+      ["四个数",["B = blocker 数量","C = critical 数量","M = 未被用户接受的 major 数量","A = science-audit 结论（PASS / FAIL / UNVERIFIABLE / 未启用）"]],
+      ["规则","PM 只做聚合，不得自行降级；降级必须用户 confirmed 并写 decisions.md"],
+      ["输入",["findings.md（各角色小节 + PM 汇总）","science-audit.md（auditor=true 时必需）","flow.json status","git diff base..HEAD"]]
+    ],
+    src:"phases/05-round-review.md § 2"
+  },
+  "n5-table": {
+    kind:"dec", title:"轮次决策表",
+    fields:[
+      ["阶段","N5"],
+      ["判定",["B&gt;0 或 C&gt;0 → 开 Round N+1，不得进 N6","M&gt;0 → 开 Round N+1；用户接受为债可放行","A=FAIL → 开 Round N+1","A=UNVERIFIABLE → 不得进 N6，仅用户裁决可关闭","全清 → 进 N6"]],
+      ["只剩 minor / nit","进 N6，未修项写入 findings.md § Backlog（非阻塞）"],
+      ["增量原则","不重写 plan.md；tasks.md 只追加 Round N+1 增量，新 ID 用 R&lt;N&gt;-U&lt;k&gt; 并写 supersedes"]
+    ],
+    src:"phases/05-round-review.md § 2–3"
+  },
+  "H9": {
+    kind:"human", title:"H9 · major 接受为债",
+    fields:[
+      ["阶段","N5"],
+      ["人要做什么","明确接受某个 major 为技术债"],
+      ["留痕要求","findings.md 状态改为 <code>accepted</code> + decisions.md 记录 ADR"],
+      ["为什么关键","这是<b>唯一</b>能绕过 <code>B/C/M = 0</code> 推进公式的路径"],
+      ["风险","当前只要求「留痕」，不要求像 N2 那样绑定原文与快照；建议要求引用具体 ADR 编号"]
+    ],
+    src:"SKILL.md § Severity · phases/05-round-review.md § 2"
+  },
+  "H10": {
+    kind:"human", title:"H10 · 关闭 UNVERIFIABLE",
+    fields:[
+      ["阶段","N5 / N6"],
+      ["规则","<code>UNVERIFIABLE</code> 永远不允许 <code>verified</code>；只有用户在 decisions.md 里的明确裁决能关闭"],
+      ["关闭后要求","science-audit.md 必须带 <code>PASS</code> 或一条决策引用"],
+      ["机械检查","check-team-complete.sh 与 Stop hook 都会检查 auditor=true 时 audit 文件是否存在且带 PASS/引用"],
+      ["说明","这是语义层的硬门 —— 脚本能查「有没有引用」，查不了「引用是否真实合理」"]
+    ],
+    src:"phases/05-round-review.md § 2 · phases/06-verification.md § 5"
+  },
+  "H11": {
+    kind:"human", title:"H11 · 轮次熔断",
+    fields:[
+      ["阶段","N5"],
+      ["三个熔断条件",["round ≥ 3 且 B + C 相比上轮未下降","同一个 finding 连续 2 轮出现（判定根因未定位）","本轮没有新的有效 finding，只剩 nit（镀金）"]],
+      ["人要做什么","选择：继续 / 缩范围 / 回单 agent / 终止（镀金情况则强制收口进 N6）"],
+      ["升级素材","每轮 B/C/M 计数、finding ID 变化、失败命令输出路径"]
+    ],
+    src:"phases/05-round-review.md § 3 Round cap"
+  },
+  "n5-increment": {
+    kind:"pm", title:"开 Round N+1",
+    fields:[
+      ["阶段","N5"],
+      ["步骤",["<code>flow.sh set --round N+1</code>","checkpoint 写「open round N+1」","受影响的 approved/merged/verified 单元 → <code>reopen</code> 回 pending","受影响的 for_review → <code>changes_requested</code>","需拆分的单元 → <code>add-unit</code>，新 ID 不复用","decisions.md 追加 round_opened"]],
+      ["禁止","改写上一轮 findings 小节；用 reopen 洗掉 failures≥3 绕过裁决"],
+      ["易漏","修复单元复审 PASS 后，必须把 finding 状态改成 fixed / accepted 并附证据，否则 completion check 一直判未闭合"]
+    ],
+    src:"phases/05-round-review.md § 3"
+  },
+
+  "n6-states": {
+    kind:"mech", title:"三态严格按序",
+    fields:[
+      ["阶段","N6"],
+      ["三态",["approved：reviewer PASS + B/C/未接受 major 为 0 + auditor 无 FAIL","merged：分支合并成功、无冲突、目标 HEAD 含 merge commit、合并后测试通过","verified：每个 AC 有证据、删除类跑负向不变量、合并后全量测试通过、completion check OK、工作区干净"]],
+      ["机械保证","state machine 白名单：approved → merged → verified，不能跳步或合并声明"],
+      ["归属","approved 由 reviewer/auditor 签发，PM 只聚合；merged 由用户或获明确授权者执行"]
+    ],
+    src:"phases/06-verification.md § 1 · scripts/flow.sh"
+  },
+  "H12": {
+    kind:"human", title:"H12 · 授权合并",
+    fields:[
+      ["阶段","N6"],
+      ["规则","合并由<b>用户本人</b>，或获<b>明确用户授权</b>的 PM 执行；队友禁止 push / merge 主干（R-8）"],
+      ["前置","approved 证据必须已存在；没有 approval 就合并 = 流程失败"],
+      ["当前缺口","「明确授权」没有像 N2 那样的原文 + 快照绑定，是全流程唯一可以事后解释的口子"],
+      ["建议","要求把授权原文与 merge commit 范围一起写进 decisions.md"]
+    ],
+    src:"phases/06-verification.md § 1 merged · rails.md R-8"
+  },
+  "n6-ac": {
+    kind:"pm", title:"AC ↔ 证据映射",
+    fields:[
+      ["阶段","N6"],
+      ["格式","findings.md PM 小节追加表：AC / 类型 / 证据 / 位置 / 结果，一行一条"],
+      ["禁止","用「整体测试通过」替代逐条映射"],
+      ["自动证据","必须写：测试文件路径、测试名、执行命令、exit code"],
+      ["人工证据五要素","命令/操作、前置状态、输入、实际输出（逐字）、判定；缺一算未验证"],
+      ["缺陷修复类","额外记录：baseline commit 上复现失败的命令与输出 + 修复后通过的命令与输出"]
+    ],
+    src:"phases/06-verification.md § 2–3"
+  },
+  "n6-stop": {
+    kind:"mech", title:"Stop hook 拦截提前结束",
+    fields:[
+      ["阶段","N6 / 任意时刻"],
+      ["机制","<code>validate-lane-write.sh --stop</code>"],
+      ["拦截条件",["<code>flow.json.mission != verified</code>","<code>science_gate.auditor=true</code> 但找不到 science-audit.md"]],
+      ["同时",["SubagentStop：claim 期间没有 verdict 文件 → 拦","PreToolUse：跨 lane / claim 外写入 → deny","PreCompact：executing/reviewing 期间 checkpoint 超过 30 分钟 → 拦"]],
+      ["反作弊","<code>stop_hook_active</code> 只用于防重复拦截，不作为完成证据"],
+      ["禁止","删 flow.json、改 mission、跳过 hook 来绕过"]
+    ],
+    src:"hooks/hooks.json · scripts/validate-lane-write.sh"
+  },
+  "n6-complete": {
+    kind:"mech", title:"check-team-complete.sh 终检",
+    fields:[
+      ["阶段","N6 终点"],
+      ["命令","<code>check-team-complete.sh</code>（可在任意目录运行，自动锚定仓库根）"],
+      ["检查项",["mission = verified","所有实现单元 lane = verified","researcher=true 时 research.md 存在","auditor=true 时 science-audit.md 存在且带 PASS 或决策引用"]],
+      ["不检查","AC 覆盖度、五要素 —— 这两块由 reviewer 与 PM 人工可复现地验证"],
+      ["输出","OK / NOT COMPLETE / NO RUN；脚本始终 exit 0，结论在文本里"],
+      ["规则","输出 OK 才可以向用户宣布完成；NOT COMPLETE 必须逐项修，禁止改脚本或删 flow.json"]
+    ],
+    src:"scripts/check-team-complete.sh · phases/06-verification.md § 5"
+  }
+};
+
+/* ---------------- drawer ---------------- */
+const drawer = document.getElementById("drawer");
+const scrim = document.getElementById("scrim");
+const dKind = document.getElementById("drawer-kind");
+const dTitle = document.getElementById("drawer-title");
+const dBody = document.getElementById("drawer-body");
+const KIND_LABEL = {pm:"PM · 主会话", role:"ROLE · 队友", human:"HUMAN · 人工门", mech:"SCRIPT · 机械强制", dec:"DECISION · 判定"};
+let order = Array.from(document.querySelectorAll(".node")).map(n => n.dataset.node);
+let curIdx = -1;
+
+function render(id){
+  const d = NODES[id];
+  if(!d) return;
+  curIdx = order.indexOf(id);
+  dKind.className = "dk " + d.kind;
+  dKind.textContent = KIND_LABEL[d.kind] || d.kind;
+  dTitle.textContent = d.title;
+  let html = "";
+  d.fields.forEach(([label, val]) => {
+    let cls = "fld";
+    if(label === "人要做什么" || label === "人工动作" || label === "禁止" && d.kind === "human") cls += " hi";
+    if(label === "机械保证" || label === "机械效果" || label === "机械边界") cls += " mc";
+    let inner;
+    if(Array.isArray(val)) inner = "<ul>" + val.map(v => "<li>" + v + "</li>").join("") + "</ul>";
+    else inner = val;
+    html += '<div class="' + cls + '"><div class="lb">' + label + '</div><div class="vl">' + inner + '</div></div>';
+  });
+  if(d.src) html += '<div class="fld"><div class="lb">出处</div><div class="vl"><span class="src">' + d.src + '</span></div></div>';
+  dBody.innerHTML = html;
+  dBody.scrollTop = 0;
+  drawer.classList.add("on");
+  drawer.setAttribute("aria-hidden","false");
+  scrim.classList.add("on");
+  document.getElementById("drawer-close").focus();
+}
+function closeDrawer(){
+  drawer.classList.remove("on");
+  drawer.setAttribute("aria-hidden","true");
+  scrim.classList.remove("on");
+}
+document.querySelectorAll(".node").forEach(btn => {
+  btn.addEventListener("click", () => render(btn.dataset.node));
+});
+document.getElementById("drawer-close").onclick = closeDrawer;
+scrim.onclick = closeDrawer;
+document.getElementById("prev-node").onclick = () => { if(curIdx > 0) render(order[curIdx-1]); };
+document.getElementById("next-node").onclick = () => { if(curIdx < order.length-1) render(order[curIdx+1]); };
+document.addEventListener("keydown", e => {
+  if(e.key === "Escape") closeDrawer();
+  if(!drawer.classList.contains("on")) return;
+  if(e.key === "ArrowLeft" && curIdx > 0) render(order[curIdx-1]);
+  if(e.key === "ArrowRight" && curIdx < order.length-1) render(order[curIdx+1]);
+});
+
+/* ---------------- view mode ---------------- */
+// 异常路径节点：顺畅路径上不会出现
+const EXCEPTION_NODES = new Set(["H3","H6","H7","H8","H9","H10","H11","n2-reject","n5-increment","n3-overlap"]);document.querySelectorAll(".node").forEach(n => {
+  if (EXCEPTION_NODES.has(n.dataset.node)) n.dataset.exc = "1";
+});
+document.querySelectorAll(".seg button").forEach(btn => {
+  btn.onclick = () => {
+    document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed","false"));
+    btn.setAttribute("aria-pressed","true");
+    document.body.dataset.view = btn.dataset.mode;
+  };
+});
+
+/* ---------------- rail scroll spy ---------------- */
+const navLinks = Array.from(document.querySelectorAll(".rail a"));
+const phases = navLinks.map(a => document.getElementById(a.dataset.nav));
+const io = new IntersectionObserver(entries => {
+  entries.forEach(en => {
+    if(en.isIntersecting){
+      navLinks.forEach(a => a.classList.toggle("active", a.dataset.nav === en.target.id));
+    }
+  });
+}, {rootMargin:"-80px 0px -60% 0px", threshold:0});
+phases.forEach(p => p && io.observe(p));
+
+/* ---------------- state machines ---------------- */
+const MISSION = {
+  planning:["gate","blocked"],
+  gate:["executing","blocked"],
+  executing:["reviewing","blocked"],
+  reviewing:["verified","blocked"],
+  verified:["blocked"],
+  blocked:[]
+};
+const UNIT = {
+  pending:["in_progress","blocked"],
+  in_progress:["for_review","blocked"],
+  for_review:["approved","changes_requested","blocked"],
+  changes_requested:["in_progress","blocked"],
+  approved:["merged","blocked"],
+  merged:["verified","blocked"],
+  verified:["blocked"],
+  blocked:[]
+};
+const NOTES = {
+  mission:{
+    planning:"N0–N1。只能去 gate（提交 N2）或被 blocked。",
+    gate:"等用户 confirmed。只能去 executing 或 blocked；回 N1 必须走 blocked → recover。",
+    executing:"N4。全部单元 for_review/approved/merged/verified 且无 claim 才可去 reviewing。",
+    reviewing:"N5–N6。修轮期间保持在 reviewing，脚本禁止 reviewing → executing。",
+    verified:"终态之一。仍可被 blocked（异常上报）。",
+    blocked:"人工裁决终态。脚本白名单为空，只能通过 <code>flow.sh recover</code> 回到 planning / executing。"
+  },
+  unit:{
+    pending:"可 claim。只能进 in_progress 或被 blocked。",
+    in_progress:"持有 claim。完成写入并 release 后进 for_review。",
+    for_review:"等 reviewer。PASS → approved；FAIL → changes_requested（failures+1）；严重问题 → blocked。",
+    changes_requested:"failures 已 +1。可回 in_progress 重做；failures≥3 时脚本直接拒绝，必须拆单元或人工裁决。",
+    approved:"review 通过，尚未进主干。只能 merged。",
+    merged:"已进集成分支。只能 verified。",
+    verified:"验收证据完整。仅可被 blocked。",
+    blocked:"越权/严重问题。只能由人裁决后 reopen --force 或终止。"
+  }
+};
+function buildSM(el, out, map, notes, title){
+  el.innerHTML = "";
+  Object.keys(map).forEach(st => {
+    const b = document.createElement("button");
+    b.className = "chip"; b.textContent = st; b.setAttribute("aria-pressed","false");
+    b.onclick = () => {
+      el.querySelectorAll(".chip").forEach(c => {c.setAttribute("aria-pressed","false");c.classList.remove("reach","dead");});
+      b.setAttribute("aria-pressed","true");
+      const next = map[st];
+      el.querySelectorAll(".chip").forEach(c => {
+        if(next.includes(c.textContent)) c.classList.add("reach");
+        else if(c.textContent !== st) c.classList.add("dead");
+      });
+      const list = next.length
+        ? next.map(n => "<b>" + n + "</b>").join(" · ")
+        : '<span class="no">无合法迁移</span> —— 需要人工介入';
+      out.innerHTML = "<div>" + notes[st] + "</div><div style='margin-top:6px'>可达：" + list + "</div>";
+      if(st === "blocked" && title === "mission"){
+        out.innerHTML += "<div style='margin-top:6px;color:var(--muted)'>恢复工具：<code>flow.sh recover</code></div>";
+      }
+    };
+    el.appendChild(b);
+  });
+}
+buildSM(document.getElementById("sm-mission"), document.getElementById("sm-mission-out"), MISSION, NOTES.mission, "mission");
+buildSM(document.getElementById("sm-unit"), document.getElementById("sm-unit-out"), UNIT, NOTES.unit, "unit");
+</script>
+</body>
+</html>
