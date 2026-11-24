@@ -22,9 +22,15 @@ Thumbs.db
 .cache/
 
 # AITL local run state and audit artifacts
-.aitl/
+.sancai/
+
+# Evaluation raw output
+evals/results/
 
 # Language / package caches
 node_modules/
 __pycache__/
 *.pyc
+
+# legacy AITL local state (pre-Sancai rename)
+.aitl/

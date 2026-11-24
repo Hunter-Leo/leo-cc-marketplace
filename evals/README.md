@@ -2,7 +2,7 @@
 
 在写插件之前，用 20–40 个真实任务回答：**AITL 是否真的比 HITL 更好？**
 
-完整方案见 [`docs/aitl-phase-minus-1-eval.md`](../docs/aitl-phase-minus-1-eval.md)。
+完整方案见 [`docs/sancai-phase-minus-1-eval.md`](../docs/sancai-phase-minus-1-eval.md)。
 
 ## 快速开始
 

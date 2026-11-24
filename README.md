@@ -41,19 +41,19 @@ Classic multi-agent workflow for M-sized and larger requirements. A PM-led Agent
 
 Requires Agent Teams in an interactive Claude Code session (`CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS=1`). See the [plugin docs](plugins/leo-team-plugin/docs/spec-coding-team-skill.md) for roles, artifacts, and limitations.
 
-### aitl-plugin
+### sancai-loop-plugin
 
 Agent-in-the-loop harness. Three layers: **L3 Human Intent → L2 Harness Work Orders/Gates → L1 isolated executor**. Evidence is harness-owned; irreversible actions require a one-time human capability token. The MVP is single-repository, single-writer, serial — **no worktree required**.
 
 | Component | Usage | Description |
 |-----------|-------|-------------|
-| `/aitl start` | `/aitl start <goal>` | H1: draft and sign the Intent Contract, then run the loop automatically |
-| `/aitl approve` | `/aitl approve [ESC-ID]` | H2: approve the current transition in Claude Code's native permission prompt; mints a one-time capability token. No command copy required |
-| `/aitl accept` | `/aitl accept` | H3: human accepts the outcome (`outcome_accepted`), separate from `verified` |
-| `/aitl status` | `/aitl status` | Read-only run state, Work Orders, claim, gates |
-| `/aitl abandon` | `/aitl abandon <reason>` | Abandon the run with an audit record |
+| `/sancai start` | `/sancai start <goal>` | H1: draft and sign the Intent Contract, then run the loop automatically |
+| `/sancai approve` | `/sancai approve [ESC-ID]` | H2: approve the current transition in Claude Code's native permission prompt; mints a one-time capability token. No command copy required |
+| `/sancai accept` | `/sancai accept` | H3: human accepts the outcome (`outcome_accepted`), separate from `verified` |
+| `/sancai status` | `/sancai status` | Read-only run state, Work Orders, claim, gates |
+| `/sancai abandon` | `/sancai abandon <reason>` | Abandon the run with an audit record |
 
-`run` and `check` are internal: after H1 the PM agent executes add-wo → claim → executor → G0 → G3 → gate automatically, stopping only on the three escalation types (`out_of_scope`, `spec_ambiguous`, `irreversible`) plus H3 acceptance. Two subagents only: `aitl-executor` (L1, writes code) and `aitl-verifier` (L2/G3, read-only judgment). The plugin is **not a sandbox**; pair it with OS-level isolation for untrusted work. See the [first-principles design](docs/aitl-first-principles-design.md), [AITL design](docs/agent-in-the-loop-design.md), [human-side fool-proofing](docs/human-side-foolproofing-design.md), and [Phase -1 eval plan](docs/aitl-phase-minus-1-eval.md).
+`run` and `check` are internal: after H1 the PM agent executes add-wo → claim → executor → G0 → G3 → gate automatically, stopping only on the three escalation types (`out_of_scope`, `spec_ambiguous`, `irreversible`) plus H3 acceptance. Two subagents only: `sancai-executor` (L1, writes code) and `sancai-verifier` (L2/G3, read-only judgment). The plugin is **not a sandbox**; pair it with OS-level isolation for untrusted work. See the [first-principles design](docs/sancai-first-principles-design.md), [AITL design](docs/sancai-loop-design.md), [human-side fool-proofing](docs/human-side-foolproofing-design.md), and [Phase -1 eval plan](docs/sancai-phase-minus-1-eval.md).
 
 ## Local Development
 

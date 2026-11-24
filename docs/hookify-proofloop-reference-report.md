@@ -112,10 +112,10 @@ PreToolUse 根据 `tool_name` 把事件映射成 `bash` 或 `file`，加载对�
 
 ### 2.5 AITL 可借鉴
 
-- **声明式策略层**：`.aitl/policy/*.md`，YAML 条件 + warn/block/ask。
+- **声明式策略层**：`.sancai/policy/*.md`，YAML 条件 + warn/block/ask。
 - **三态动作**：allow / warn / block（AITL 已有 ask，补 warn）。
 - **list / explain**：让人能看到“当前哪些策略生效、为什么这条被触发”。
-- **从对话生成规则**：可以做一个 `/aitl policy suggest`，但生成结果必须人审、签名后才能生效。
+- **从对话生成规则**：可以做一个 `/sancai policy suggest`，但生成结果必须人审、签名后才能生效。
 
 **不能借**：fail-open、regex 当唯一边界、agent 可编辑规则。
 
@@ -227,7 +227,7 @@ max_std_dev = 0.3
 ### 3.6 AITL 可借鉴
 
 - **claim-vs-receipt**：放到 G3，作为 `claim_without_receipt` finding。
-- **verifier-collapse**：放到 `aitl_graph` 指标 + gate warning/rotation。
+- **verifier-collapse**：放到 `sancai_graph` 指标 + gate warning/rotation。
 - **schema_version**：verdict/evidence/graph 全部加版本。
 - **benchmark corpus**：用真实 run 做 verifier 回归，而不是只靠单元测试。
 - **read-only judge prompt**：借它的只读约束和“先找反证”的评分习惯。
@@ -262,9 +262,9 @@ AITL 不应该变成 Proofloop 那样的“打分器”，也不应该变成 Hoo
 
 **位置**：
 
-- `plugins/aitl-plugin/scripts/aitl_gate.py`：G3 前检查。
-- `plugins/aitl-plugin/scripts/aitl_verdict.py`：把 claim finding 写进 verdict。
-- `plugins/aitl-plugin/scripts/aitl_state.py`：accept 时拒绝未处理的 major claim finding。
+- `plugins/sancai-loop-plugin/scripts/sancai_gate.py`：G3 前检查。
+- `plugins/sancai-loop-plugin/scripts/sancai_verdict.py`：把 claim finding 写进 verdict。
+- `plugins/sancai-loop-plugin/scripts/sancai_state.py`：accept 时拒绝未处理的 major claim finding。
 
 **数据**：
 
@@ -314,8 +314,8 @@ for claim in claims:
 
 **位置**：
 
-- `plugins/aitl-plugin/scripts/aitl_graph.py`：加 `verifier_stats`。
-- `plugins/aitl-plugin/scripts/aitl_gate.py`：读指标，warning 或要求换 verifier。
+- `plugins/sancai-loop-plugin/scripts/sancai_graph.py`：加 `verifier_stats`。
+- `plugins/sancai-loop-plugin/scripts/sancai_gate.py`：读指标，warning 或要求换 verifier。
 
 **数据**：
 
@@ -365,7 +365,7 @@ if len(last) >= 5:
 
 - 读取时校验 major 版本；未知 major → 拒绝并提示迁移。
 - 新增字段只升 minor；删除/改语义升 major。
-- `aitl_graph` 输出里带版本，便于 eval 对比。
+- `sancai_graph` 输出里带版本，便于 eval 对比。
 
 **验收**：
 
@@ -374,9 +374,9 @@ if len(last) >= 5:
 
 ### 5.4 P2：声明式 policy overlay
 
-**目标**：让项目能加自己的策略，而不改 `aitl_capability.py`。
+**目标**：让项目能加自己的策略，而不改 `sancai_capability.py`。
 
-**形式**：`.aitl/policy/*.md`，YAML frontmatter + Markdown 说明。
+**形式**：`.sancai/policy/*.md`，YAML frontmatter + Markdown 说明。
 
 ```markdown
 ---
@@ -395,8 +395,8 @@ message: 生产数据库写入必须走人工批准。
 
 **信任模型**：
 
-- policy 文件只能由人创建/修改；agent 的 Write/Edit 到 `.aitl/policy/` 被 capability 拒绝。
-- `POLICY.sig` 用 `AITL_SECRET` 做 HMAC；加载时校验；签名失败 → fail-closed。
+- policy 文件只能由人创建/修改；agent 的 Write/Edit 到 `.sancai/policy/` 被 capability 拒绝。
+- `POLICY.sig` 用 `SANCAI_SECRET` 做 HMAC；加载时校验；签名失败 → fail-closed。
 - policy 只能**收紧**内置策略，不能放宽；`allow` 不能覆盖内置 deny。
 - 解析失败 → 拒绝整个 policy 集，不静默跳过。
 
@@ -413,7 +413,7 @@ policy overlay     = 项目级加严
 - 未签名 policy → 拒绝加载。
 - policy 写 `allow` 覆盖内置 deny → 拒绝。
 - 规则语法错误 → fail-closed，并给出文件/行号。
-- `/aitl policy list` 能看到生效规则；`/aitl policy explain <id>` 能解释命中原因。
+- `/sancai policy list` 能看到生效规则；`/sancai policy explain <id>` 能解释命中原因。
 
 ### 5.5 P3：benchmark corpus 与 verifier 回归
 
@@ -454,7 +454,7 @@ policy overlay     = 项目级加严
    如果加 0–10 confidence，模型会倾向于给高分。先用无 confidence 版，避免引入新的橡皮图章维度。
 
 3. **policy 签名密钥管理**  
-   `AITL_SECRET` 不能放在 repo；需要 keychain/secret manager。签名失败必须 fail-closed，否则 policy 层等于没有。
+   `SANCAI_SECRET` 不能放在 repo；需要 keychain/secret manager。签名失败必须 fail-closed，否则 policy 层等于没有。
 
 4. **复杂度**  
    AITL 已经有状态机、卡、证据、capability；再加 policy overlay 会增加理解成本。P2 应等 P1 稳定后再做。
@@ -511,10 +511,10 @@ policy overlay     = 项目级加严
 
 ### AITL 当前实现
 
-- `plugins/aitl-plugin/scripts/aitl_gate.py`（G0/G3、verifier 独立性）
-- `plugins/aitl-plugin/scripts/aitl_graph.py`（过程图、metrics）
-- `plugins/aitl-plugin/scripts/aitl_verdict.py`（verdict、findings）
-- `plugins/aitl-plugin/scripts/aitl_cards.py`（卡绑定、dwell、findings_hash）
-- `plugins/aitl-plugin/scripts/aitl_capability.py`（capability、human decision guard）
-- `docs/agent-in-the-loop-design.md` §20（防呆与人类侧设计）
+- `plugins/sancai-loop-plugin/scripts/sancai_gate.py`（G0/G3、verifier 独立性）
+- `plugins/sancai-loop-plugin/scripts/sancai_graph.py`（过程图、metrics）
+- `plugins/sancai-loop-plugin/scripts/sancai_verdict.py`（verdict、findings）
+- `plugins/sancai-loop-plugin/scripts/sancai_cards.py`（卡绑定、dwell、findings_hash）
+- `plugins/sancai-loop-plugin/scripts/sancai_capability.py`（capability、human decision guard）
+- `docs/sancai-loop-design.md` §20（防呆与人类侧设计）
 - `docs/human-side-foolproofing-design.md`（T0–T4、审批强度）

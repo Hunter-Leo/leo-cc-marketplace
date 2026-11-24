@@ -1,7 +1,7 @@
 # 人类侧防呆设计（Human-side Fool-proofing v2）
 
 > 状态：设计稿 v0.1 · 2026-11-19
-> 范围：`plugins/aitl-plugin` 的人类决策面（H1 签署 / H2 审批 / H3 验收）
+> 范围：`plugins/sancai-loop-plugin` 的人类决策面（H1 签署 / H2 审批 / H3 验收）
 > 目标：让「人批错、批快、批疲劳、被伪造卡片误导」从“靠自觉”变成“有机制、有记录、可拒绝”。
 
 ---
@@ -141,11 +141,11 @@ approval_policy   intent 声明的策略版本
 
 ### 4.1 卡片对象
 
-`aitl_card.py render` 不再只打印文本，而是：
+`sancai_card.py render` 不再只打印文本，而是：
 
 1. 生成 `card_id`（UUID）和 `card_hash`（canonical payload 的 sha256）。
-2. 用 `AITL_SECRET` 派生卡片 MAC key：`HMAC(secret, "aitl-card-v1")`。
-3. 写 `.aitl/runs/<run>/cards/<card_id>.json`（agent 的 Write 权限不覆盖 `.aitl`）。
+2. 用 `SANCAI_SECRET` 派生卡片 MAC key：`HMAC(secret, "aitl-card-v1")`。
+3. 写 `.sancai/runs/<run>/L3-intent/decisions/cards/<card_id>.json`（agent 的 Write 权限不覆盖 `.sancai`）。
 4. 打印卡片，头部包含 `card_id` 和 8 位 `card_code`（`card_hash` 前 8 位）。
 
 ```json
@@ -173,7 +173,7 @@ approval_policy   intent 声明的策略版本
 ### 4.2 决策必须绑定卡片
 
 ```bash
-aitl_escalate.py approve \
+sancai_escalate.py approve \
   --run 001-demo --id ESC-001 \
   --message "批准" \
   --card-id CARD-3f9a1c2e --card-code 3f9a1c2e \
@@ -194,7 +194,7 @@ aitl_escalate.py approve \
 高风险动作（T3）要求人自己在终端跑：
 
 ```bash
-python3 plugins/aitl-plugin/scripts/aitl_card.py verify \
+python3 plugins/sancai-loop-plugin/scripts/sancai_card.py verify \
   --run 001-demo --card-id CARD-3f9a1c2e
 ```
 
@@ -202,9 +202,9 @@ python3 plugins/aitl-plugin/scripts/aitl_card.py verify \
 
 ### 4.4 防伪造边界
 
-- agent 不能写 `.aitl/runs/*/cards/`（capability 拒绝）。
-- agent 没有 `AITL_SECRET` 时不能生成有效 MAC。
-- 若 agent 被攻陷且能读 `AITL_SECRET`，MAC 也会失守；此时必须升级到 GPG / OS 生物识别 / 独立机器。
+- agent 不能写 `.sancai/runs/*/L3-intent/decisions/cards/`（capability 拒绝）。
+- agent 没有 `SANCAI_SECRET` 时不能生成有效 MAC。
+- 若 agent 被攻陷且能读 `SANCAI_SECRET`，MAC 也会失守；此时必须升级到 GPG / OS 生物识别 / 独立机器。
 - 卡片 MAC 只证明“这张卡是 harness 生成的”，不证明“人看了”。
 
 ---
@@ -232,7 +232,7 @@ minor / info         → 必须 acknowledge
 ### 5.2 接受语法
 
 ```bash
-aitl_state.py accept \
+sancai_state.py accept \
   --run 001-demo \
   --message "接受" \
   --ack-findings <findings_hash> \
@@ -286,7 +286,7 @@ accept 卡必须包含：
 gate 校验：
 
 ```text
-1. provider 是否满足 tier 要求（T3 必须是人在 TTY 运行 `aitl_human.py`，或 GPG/生物识别；session id 与 agent 代跑不算）。
+1. provider 是否满足 tier 要求（T3 必须是人在 TTY 运行 `sancai_human.py`，或 GPG/生物识别；session id 与 agent 代跑不算）。
 2. payload_hash 是否等于 decision payload（card_hash + choice + phrase + run）。
 3. signature 是否由 allowlist 中的 key 验证通过。
 4. decision_id 未被使用；签名时间在 TTL 内。
@@ -296,7 +296,7 @@ gate 校验：
 
 | Provider | 机制 | 防什么 | 代价 |
 |---|---|---|---|
-| `tty` | 人在终端跑 `aitl_human.py`，要求 TTY | agent 代跑 | 需要人开终端 |
+| `tty` | 人在终端跑 `sancai_human.py`，要求 TTY | agent 代跑 | 需要人开终端 |
 | `gpg` | 人对 decision payload 做 detached signature | agent 伪造、同用户代签 | 需要 GPG key + passphrase |
 | `os-biometric` | Touch ID / Windows Hello / polkit | 同用户 agent 静默批准 | 平台适配 |
 | `webauthn` | passkey / 安全密钥对 payload_hash 断言 | 远程/恶意进程 | 需要浏览器/硬件 |
@@ -306,7 +306,7 @@ gate 校验：
 
 ```text
 T2：明确词 + card binding + dwell（默认）；tty 可选
-T3：人跑 TTY `aitl_human.py`（必须）；GPG 可选，Phase 3 默认；os-biometric Phase 3
+T3：人跑 TTY `sancai_human.py`（必须）；GPG 可选，Phase 3 默认；os-biometric Phase 3
 T4：two-person + 独立机器/用户 + 硬件密钥
 ```
 
@@ -328,12 +328,13 @@ T4：two-person + 独立机器/用户 + 硬件密钥
 ## 7. 状态与数据模型
 
 ```text
-.aitl/runs/<run>/
-├── cards/<card_id>.json          # 卡片 + hash + mac + used_at
-├── decisions/<decision_id>.json  # 人的决策 + provider + signature
-├── findings/<wo>.json            # findings + disposition
-├── run.json                      # attention counters / risk_tier / policy
-└── events.jsonl                  # card_rendered / decision_recorded / ...
+.sancai/runs/<run>/
+├── L3-intent/decisions/
+│   ├── cards/<card_id>.json          # 卡片 + hash + mac + used_at
+│   ├── <decision_id>.json            # 人的决策 + provider + signature
+│   └── findings/<wo>.json            # findings + disposition
+├── L2-harness/run.json               # attention counters / risk_tier / policy
+└── audit/events.jsonl                # card_rendered / decision_recorded / ...
 ```
 
 事件：
@@ -355,13 +356,13 @@ approval_signature_invalid
 PM 生成候选动作
   │
   ▼
-aitl_card.py render
+sancai_card.py render
   │ 写 cards/<id>.json；打印 card_id + card_code
   ▼
 人看到卡片（T3 自己在终端 verify）
   │ 明确词 + card_code
   ▼
-aitl_escalate.py approve / aitl_state.py accept
+sancai_escalate.py approve / sancai_state.py accept
   │ 校验 MAC / 过期 / 重放 / dwell / findings
   │ 写 decision + used_at
   ▼
@@ -404,7 +405,7 @@ token mint（T2/T3）→ executor 执行
 
 ### Phase 2（3–5 天）
 
-- `aitl_human.py` TTY CLI（sign/approve/accept/verify）。
+- `sancai_human.py` TTY CLI（sign/approve/accept/verify）。
 - 注意力预算、连续批准阈值、fatigue_suspected。
 - 汇总卡 / 检查点批量（仅 T1）。
 - 测试：疲劳、预算、批量。
