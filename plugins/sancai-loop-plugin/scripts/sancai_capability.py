@@ -13,6 +13,7 @@ import hashlib
 import hmac
 import json
 import os
+import re
 
 import sancai_paths as paths  # type: ignore
 
@@ -228,7 +229,14 @@ def _git_policy(root, run, tokens):
             if not _in_owned(root, p, owned):
                 return "deny", f"staged path outside owned_files: {p}"
         return "allow", "git commit with owned files only"
-    if sub in ("push", "merge", "rebase", "reset", "clean", "checkout", "switch", "restore", "rm", "mv"):
+    if sub in ("switch", "checkout"):
+        args = tokens[2:]
+        branch = args[1] if len(args) == 2 else ""
+        flag = "-c" if sub == "switch" else "-b"
+        if len(args) == 2 and args[0] == flag and re.fullmatch(r"sancai/[A-Za-z0-9._-]+", branch):
+            return "allow", f"create Sancai run branch {branch}"
+        return "token", f"git {sub} requires a human token"
+    if sub in ("push", "merge", "rebase", "reset", "clean", "restore", "rm", "mv"):
         return "token", f"git {sub} requires a human token"
     return "token", f"git {sub} requires a human token"
 
