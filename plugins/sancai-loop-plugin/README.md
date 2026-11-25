@@ -282,3 +282,17 @@ must match. Promote to `X.Y.Z` only after H3 acceptance. See
 python3 -m unittest discover -s plugins/sancai-loop-plugin/tests -v
 python3 plugins/sancai-loop-plugin/tests/pokayoke_audit.py   # 13 adversarial scenarios
 ```
+
+### Behavior evals
+
+The unit tests above are deterministic and free. The behavior suite drives a
+real Claude session and is billed to your account.
+
+```bash
+cd plugins/sancai-loop-plugin
+./evals/run.sh --runs 1        # smoke: 5 cases, threshold 0.8
+```
+
+It covers intent clarification, no edits before H1, no completion without
+G0/G3 evidence, verifier independence, and the H3 findings gate. See
+`evals/README.md` for the case list, model pinning, and CI options.

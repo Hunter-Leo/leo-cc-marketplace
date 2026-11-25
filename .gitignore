@@ -26,6 +26,7 @@ Thumbs.db
 
 # Evaluation raw output
 evals/results/
+plugins/*/evals/results/
 
 # Language / package caches
 node_modules/
