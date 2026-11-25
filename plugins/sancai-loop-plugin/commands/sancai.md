@@ -194,11 +194,18 @@ requires a real TTY process.
 
 ### 5. Run the loop automatically
 
-After H1 approval, create the run branch once:
+After H1 approval, verify the working tree is clean, then create the run branch
+once:
 
 ```bash
+git status --porcelain --untracked-files=no   # must print nothing
 git switch -c "sancai/<run>"
 ```
+
+If it prints anything, stop: commit or stash the existing tracked work on its
+own branch, or ask the human how to proceed. Never carry unrelated changes into
+the run branch. The intent and alignment artifacts stay in `.sancai/`
+(gitignored) and are not committed.
 
 Then run the loop without asking the human to type commands:
 

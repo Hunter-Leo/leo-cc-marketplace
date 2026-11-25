@@ -47,8 +47,8 @@ executes the loop automatically:
 
 ```text
 init → intent assess → alignment record → intent card → interactive confirm
-      → record-intent → transition executing
-      → add-wo → claim → spawn sancai-executor
+      → record-intent → clean-tree check → git switch -c sancai/<run>
+      → transition executing → add-wo → claim → spawn sancai-executor
       → sancai_check_ac.py
       → spawn sancai-verifier (fresh context-id) → sancai_verdict.py
       → sancai_gate.py --apply

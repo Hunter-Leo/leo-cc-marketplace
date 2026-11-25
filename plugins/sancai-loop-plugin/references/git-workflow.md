@@ -7,7 +7,8 @@
 
 ```text
 H1 approved
-  └─ git switch -c sancai/<run-id>
+  └─ git status --porcelain --untracked-files=no (must be empty)
+       └─ git switch -c sancai/<run-id>
        │
        ├─ WO-001 G3 verified -> commit
        ├─ WO-002 G3 verified -> commit
@@ -19,6 +20,17 @@ H1 approved
                    ├─ tag sancai-<run-id>
                    └─ release vX.Y.Z
 ```
+
+## Before the run branch
+
+- `git status --porcelain --untracked-files=no` must be empty. Uncommitted
+  tracked changes mean the run branch would inherit unrelated work and pollute
+  `git diff HEAD` evidence. Untracked files are allowed: they never appear in
+  `git diff HEAD` and are not staged unless named explicitly.
+- If it is dirty, commit or stash the existing work on its own branch, or ask
+  the human how to proceed. Do not carry unrelated changes into the run branch.
+- H1 artifacts (`intent.json`, alignment, ADRs, cards, evidence, verdicts) stay
+  in `.sancai/`, which is gitignored. Do not commit them.
 
 ## Branches
 
