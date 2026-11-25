@@ -11,19 +11,33 @@
 draft intent.json
       │
       ▼
-sancai_intent.py assess
+sancai_intent.py assess --json
       │
       ├─ aligned ──────────────► render intent card ─► H1 decision
       │
       └─ needs_alignment
              │
-             ├─ questions ─► human answers in conversation
-             ├─ glossary --write ─► CONTEXT.md
-             ├─ adr --title ─► ADR-NNN
+             ▼
+      Agent reads project context:
+        README / docs / git log / code+tests in owned_files
              │
              ▼
-      sancai_intent.py record --status aligned --answers "..."
+      per signal: draft 2-3 grounded candidates
+        (concrete intent + consequence + one recommendation)
              │
+             ├─ glossary --write ─► CONTEXT.md
+             ├─ adr --title ─► ADR-NNN
+             ▼
+      AskUserQuestion, one signal at a time
+        candidate 1 / 2 / 3 / Other = write your own
+             │
+             ▼
+      write resolutions.json
+        [{code, choice, source: proposed|user}]
+             │
+             ▼
+      sancai_intent.py record --status aligned --resolutions ...
+             │  (refused unless every signal is covered)
              ▼
       render intent card ─► H1 decision
 ```
@@ -48,21 +62,37 @@ and shown in the card payload.
 
 Exit code: `0` aligned, `2` needs alignment.
 
-## Question bank
+## Candidate protocol (agent proposes, human chooses)
 
-Ask one question at a time, in the human's language. Do not read the whole list
-as a wall of text.
+The script surfaces signals; the agent turns each into a decision the human can
+make in one click. For every signal:
 
-- Outcome: "What is true after this run that is not true now?"
-- Boundary: "What must not change?"
-- Evidence: "Which command or artifact proves this?"
-- Failure: "What would make you reject the result?"
-- Reversibility: "If this is wrong, how do we undo it?"
-- Terms: "Define '<term>' so two engineers would agree."
-- Trade-off: "If we cannot have both, which do we keep?"
+1. **Read context first** — README/docs, recent `git log`, code and tests under
+   `owned_files`, and project conventions. Every candidate must be grounded in
+   something real in this repository.
+2. **Offer 2-3 candidates**, each with:
+   - the concrete intent (a testable condition, boundary, or file set)
+   - the consequence or what it gives up
+   - exactly one recommendation marker
+3. **Ask one signal at a time** through `AskUserQuestion`. The built-in
+   **Other** option is "I'll write my own"; never remove it or answer for the
+   human.
+4. **Persist the choice** with `source: proposed` (picked a candidate) or
+   `source: user` (wrote their own) via `record --resolutions`.
 
-If the human cannot answer, propose 2–3 concrete options with consequences and
-ask them to choose. Do not invent an answer.
+Example for `vague_term:fast`:
+
+```text
+Q: Define "fast" for this run.
+  1. p95 < 300ms on the checkout load test   [recommended]
+     → measurable; requires the checkout load-test fixture
+  2. first paint < 1s on the marketing page
+     → narrower scope; does not cover checkout
+  3. Other: write your own definition
+```
+
+If the repository has no evidence to ground a candidate, say so and ask an open
+question instead of inventing options.
 
 ## Term grilling, glossary, ADR
 
@@ -83,17 +113,23 @@ ask them to choose. Do not invent an answer.
     "status": "aligned",
     "recorded_at": "2026-11-24T17:00:00+00:00",
     "session_id": "s1",
-    "answers": "owner=payments; retry=3; metric=p95<300ms",
+    "answers": "vague_term:fast=p95<300ms; non_goals_missing=do not change CLI flags",
     "reason": "",
-    "signals": ["vague_term:fast"],
+    "signals": ["vague_term:fast", "non_goals_missing"],
     "questions": ["Define 'fast' as a measurable condition, or remove it."],
-    "questions_sha": "..."
+    "questions_sha": "...",
+    "signals_sha": "...",
+    "resolutions": [
+      {"code": "vague_term:fast", "choice": "p95 < 300ms under the load test", "source": "proposed"},
+      {"code": "non_goals_missing", "choice": "do not change CLI flags", "source": "user"}
+    ]
   }
 }
 ```
 
 `sign` and `record-intent` refuse when `alignment.status` is neither `aligned`
-nor `deferred`. `intent_snapshot` includes the alignment block, so a card signed
+nor `deferred`. `aligned` also refuses unless `resolutions` covers every
+current signal. `intent_snapshot` includes the alignment block, so a card signed
 before a later alignment edit is stale.
 
 ## H1 card
@@ -108,7 +144,9 @@ The intent card payload includes `alignment_status`. The card options remain
 ## Anti-patterns
 
 - Recording `aligned` with `--answers "ok"` and no resolution.
-- Treating `deferred` as approval without a reason.
+- Recording `aligned` without covering every signal (`record` now refuses).
+- Offering generic candidates that ignore the repository.
+- Offering candidates without consequences, or marking all of them recommended.
 - Asking ten questions at once.
 - Letting the agent answer its own alignment questions.
 - Editing `intent.json` after the card is rendered without re-rendering it.

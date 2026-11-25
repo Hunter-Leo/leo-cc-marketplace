@@ -91,25 +91,53 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" init \
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" activate --run <run>
 ```
 
-### 3. Align the intent
+### 3. Align the intent (interactive)
 
-Run the deterministic assessment:
+Run the deterministic assessment first:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" assess --run <run>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" assess --run <run> --json
 ```
 
-If it reports `needs_alignment`, ask the printed questions one at a time using
-the interactive question UI. Do not answer for the human. Then record the
-resolution:
+If it reports `needs_alignment`, resolve each signal with the human, one at a
+time:
+
+1. **Gather project context before proposing anything.** Read the repository
+   README/docs, recent `git log`, the code and tests under `owned_files`, and
+   the project's existing conventions. Candidate options must be grounded in
+   this repository, not generic advice.
+2. **Draft 2-3 candidate resolutions per signal.** Each candidate states the
+   concrete intent, its consequence or trade-off, and which one you recommend
+   and why.
+3. **Ask through Claude Code's native interactive question UI**
+   (`AskUserQuestion`): one signal per question, options = the candidates, and
+   the built-in **Other** option is the human's "write my own answer" path.
+   Do not dump all questions at once. Do not answer for the human.
+4. **Write the choices to a JSON array:**
+
+```json
+[
+  {"code": "vague_term:fast", "choice": "p95 < 300ms under the load test", "source": "proposed"},
+  {"code": "non_goals_missing", "choice": "do not change CLI flags", "source": "user"}
+]
+```
+
+`source` is `proposed` when the human picked a candidate and `user` when they
+wrote their own answer.
+
+5. **Record the alignment:**
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" record \
   --run <run> --status aligned --session-id "${CLAUDE_SESSION_ID:-}" \
-  --answers "<the human's resolution, in their words>"
+  --resolutions <path|->          # JSON file, inline JSON, or - for stdin
 ```
 
-If the ambiguity cannot be resolved before execution, record explicit debt:
+`aligned` is refused unless the array covers every current signal. `--answers`
+remains an optional summary and is derived from the resolutions when omitted.
+
+If the ambiguity cannot be resolved before execution, record explicit debt
+instead:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" record \
@@ -125,6 +153,10 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" adr --run <run> --title
 ```
 
 `record-intent` and `sign` refuse without an alignment record.
+
+**Anti-patterns:** asking ten open questions in one message, presenting options
+that ignore the repository, letting the agent answer its own questions, or
+recording `aligned` with choices that do not cover every signal.
 
 ### 4. Render the intent card and confirm (human gate H1)
 

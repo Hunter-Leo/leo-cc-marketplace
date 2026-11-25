@@ -54,13 +54,16 @@ init → intent assess → alignment record → intent card → interactive conf
       → sancai_gate.py --apply
 ```
 
-H1 default: run `sancai_intent.py assess`, ask any alignment questions, record
-`aligned` or `deferred`, then ask `Start / Edit / Cancel` in the interactive UI
-and record the explicit choice with `sancai_state.py record-intent`. High-risk
-runs use the card + `sancai_decide.py sign`; the hook turns it into the host
-permission prompt, so the human clicks Allow. `sancai_human.py` is only the
-T4/terminal fallback. H2/H3 use the card + `sancai_decide.py approve|reject|accept`;
-no command copying.
+H1 default: run `sancai_intent.py assess --json`; for each signal, read project
+context, draft 2-3 grounded candidates with consequences, and ask one at a time
+through the native question UI (Other = the human writes their own). Record the
+choices with `record --resolutions` (every signal must be covered), then ask
+`Start / Edit / Cancel` in the interactive UI and record the explicit choice with
+`sancai_state.py record-intent`. High-risk runs use the card +
+`sancai_decide.py sign`; the hook turns it into the host permission prompt, so
+the human clicks Allow. `sancai_human.py` is only the T4/terminal fallback.
+H2/H3 use the card + `sancai_decide.py approve|reject|accept`; no command
+copying.
 
 Stop and ask the human only on: irreversible / out_of_scope / spec_ambiguous.
 

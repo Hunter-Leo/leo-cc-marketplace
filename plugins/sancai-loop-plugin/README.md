@@ -84,11 +84,14 @@ wrong, tampered, stale, or already-used pair fails closed.
 
 ## Native human channel (v0.6.0)
 
-- **H1 interactive by default.** The agent runs `sancai_intent.py assess`,
-  resolves ambiguity with the human, records `aligned` or `deferred`, renders
-  the intent card, asks `Start / Edit / Cancel` through the interactive question
-  UI, and records the explicit choice with `record-intent`; the human does not
-  copy card ids or run a command.
+- **H1 interactive by default.** The agent runs `sancai_intent.py assess --json`,
+  then for each ambiguity signal reads project context and proposes 2-3 grounded
+  candidate resolutions (with consequences and a recommendation) through the
+  native question UI; the human picks one or writes their own. The agent records
+  `--resolutions` (every signal must be covered) as `aligned`, or `deferred`
+  with a reason, renders the intent card, asks `Start / Edit / Cancel` through
+  the interactive question UI, and records the explicit choice with
+  `record-intent`; the human does not copy card ids or run a command.
 - **H2/H3 native permission prompt.** The agent calls
   `sancai_decide.py sign|approve|reject|accept`; the `PreToolUse` hook returns
   `permissionDecision: "ask"`, so Claude Code shows its normal Allow/Deny
@@ -126,7 +129,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.10.0-rc.1)
+## Physical layout (v0.10.0-rc.2)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
