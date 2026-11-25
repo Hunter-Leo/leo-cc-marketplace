@@ -24,6 +24,7 @@ INTENT = {
         "expect": "exit_code == 0",
     }],
     "manual_ac_ratio": 0.0,
+    "owned_files": ["a.txt"],
     "risk_policy_ref": "policy/risk@1",
     "budget": {"human_rounds": 3},
 }
@@ -59,8 +60,14 @@ def init(tmp, run_id="001-poc", session="s1"):
         args += ["--session-id", session]
     run(tmp, "sancai_state.py", *args)
     if session:
+        run(tmp, "sancai_intent.py", "record", "--run", run_id,
+            "--status", "aligned", "--answers", "clear", "--session-id", session)
+        card = run(tmp, "sancai_card.py", "intent", "--run", run_id,
+                   "--tier", "T0", "--json")
+        data = json.loads(card.stdout)
         run(tmp, "sancai_state.py", "sign", "--run", run_id,
-            "--session-id", session, "--message", "confirmed")
+            "--session-id", session, "--message", "confirmed",
+            "--card-id", data["card_id"], "--card-code", data["card_code"])
     run(tmp, "sancai_state.py", "activate", "--run", run_id)
 
 

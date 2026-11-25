@@ -46,6 +46,9 @@ class SancaiCoreTest(unittest.TestCase):
         }))
         self.run_script("sancai_state.py", "init", "--run", "001-test",
                         "--intent", "intent.json", "--session-id", "s1")
+        self.run_script("sancai_intent.py", "record", "--run", "001-test",
+                        "--status", "aligned", "--answers", "clear",
+                        "--session-id", "s1", check=True)
         intent_card = self.bind_card("intent", "--run", "001-test")
         self.run_script("sancai_state.py", "sign", "--run", "001-test",
                         "--session-id", "s1", "--message", "confirmed",
@@ -106,6 +109,9 @@ class SancaiCoreTest(unittest.TestCase):
         intent = pathlib.Path(self.tmp) / ".sancai" / "runs" / "001-test" / "L3-intent" / "intent.json"
         self.run_script("sancai_state.py", "init", "--run", "002-tty",
                         "--intent", str(intent), check=True)
+        self.run_script("sancai_intent.py", "record", "--run", "002-tty",
+                        "--status", "aligned", "--answers", "clear",
+                        "--session-id", "sess-h", check=True)
         self.run_script("sancai_state.py", "activate", "--run", "002-tty", check=True)
         tty_card = self.bind_card("intent", "--run", "002-tty")
         env = dict(self.env)
@@ -491,6 +497,19 @@ class SancaiCoreTest(unittest.TestCase):
         proc = self.run_script("sancai_capability.py", "check", "--tool", "Bash",
                                "--command", "git add a.txt", "--run", "001-test")
         self.assertNotEqual(proc.returncode, 0)
+
+    def test_run_branch_creation_allowed(self):
+        self.start_execution()
+        for cmd in ("git switch -c sancai/001-test",
+                    "git checkout -b sancai/001-test"):
+            proc = self.run_script("sancai_capability.py", "check", "--tool", "Bash",
+                                   "--command", cmd, "--run", "001-test")
+            self.assertEqual(proc.returncode, 0, cmd + "\n" + proc.stdout + proc.stderr)
+        for cmd in ("git switch main", "git switch -c feature/x",
+                    "git checkout -b main"):
+            proc = self.run_script("sancai_capability.py", "check", "--tool", "Bash",
+                                   "--command", cmd, "--run", "001-test")
+            self.assertNotEqual(proc.returncode, 0, cmd)
 
     def test_arbitrary_run_targets_need_token(self):
         self.start_execution()

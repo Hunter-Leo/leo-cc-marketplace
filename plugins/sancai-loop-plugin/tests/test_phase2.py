@@ -44,6 +44,9 @@ class Phase2Test(unittest.TestCase):
         }))
         self.run_script("sancai_state.py", "init", "--run", "001-test",
                         "--intent", "intent.json", "--session-id", "s1", check=True)
+        self.run_script("sancai_intent.py", "record", "--run", "001-test",
+                        "--status", "aligned", "--answers", "clear",
+                        "--session-id", "s1", check=True)
         self.run_script("sancai_state.py", "activate", "--run", "001-test", check=True)
 
     def tearDown(self):

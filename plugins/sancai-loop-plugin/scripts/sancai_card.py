@@ -301,6 +301,7 @@ def _intent_payload(root, run):
         "goal": intent.get("goal", ""),
         "acceptance_count": len(intent.get("acceptance", [])),
         "work_order_count": len(run_data.get("work_orders", {})),
+        "alignment_status": (intent.get("alignment") or {}).get("status", "missing"),
     }
 
 

@@ -127,6 +127,17 @@ def validate_intent(intent):
         sys.exit(f"manual acceptance criteria exceed 20% ({manual}/{len(acceptance)})")
 
 
+def require_alignment(intent):
+    """H1 must record intent alignment before the human starts the run."""
+    alignment = intent.get("alignment") or {}
+    status = alignment.get("status")
+    if status not in ("aligned", "deferred"):
+        sys.exit(
+            "H1 requires intent alignment: run `sancai_intent.py assess --run <run>`, "
+            "then `sancai_intent.py record --status aligned|deferred`"
+        )
+
+
 def validate_owned_files(root, files):
     out = []
     root_abs = os.path.abspath(root)
@@ -249,6 +260,7 @@ def cmd_sign(args):
     intent_path = paths.intent_path(root, run, data)
     intent = load(intent_path)
     validate_intent(intent)
+    require_alignment(intent)
     snapshot = intent_snapshot(intent)
     expected = {
         "intent_sha": snapshot,
@@ -307,6 +319,7 @@ def cmd_record_intent(args):
     intent_path = paths.intent_path(root, run, data)
     intent = load(intent_path)
     validate_intent(intent)
+    require_alignment(intent)
     snapshot = intent_snapshot(intent)
     latency = 0.0
     card = sancai_cards.latest_card(root, run, "intent")
@@ -353,6 +366,8 @@ def cmd_status(args):
         return
     validate_id(run, "run")
     status = sancai_graph.status_object(root, run)
+    if status is None:
+        sys.exit(f"run not found: {run}")
     terminal = status["state"] in ("accepted", "abandoned")
     if not args.run and terminal:
         if args.json:
