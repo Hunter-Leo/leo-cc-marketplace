@@ -3,7 +3,7 @@
 - 状态：Draft
 - 日期：2026-11-18
 - 目的：在写 AITL 插件之前，回答一个问题——**AITL 是否真的比 HITL 更好？**
-- 关联：`docs/sancai-loop-design.md` v0.3 §14
+- 关联：`docs/sancai/design/loop-design.md` v0.3 §14
 
 ---
 

@@ -1646,7 +1646,7 @@ agent 侧防的是「agent 乱来」；人类侧防的是「人批错、批快�
 ### 20.19 人类侧防呆 v2（设计稿）
 
 §20.18 解决的是“能不能拦住模糊批准”；还有四类问题没有解决，单独设计于
-[`human-side-foolproofing-design.md`](human-side-foolproofing-design.md)：
+[`human-side-foolproofing-design.md`](../../leo-team/design/human-side-foolproofing-design.md)：
 
 | 层 | 问题 | 机制 |
 |---|---|---|

@@ -53,7 +53,7 @@ Agent-in-the-loop harness. Three layers: **L3 Human Intent → L2 Harness Work O
 | `/sancai status` | `/sancai status` | Read-only run state, Work Orders, claim, gates |
 | `/sancai abandon` | `/sancai abandon <reason>` | Abandon the run with an audit record |
 
-`run` and `check` are internal: after H1 the PM agent executes add-wo → claim → executor → G0 → G3 → gate automatically, stopping only on the three escalation types (`out_of_scope`, `spec_ambiguous`, `irreversible`) plus H3 acceptance. Two subagents only: `sancai-executor` (L1, writes code) and `sancai-verifier` (L2/G3, read-only judgment). The plugin is **not a sandbox**; pair it with OS-level isolation for untrusted work. See the [first-principles design](docs/sancai-first-principles-design.md), [AITL design](docs/sancai-loop-design.md), [human-side fool-proofing](docs/human-side-foolproofing-design.md), and [Phase -1 eval plan](docs/sancai-phase-minus-1-eval.md).
+`run` and `check` are internal: after H1 the PM agent executes add-wo → claim → executor → G0 → G3 → gate automatically, stopping only on the three escalation types (`out_of_scope`, `spec_ambiguous`, `irreversible`) plus H3 acceptance. Two subagents only: `sancai-executor` (L1, writes code) and `sancai-verifier` (L2/G3, read-only judgment). The plugin is **not a sandbox**; pair it with OS-level isolation for untrusted work. See the [first-principles design](docs/sancai/design/first-principles-design.md), [AITL design](docs/sancai/design/loop-design.md), [human-side fool-proofing](docs/leo-team/design/human-side-foolproofing-design.md), and [Phase -1 eval plan](docs/sancai/eval/phase-minus-1-eval.md).
 
 ## Local Development
 

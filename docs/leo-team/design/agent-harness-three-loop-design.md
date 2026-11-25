@@ -3,7 +3,7 @@
 **状态**：Draft v0.1
 **日期**：2026-11-18
 **范围**：新插件（不影响现有 `leo-team-plugin`）
-**依据**：`docs/hitl-to-aitl-research-2026-11.html`、`docs/harness-vibe-coding-research-2026-11.html`
+**依据**：`docs/sancai/research/hitl-to-aitl-research-2026-11.html`、`docs/sancai/research/harness-vibe-coding-research-2026-11.html`
 
 ---
 

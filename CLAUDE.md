@@ -77,6 +77,6 @@ Runtime state is physical: `.sancai/runs/<run>/{L3-intent,L2-harness,L1-code,aud
 Commands: `/sancai start`, `/sancai approve`, `/sancai accept`, `/sancai status`, `/sancai abandon`.
 `run` and `check` are internal: after H1 the PM agent runs add-wo → claim → executor → G0 → G3 → gate automatically.
 
-Design: [docs/sancai-loop-design.md](docs/sancai-loop-design.md) · Eval plan: [docs/sancai-phase-minus-1-eval.md](docs/sancai-phase-minus-1-eval.md) · Eval harness: [evals/](evals/).
+Design: [docs/sancai/design/loop-design.md](docs/sancai/design/loop-design.md) · Eval plan: [docs/sancai/eval/phase-minus-1-eval.md](docs/sancai/eval/phase-minus-1-eval.md) · Eval harness: [evals/](evals/).
 
 MVP is single-repository, single-writer, serial — **no worktree**. Key invariants: harness-owned evidence, independent verifier, fail-closed tool capability table, one-time capability tokens for irreversible actions. The plugin is **not a sandbox**; pair it with OS-level isolation.

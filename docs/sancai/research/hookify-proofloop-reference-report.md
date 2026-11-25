@@ -516,5 +516,5 @@ policy overlay     = 项目级加严
 - `plugins/sancai-loop-plugin/scripts/sancai_verdict.py`（verdict、findings）
 - `plugins/sancai-loop-plugin/scripts/sancai_cards.py`（卡绑定、dwell、findings_hash）
 - `plugins/sancai-loop-plugin/scripts/sancai_capability.py`（capability、human decision guard）
-- `docs/sancai-loop-design.md` §20（防呆与人类侧设计）
-- `docs/human-side-foolproofing-design.md`（T0–T4、审批强度）
+- `docs/sancai/design/loop-design.md` §20（防呆与人类侧设计）
+- `docs/leo-team/design/human-side-foolproofing-design.md`（T0–T4、审批强度）
