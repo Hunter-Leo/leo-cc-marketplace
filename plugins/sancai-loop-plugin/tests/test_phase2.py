@@ -139,6 +139,7 @@ class Phase2Test(unittest.TestCase):
                                "--run", "001-test", check=True).stdout
         self.assertIn("fix capability table", text)
         self.assertIn("accept known risk", text)
+        self.assertIn("▶(H2 approve)◀", text)
 
     def test_accept_card_reply_example_is_accept(self):
         card = {
@@ -150,6 +151,44 @@ class Phase2Test(unittest.TestCase):
         text = sancai_card.render(card)
         self.assertIn("accept CARD-abc 12345678", text)
         self.assertNotIn("confirm CARD-abc", text)
+
+    def _render_card(self, **overrides):
+        card = {
+            "type": "status", "title": "t", "run": "r", "state": "executing",
+            "stage": "Execution", "layer": "L2", "progress": "0/1",
+            "next_action": "dispatch", "trigger": "", "what": [], "why": "y",
+            "impact": "z", "options": [],
+        }
+        card.update(overrides)
+        return sancai_card.render(card)
+
+    def test_flow_context_marks_h1_for_intent(self):
+        text = self._render_card(type="intent", state="planning", next_action="start")
+        self.assertIn("Flow context", text)
+        self.assertIn("L3 Intent", text)
+        self.assertIn("▶H1 sign◀", text)
+        self.assertIn("H2 approve", text)
+        self.assertIn("H3 accept", text)
+
+    def test_flow_context_marks_h2_for_approve(self):
+        text = self._render_card(type="approve", next_action="approve")
+        self.assertIn("▶(H2 approve)◀", text)
+        self.assertNotIn("▶H1 sign◀", text)
+
+    def test_flow_context_marks_h3_for_accept(self):
+        text = self._render_card(type="accept", state="reviewing")
+        self.assertIn("▶H3 accept◀", text)
+
+    def test_flow_context_marks_executor_wait(self):
+        text = self._render_card(next_action="wait")
+        self.assertIn("▶executor◀", text)
+
+    def test_flow_context_marks_verifier_wait(self):
+        text = self._render_card(
+            next_action="wait", claim={"wo": "WO-001", "by": "sancai-verifier"}
+        )
+        self.assertIn("▶verifier◀", text)
+        self.assertNotIn("▶executor◀", text)
 
     # ------------------------------------------------------------------
     # latency / metrics

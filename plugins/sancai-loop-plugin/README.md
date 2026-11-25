@@ -37,9 +37,13 @@ Before every human decision, render the card:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_card.py" current --run <run>
 ```
 
-The card shows the current layer (L3/L2/L1), stage, progress, trigger, what
-happened, why the human is needed, impact, and numbered options. It is generated
-from `graph.json`; the model must output it verbatim.
+The card opens with an ASCII flow map of the three layers, with the current
+decision marked `▶ … ◀`, then shows the stage, current layer (L3/L2/L1),
+progress, trigger, what happened, why the human is needed, impact, and numbered
+options. The flow map comes from `graph.json`; the model must output the card
+verbatim. Before asking, the model also draws its own ASCII diagram of the
+material under review (intent at H1, operation at H2, implementation and evidence
+at H3); that diagram has no fixed format and must be grounded in the artifacts.
 
 ## Phase 1 card binding (v0.3.0)
 
@@ -129,7 +133,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.10.0-rc.2)
+## Physical layout (v0.10.0-rc.3)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
@@ -212,7 +216,7 @@ Residual trust boundaries (read this before relying on it):
 
 What exists:
 
-- Every human touchpoint shows the three-layer position (L3/L2/L1), trigger, what happened, why you are needed, impact, and numbered options.
+- Every human touchpoint shows the three-layer position (L3/L2/L1), trigger, what happened, why you are needed, impact, and numbered options; the model adds an ASCII diagram of the exact material being confirmed (intent, operation, or implementation evidence).
 - One decision at a time; queue numbers; the human does not memorize `ESC-*` ids.
 - H1/H3 require explicit phrases. A bare `1`, `ok`, or `whatever` is not approval; `reject` requires a concrete reason.
 - Irreversible actions cannot be batch-approved. The human approves a one-time token through the native prompt, bound to the exact action, diff hash, and TTL; a changed diff invalidates it.

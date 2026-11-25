@@ -75,10 +75,26 @@ Before every human decision, render the card; never narrate it yourself:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_card.py" current --run <run>
 ```
 
-It shows the current layer (L3/L2/L1), stage, progress, trigger, what happened,
-why the human is needed, impact, and numbered options. Output it verbatim and
-parse the reply using the grammar in `/sancai`. The card is generated from
-`graph.json`, not from the model's memory.
+It opens with an ASCII flow map of the three layers, marks the current decision
+with `▶ … ◀`, then shows the stage, current layer (L3/L2/L1), progress, trigger,
+what happened, why the human is needed, impact, and numbered options. The flow
+map comes from `graph.json`; do not reconstruct it from memory. Output the card
+verbatim and parse the reply using the grammar in `/sancai`.
+
+The card is the deterministic position report, not the whole explanation. Before
+each human question, add your own ASCII diagram of the decision material, sized
+to the question:
+
+- H1 intent: goal, non-goals, acceptance criteria, owned scope, and the
+  consequence of each choice.
+- H2 escalation: the proposed operation, its target, the diff or affected
+  surface, and the irreversible effect.
+- H3 acceptance: what was implemented, which checks and evidence prove it, and
+  which verdicts are still open.
+
+There is no fixed format. The requirement is that the human can check the thing
+in front of them without opening files; ground every line in the intent, the
+card, or repository evidence, never in memory.
 
 Human replies are explicit:
 

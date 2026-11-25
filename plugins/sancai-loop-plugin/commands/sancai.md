@@ -41,6 +41,11 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_card.py" current --run <run>
 It auto-detects intent / approve / out-of-scope / ambiguous / accept / blocked,
 and prints "No action needed from you" when no human action is needed.
 
+Every card opens with an ASCII flow map of the three layers. The current
+decision is marked `▶ … ◀`, so the human sees both the upstream steps already
+done and the downstream steps still ahead. Render the card verbatim; do not
+redraw or paraphrase the map.
+
 Every actionable card carries a **card binding**:
 
 ```
@@ -112,7 +117,15 @@ time:
 3. **Ask through Claude Code's native interactive question UI**
    (`AskUserQuestion`): one signal per question, options = the candidates, and
    the built-in **Other** option is the human's "write my own answer" path.
-   Do not dump all questions at once. Do not answer for the human.
+   Prefix each question with the card's three-line ASCII flow map (`L3` / `L2` /
+   `L1`, with `▶ … ◀` on the current step), then add your own ASCII diagram of
+   the material the human is checking: for intent, goal, non-goals, acceptance,
+   scope and the consequence of each choice; for an escalation, the operation,
+   its target and its irreversible effect. Ground the diagram in
+   `L3-intent/intent.json`, the card, and repository evidence — not memory. The
+   shape is yours to choose; the requirement is that the human can see what they
+   are confirming without opening files. Do not dump all questions at once. Do
+   not answer for the human.
 4. **Write the choices to a JSON array:**
 
 ```json
@@ -274,6 +287,12 @@ When the run reaches `reviewing`, report:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_card.py" approve --run <run> --esc <ESC-ID>
 ```
 
+The card's flow map marks `H2 approve`; keep that map visible when showing the
+raw operation below. Before asking, add your own ASCII diagram of the decision:
+operation → target → affected surface / diff → irreversible effect → options and
+their consequences. Ground every node in the escalation payload or the diff, and
+choose the shape that makes the trade-off legible.
+
 2. Show the **raw operation**: exact action, arguments, target, diff hash, why it is irreversible, what cannot be undone.
 3. Require explicit `confirmed` / `confirmed` / `approved` / `approved` **plus the card id/code**. A bare number (`1`), `ok`, or a reply without the card pair is **not** approval for an irreversible action; ask the human to reply with the word and the card footer.
 4. Mark the escalation approved with the rendered card. Call the native
@@ -324,6 +343,13 @@ Render the acceptance card; do not narrate it yourself:
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_card.py" accept --run <run>
 ```
+
+The card's flow map marks `H3 accept`; the full upstream path stays visible so
+the human accepts the outcome in context, not in isolation. Before asking, add
+your own ASCII diagram of what was implemented: changed surface → checks and
+evidence → gate/verifier verdicts → what was intentionally left out
+(non-goals). This is the "show the finished work" diagram; there is no fixed
+format, but every node must trace to a file, command, gate result, or verdict.
 
 Preconditions: run is `reviewing`; all Work Orders `verified` or `merged`.
 

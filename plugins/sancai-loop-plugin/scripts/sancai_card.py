@@ -110,9 +110,12 @@ def build_card(graph, kind, esc_id=None, wo_id=None):
     card = {
         "type": kind,
         "run": graph["run"],
+        "state": pos["state"],
         "stage": pos["stage"],
         "layer": pos["layer"],
         "progress": pos["progress"],
+        "next_action": pos["next_action"],
+        "claim": pos["claim"],
         "trigger": pos["trigger"],
         "title": "",
         "what": [],
@@ -372,15 +375,67 @@ def card_payload(root, run, graph, kind, esc_id=None, wo_id=None):
     return None
 
 
+FLOW_LANES = (
+    ("L3 Intent", "L3", (
+        "intent", "assess", "align", "H1 sign", "(H2 approve)", "H3 accept",
+    )),
+    ("L2 Harness", "L2", ("add-wo", "claim", "G0", "G3", "gate")),
+    ("L1 Code", "L1", ("executor", "verifier")),
+)
+
+
+def _flow_active(card):
+    """Return the lane token this decision sits on, from deterministic state."""
+    kind = card.get("type")
+    state = card.get("state")
+    action = card.get("next_action")
+    if kind == "intent":
+        return {"L3": "H1 sign"}
+    if kind in ("approve", "out-of-scope", "ambiguous"):
+        return {"L3": "(H2 approve)"}
+    if kind == "accept":
+        return {"L3": "H3 accept"}
+    if kind == "blocked":
+        return {"L2": "gate"}
+    if state == "planning":
+        return {"L3": "H1 sign"}
+    if state == "reviewing":
+        return {"L3": "H3 accept"}
+    if state == "executing":
+        if action == "approve":
+            return {"L3": "(H2 approve)"}
+        if action == "wait":
+            by = (card.get("claim") or {}).get("by", "")
+            return {"L1": "verifier" if "verif" in by.lower() else "executor"}
+        if action == "dispatch":
+            return {"L2": "claim"}
+        return {"L2": "gate"}
+    if state == "accepted":
+        return {"L3": "H3 accept"}
+    return {}
+
+
+def flow_context(card):
+    """ASCII background flow with the current decision marked by ▶ … ◀."""
+    active = _flow_active(card)
+    lines = ["Flow context (▶ = this decision)"]
+    for label, key, tokens in FLOW_LANES:
+        rendered = [
+            f"▶{token}◀" if token == active.get(key) else token
+            for token in tokens
+        ]
+        lines.append(f"{label:<11}" + " ─ ".join(rendered))
+    return lines
+
+
 def render(card):
     lines = []
     lines.append(f"【{card['title']}】  {card['run']}")
     lines.append("─" * 60)
+    lines.extend(flow_context(card))
+    lines.append("")
     lines.append(f"Stage  {card['stage']}")
-    lines.append("Three-layer position")
-    for label, key in (("L3 Intent", "L3"), ("L2 Execution", "L2"), ("L1 Code", "L1")):
-        mark = "● you are here" if card["layer"] == key else "○"
-        lines.append(f"  {label}  {mark}")
+    lines.append(f"Layer  {card['layer']}")
     lines.append(f"Progress      {card['progress']}")
     lines.append(f"Trigger      {card['trigger'] or '—'}")
     lines.append("")
@@ -432,6 +487,14 @@ def cmd_progress_card(root, run, as_json):
     print(f"  state          : {status['state']}")
     print(f"  stage          : {status['stage']}")
     print(f"  layer          : {status['layer']}")
+    flow_card = {
+        "type": "status",
+        "state": status["state"],
+        "next_action": status["next_action"],
+        "claim": status.get("claim"),
+    }
+    for flow_line in flow_context(flow_card):
+        print(f"  {flow_line}")
     print(f"  progress       : {status['progress']}")
     print(f"  claim          : {(status.get('claim') or {}).get('wo') or '-'}")
     print(f"  next           : {status['next']['action']} — {status['next']['reason']}")

@@ -42,6 +42,15 @@ sancai_intent.py assess --json
       render intent card ─► H1 decision
 ```
 
+At the `AskUserQuestion` step, prefix each question with the card's ASCII flow
+map (the three `L3` / `L2` / `L1` lines, with `▶ … ◀` on `H1 sign`), then add
+your own ASCII diagram of the intent under review: goal, non-goals, acceptance
+criteria, owned scope, and the consequence of each choice. The map is background
+context; the diagram is the material the human is actually checking. Ground it
+in `L3-intent/intent.json` and repository evidence, not memory. There is no fixed
+format; the requirement is that the human can verify the intent without opening
+files.
+
 If the ambiguity cannot be resolved before execution, record `deferred` with a
 reason. `deferred` is explicit debt, not silent approval; the reason is stored
 and shown in the card payload.
