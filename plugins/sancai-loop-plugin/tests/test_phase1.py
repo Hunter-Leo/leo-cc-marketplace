@@ -42,7 +42,7 @@ class Phase1CardTest(unittest.TestCase):
         (self.root / "intent.json").write_text(json.dumps({
             "id": "INT-001",
             "version": 1,
-            "goal": "change a.txt",
+            "goal": "change a.txt so the acceptance command exits zero",
             "non_goals": ["b.txt"],
             "acceptance": [{
                 "id": "AC-1",
@@ -51,6 +51,7 @@ class Phase1CardTest(unittest.TestCase):
                 "expect": "exit_code == 0",
             }],
             "manual_ac_ratio": 0.0,
+            "owned_files": ["a.txt"],
             "risk_policy_ref": "policy/risk@1",
             "budget": {"human_rounds": 3},
         }))

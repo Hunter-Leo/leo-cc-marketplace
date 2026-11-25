@@ -121,6 +121,101 @@ class IntentAlignmentTest(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("requires --reason", proc.stderr + proc.stdout)
 
+    def test_questions_json(self):
+        self.init_run()
+        proc = self.run_script("sancai_intent.py", "questions", "--run", "001-intent",
+                               "--json", check=True)
+        self.assertEqual(json.loads(proc.stdout), [])
+
+        self.write_intent(goal="make it better", non_goals=[], owned_files=[])
+        self.run_script("sancai_state.py", "init", "--run", "002-vague",
+                        "--intent", "intent.json", "--session-id", "s1", check=True)
+        proc = self.run_script("sancai_intent.py", "questions", "--run", "002-vague",
+                               "--json", check=True)
+        data = json.loads(proc.stdout)
+        codes = {item["code"] for item in data}
+        self.assertIn("vague_term:better", codes)
+        self.assertTrue(all(item["question"] for item in data))
+
+    def init_vague_run(self):
+        self.write_intent(goal="make it better and fast", non_goals=[], owned_files=[])
+        self.run_script("sancai_state.py", "init", "--run", "002-vague",
+                        "--intent", "intent.json", "--session-id", "s1", check=True)
+        proc = self.run_script("sancai_intent.py", "assess", "--run", "002-vague", "--json")
+        self.assertEqual(proc.returncode, 2)
+        return [s["code"] for s in json.loads(proc.stdout)["signals"]]
+
+    def write_resolutions(self, entries):
+        path = pathlib.Path(self.tmp) / "resolutions.json"
+        path.write_text(json.dumps(entries))
+        return str(path)
+
+    def test_aligned_requires_resolutions_for_ambiguous_intent(self):
+        self.init_vague_run()
+        proc = self.run_script("sancai_intent.py", "record", "--run", "002-vague",
+                               "--status", "aligned", "--answers", "ok",
+                               "--session-id", "s1")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("covering every alignment signal", proc.stderr + proc.stdout)
+
+    def test_record_resolutions_persists_choices(self):
+        codes = self.init_vague_run()
+        entries = [
+            {"code": code, "choice": f"resolution for {code}", "source": "proposed"}
+            for code in codes
+        ]
+        path = self.write_resolutions(entries)
+        self.run_script("sancai_intent.py", "record", "--run", "002-vague",
+                        "--status", "aligned", "--resolutions", path,
+                        "--session-id", "s1", check=True)
+        intent = json.loads(
+            (pathlib.Path(self.tmp) / ".sancai/runs/002-vague/L3-intent/intent.json").read_text()
+        )
+        alignment = intent["alignment"]
+        self.assertEqual(alignment["status"], "aligned")
+        self.assertEqual([r["code"] for r in alignment["resolutions"]], codes)
+        self.assertTrue(alignment["answers"])
+        self.assertIn("signals_sha", alignment)
+
+    def test_resolution_rejects_unknown_code(self):
+        self.init_vague_run()
+        entries = [{"code": "not_a_signal", "choice": "x", "source": "user"}]
+        path = self.write_resolutions(entries)
+        proc = self.run_script("sancai_intent.py", "record", "--run", "002-vague",
+                               "--status", "aligned", "--resolutions", path,
+                               "--session-id", "s1")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("unknown alignment signal", proc.stderr + proc.stdout)
+
+    def test_resolution_rejects_empty_choice(self):
+        codes = self.init_vague_run()
+        path = self.write_resolutions([{"code": codes[0], "choice": "", "source": "user"}])
+        proc = self.run_script("sancai_intent.py", "record", "--run", "002-vague",
+                               "--status", "aligned", "--resolutions", path,
+                               "--session-id", "s1")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("non-empty choice", proc.stderr + proc.stdout)
+
+    def test_resolution_rejects_invalid_source(self):
+        codes = self.init_vague_run()
+        path = self.write_resolutions(
+            [{"code": codes[0], "choice": "x", "source": "agent"}]
+        )
+        proc = self.run_script("sancai_intent.py", "record", "--run", "002-vague",
+                               "--status", "aligned", "--resolutions", path,
+                               "--session-id", "s1")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("source must be", proc.stderr + proc.stdout)
+
+    def test_deferred_allows_partial_resolutions(self):
+        codes = self.init_vague_run()
+        path = self.write_resolutions(
+            [{"code": codes[0], "choice": "x", "source": "user"}]
+        )
+        self.run_script("sancai_intent.py", "record", "--run", "002-vague",
+                        "--status", "deferred", "--reason", "needs product input",
+                        "--resolutions", path, "--session-id", "s1", check=True)
+
     def test_glossary_and_adr(self):
         self.init_run()
         self.run_script("sancai_intent.py", "glossary", "--run", "001-intent",

@@ -15,7 +15,7 @@ PY = sys.executable
 INTENT = {
     "id": "INT-001",
     "version": 1,
-    "goal": "change a.txt",
+    "goal": "change a.txt so the acceptance command exits zero",
     "non_goals": ["b.txt"],
     "acceptance": [{
         "id": "AC-1",

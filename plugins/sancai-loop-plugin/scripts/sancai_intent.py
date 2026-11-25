@@ -3,13 +3,18 @@
 
 usage:
   sancai_intent.py assess --run 001-auth [--json]
-  sancai_intent.py questions --run 001-auth
+  sancai_intent.py questions --run 001-auth [--json]
   sancai_intent.py record --run 001-auth --status aligned --answers "..." --session-id s1
+  sancai_intent.py record --run 001-auth --status aligned --resolutions answers.json
   sancai_intent.py glossary --run 001-auth [--write]
   sancai_intent.py adr --run 001-auth --title "Use Postgres"
 
 The tools are deterministic. They do not call an LLM and do not invent
 requirements. They surface ambiguity, ask the human, and record the answer.
+
+The interactive part happens in Claude Code's native question UI. For each
+signal the agent proposes 2-3 context-grounded candidate resolutions, the human
+picks one or writes their own, and `record --resolutions` persists every choice.
 """
 import argparse
 import hashlib
@@ -131,8 +136,75 @@ def cmd_questions(args):
     run = state.resolve_run(root, args)
     intent, _ = load_intent(root, run)
     _, signals = assess_intent(intent)
+    if args.json:
+        print(json.dumps([
+            {"code": s["code"], "message": s["message"], "question": s["question"]}
+            for s in signals
+        ], ensure_ascii=False, indent=2))
+        return
     for i, signal in enumerate(signals, 1):
         print(f"{i}. {signal['question']}")
+
+
+def _read_resolutions(source):
+    """Load a resolutions array from a file, `-` for stdin, or inline JSON."""
+    if source == "-":
+        raw = sys.stdin.read()
+    elif os.path.isfile(source):
+        with open(source, encoding="utf-8") as fh:
+            raw = fh.read()
+    else:
+        raw = source
+    try:
+        data = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        sys.exit(f"invalid --resolutions JSON: {exc}")
+    if isinstance(data, dict):
+        data = data.get("resolutions")
+    if not isinstance(data, list):
+        sys.exit("--resolutions must be a JSON array")
+    resolutions = []
+    for index, item in enumerate(data, 1):
+        if not isinstance(item, dict):
+            sys.exit(f"resolution {index} must be an object")
+        code = str(item.get("code", "")).strip()
+        choice = str(item.get("choice", "")).strip()
+        source_kind = item.get("source", "proposed")
+        if not code:
+            sys.exit(f"resolution {index} is missing code")
+        if not choice:
+            sys.exit(f"resolution {index} ({code}) requires a non-empty choice")
+        if source_kind not in ("proposed", "user"):
+            sys.exit(
+                f"resolution {index} ({code}) source must be 'proposed' or 'user'"
+            )
+        resolutions.append({"code": code, "choice": choice, "source": source_kind})
+    return resolutions
+
+
+def _validate_resolutions(signal_codes, resolutions, status):
+    if resolutions is None:
+        return
+    known = set(signal_codes)
+    seen = set()
+    for resolution in resolutions:
+        code = resolution["code"]
+        if code not in known:
+            sys.exit(f"unknown alignment signal in resolutions: {code}")
+        if code in seen:
+            sys.exit(f"duplicate resolution for signal: {code}")
+        seen.add(code)
+    if status == "aligned":
+        missing = [code for code in signal_codes if code not in seen]
+        if missing:
+            sys.exit(
+                "resolutions must cover every alignment signal; missing: "
+                + ", ".join(missing)
+            )
+
+
+def _summarize(resolutions):
+    return "; ".join(f"{r['code']}={r['choice']}" for r in resolutions)
 
 
 def cmd_record(args):
@@ -141,21 +213,39 @@ def cmd_record(args):
     intent, path = load_intent(root, run)
     if args.status == "deferred" and not args.reason.strip():
         sys.exit("deferred alignment requires --reason")
-    if args.status == "aligned" and not args.answers.strip():
-        sys.exit("aligned requires --answers with the human's resolution")
+    resolutions = _read_resolutions(args.resolutions) if args.resolutions else None
     _, signals = assess_intent(intent)
+    signal_codes = [s["code"] for s in signals]
+    if args.status == "aligned" and signal_codes and resolutions is None:
+        sys.exit(
+            "aligned requires --resolutions covering every alignment signal; missing: "
+            + ", ".join(signal_codes)
+        )
+    _validate_resolutions(signal_codes, resolutions, args.status)
+    answers = args.answers.strip()
+    if args.status == "aligned" and not answers and not resolutions:
+        sys.exit("aligned requires --answers or --resolutions with the human's resolution")
+    if args.status == "aligned" and not answers and resolutions:
+        answers = _summarize(resolutions)
     intent["alignment"] = {
         "schema_version": "sancai.intent-alignment.v1",
         "status": args.status,
         "recorded_at": state.now(),
         "session_id": args.session_id,
-        "answers": args.answers,
+        "answers": answers,
         "reason": args.reason,
-        "signals": [s["code"] for s in signals],
+        "signals": signal_codes,
         "questions": [s["question"] for s in signals],
         "questions_sha": hashlib.sha256(
             json.dumps([s["question"] for s in signals], ensure_ascii=False).encode()
         ).hexdigest(),
+        "signals_sha": hashlib.sha256(
+            json.dumps(
+                [{"code": s["code"], "question": s["question"]} for s in signals],
+                ensure_ascii=False, sort_keys=True,
+            ).encode()
+        ).hexdigest(),
+        "resolutions": resolutions or [],
     }
     state.save(path, intent)
     state.append_event(root, run, "intent_aligned", {
@@ -231,12 +321,15 @@ def main():
 
     p = sub.add_parser("questions", help="print alignment questions")
     p.add_argument("--run")
+    p.add_argument("--json", action="store_true")
     p.set_defaults(func=cmd_questions)
 
     p = sub.add_parser("record", help="record the human's alignment decision")
     p.add_argument("--run")
     p.add_argument("--status", required=True, choices=("aligned", "deferred"))
     p.add_argument("--answers", default="")
+    p.add_argument("--resolutions", default="",
+                   help="JSON array, path, or '-' for stdin: [{code, choice, source}]")
     p.add_argument("--reason", default="")
     p.add_argument("--session-id", default="")
     p.set_defaults(func=cmd_record)
