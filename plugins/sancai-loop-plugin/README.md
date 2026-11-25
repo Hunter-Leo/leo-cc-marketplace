@@ -84,10 +84,11 @@ wrong, tampered, stale, or already-used pair fails closed.
 
 ## Native human channel (v0.6.0)
 
-- **H1 interactive by default.** The agent renders the intent card, asks
-  `Start / Edit / Cancel` through the interactive question UI, and records the
-  explicit choice with `record-intent`; the human does not copy card ids or run
-  a command.
+- **H1 interactive by default.** The agent runs `sancai_intent.py assess`,
+  resolves ambiguity with the human, records `aligned` or `deferred`, renders
+  the intent card, asks `Start / Edit / Cancel` through the interactive question
+  UI, and records the explicit choice with `record-intent`; the human does not
+  copy card ids or run a command.
 - **H2/H3 native permission prompt.** The agent calls
   `sancai_decide.py sign|approve|reject|accept`; the `PreToolUse` hook returns
   `permissionDecision: "ask"`, so Claude Code shows its normal Allow/Deny
@@ -125,7 +126,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.9.0)
+## Physical layout (v0.10.0-rc.1)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
@@ -248,6 +249,29 @@ For high-risk repos: enable `SANCAI_REQUIRE_TTY_SIGN=1`, run `mint`/`sign` in a 
 | `sancai_cards.py` | card payload signing, verification, single-use, dwell, findings hash |
 | `sancai_decide.py` | native decision entrypoint: sign / approve / reject / accept / mint; hook turns it into the host permission prompt |
 | `sancai_human.py` | TTY-only T4/terminal fallback for sign / approve / reject / accept |
+
+## Standards and versioning
+
+The executor reads the standards in `skills/sancai-loop/SKILL.md`; the full
+reference set lives in `references/`:
+
+- `intent-alignment.md` — H1 ambiguity signals, questions, glossary, ADR
+- `design-principles.md` — AITL/OOP/SOLID and proportionality
+- `coding-standards.md` — universal and language-specific rules
+- `comment-standard.md` — docstrings, inline comments, TODO
+- `data-model-standard.md` — schemas, IDs, validation, migration
+- `documentation-standard.md` — durable docs and size matrix
+- `verification-standard.md` — G0/G3 and evidence
+- `execution-discipline.md` — read-before-write and WO scope
+- `git-workflow.md` — branches, commits, merge, versioning
+- `progress-updates.md` — progress protocol
+- `capability-table.md` — tool capability policy
+- `method-playbooks.md` — trigger-gated methods
+
+Versions follow semver. Release candidates use `X.Y.Z-rc.N` (for example
+`0.10.0-rc.1`); `plugin.json`, `marketplace.json`, the tag, and the changelog
+must match. Promote to `X.Y.Z` only after H3 acceptance. See
+`references/git-workflow.md`.
 
 ## Tests
 

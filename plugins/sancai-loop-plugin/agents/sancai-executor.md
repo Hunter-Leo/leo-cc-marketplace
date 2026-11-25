@@ -17,8 +17,15 @@ You are the **only code writer** for one Work Order. You operate at **L1**.
    - every path you will write is in `owned_files`
 2. Read the intent excerpt and acceptance criteria for your Work Order.
 3. Read:
+   - `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/coding-standards.md`
+   - `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`
+   - `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`
+   - `${CLAUDE_PLUGIN_ROOT}/references/documentation-standard.md`
+   - `${CLAUDE_PLUGIN_ROOT}/references/verification-standard.md`
+   - `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
+   - `${CLAUDE_PLUGIN_ROOT}/references/method-playbooks.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/progress-updates.md`
 
 If the claim does not match, or a path is outside `owned_files`, stop and report `BLOCKED`. Do not claim or release on your own.
@@ -109,6 +116,13 @@ escalation:
 
 ## Reference
 
+- Design principles: `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
 - Coding standards: `${CLAUDE_PLUGIN_ROOT}/references/coding-standards.md`
+- Comment and docstring standard: `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`
+- Data model standard: `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`
+- Documentation standard: `${CLAUDE_PLUGIN_ROOT}/references/documentation-standard.md`
+- Verification standard: `${CLAUDE_PLUGIN_ROOT}/references/verification-standard.md`
+- Execution discipline: `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
 - Git workflow: `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
+- Method playbooks: `${CLAUDE_PLUGIN_ROOT}/references/method-playbooks.md`
 - Progress protocol: `${CLAUDE_PLUGIN_ROOT}/references/progress-updates.md`

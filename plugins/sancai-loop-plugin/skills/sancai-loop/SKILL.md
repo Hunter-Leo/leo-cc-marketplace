@@ -46,19 +46,21 @@ Humans only need one entrypoint and five subcommands:
 executes the loop automatically:
 
 ```text
-init → intent card → interactive confirm → record-intent
-      → transition executing
+init → intent assess → alignment record → intent card → interactive confirm
+      → record-intent → transition executing
       → add-wo → claim → spawn sancai-executor
       → sancai_check_ac.py
       → spawn sancai-verifier (fresh context-id) → sancai_verdict.py
       → sancai_gate.py --apply
 ```
 
-H1 default: ask `Start / Edit / Cancel` in the interactive UI, then record the
-explicit choice with `sancai_state.py record-intent`. High-risk runs use the card
-+ `sancai_decide.py sign`; the hook turns it into the host permission prompt, so
-the human clicks Allow. `sancai_human.py` is only the T4/terminal fallback.
-H2/H3 use the card + `sancai_decide.py approve|reject|accept`; no command copying.
+H1 default: run `sancai_intent.py assess`, ask any alignment questions, record
+`aligned` or `deferred`, then ask `Start / Edit / Cancel` in the interactive UI
+and record the explicit choice with `sancai_state.py record-intent`. High-risk
+runs use the card + `sancai_decide.py sign`; the hook turns it into the host
+permission prompt, so the human clicks Allow. `sancai_human.py` is only the
+T4/terminal fallback. H2/H3 use the card + `sancai_decide.py approve|reject|accept`;
+no command copying.
 
 Stop and ask the human only on: irreversible / out_of_scope / spec_ambiguous.
 
@@ -197,10 +199,18 @@ Only these two. Explorer/architect are added only when eval proves the need.
 
 ## Required reading
 
-1. `${CLAUDE_PLUGIN_ROOT}/references/coding-standards.md`
-2. `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
-3. `${CLAUDE_PLUGIN_ROOT}/references/progress-updates.md`
-4. `${CLAUDE_PLUGIN_ROOT}/references/capability-table.md`
+1. `${CLAUDE_PLUGIN_ROOT}/references/intent-alignment.md`
+2. `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
+3. `${CLAUDE_PLUGIN_ROOT}/references/coding-standards.md`
+4. `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`
+5. `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`
+6. `${CLAUDE_PLUGIN_ROOT}/references/documentation-standard.md`
+7. `${CLAUDE_PLUGIN_ROOT}/references/verification-standard.md`
+8. `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
+9. `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
+10. `${CLAUDE_PLUGIN_ROOT}/references/progress-updates.md`
+11. `${CLAUDE_PLUGIN_ROOT}/references/capability-table.md`
+12. `${CLAUDE_PLUGIN_ROOT}/references/method-playbooks.md`
 
 ## Classic mode
 

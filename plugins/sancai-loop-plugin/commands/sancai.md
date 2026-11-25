@@ -91,7 +91,42 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" init \
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" activate --run <run>
 ```
 
-### 3. Render the intent card and confirm (human gate H1)
+### 3. Align the intent
+
+Run the deterministic assessment:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" assess --run <run>
+```
+
+If it reports `needs_alignment`, ask the printed questions one at a time using
+the interactive question UI. Do not answer for the human. Then record the
+resolution:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" record \
+  --run <run> --status aligned --session-id "${CLAUDE_SESSION_ID:-}" \
+  --answers "<the human's resolution, in their words>"
+```
+
+If the ambiguity cannot be resolved before execution, record explicit debt:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" record \
+  --run <run> --status deferred --session-id "${CLAUDE_SESSION_ID:-}" \
+  --reason "<why this can wait>"
+```
+
+Optional term work:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" glossary --run <run> --write
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" adr --run <run> --title "<decision>"
+```
+
+`record-intent` and `sign` refuse without an alignment record.
+
+### 4. Render the intent card and confirm (human gate H1)
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_card.py" intent --run <run>
@@ -125,9 +160,15 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" sign \
 `sancai_human.py sign` remains the T4/terminal-only path when the repository
 requires a real TTY process.
 
-### 4. Run the loop automatically
+### 5. Run the loop automatically
 
-Do this without asking the human to type commands:
+After H1 approval, create the run branch once:
+
+```bash
+git switch -c "sancai/<run>"
+```
+
+Then run the loop without asking the human to type commands:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" transition --to executing
@@ -142,7 +183,12 @@ Then spawn **`sancai-executor`** with:
 
 - the Work Order id and `owned_files`
 - the acceptance criteria excerpt
+- `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/coding-standards.md`
+- `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`
+- `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`
+- `${CLAUDE_PLUGIN_ROOT}/references/verification-standard.md`
+- `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/progress-updates.md`
 
@@ -252,7 +298,7 @@ Show only:
 
 Do not show the raw diff unless asked.
 
-Require explicit `accept` / `accepted` / `accepted` / `accepted` / `confirmed` **plus the card id/code**. A bare `ok` or `1`, or a reply without the card pair, is not acceptance. Call the native decision entrypoint; the human clicks Allow in Claude Code's permission prompt:
+Require explicit `accept` / `accepted` / `confirmed` **plus the card id/code**. A bare `ok` or `1`, or a reply without the card pair, is not acceptance. Call the native decision entrypoint; the human clicks Allow in Claude Code's permission prompt:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" accept \
