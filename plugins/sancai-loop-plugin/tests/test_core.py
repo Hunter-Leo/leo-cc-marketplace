@@ -127,6 +127,13 @@ class SancaiCoreTest(unittest.TestCase):
         self.assertNotEqual(proc.returncode, 0)
         self.assertIn("SANCAI_REQUIRE_TTY_SIGN", proc.stderr)
 
+    def test_transition_requires_clean_tree(self):
+        a = pathlib.Path(self.tmp) / "a.txt"
+        a.write_text(a.read_text() + "uncommitted\n")
+        proc = self.run_script("sancai_state.py", "transition", "--to", "executing")
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("uncommitted tracked changes", proc.stderr + proc.stdout)
+
     def test_overlap_rejected(self):
         self.run_script("sancai_state.py", "transition", "--to", "executing", check=True)
         self.run_script("sancai_state.py", "add-wo", "--id", "WO-001",

@@ -20,6 +20,7 @@ import datetime
 import hashlib
 import json
 import os
+import subprocess
 
 import sancai_paths as paths  # type: ignore
 
@@ -407,6 +408,25 @@ def cmd_activate(args):
     print(f"active run: {args.run}")
 
 
+def _dirty_files(root):
+    """Return uncommitted tracked changes; empty when the tree is clean.
+
+    Untracked files are ignored: they never appear in `git diff HEAD`, so they
+    cannot pollute G0 evidence. The check targets tracked modifications that
+    would leak unrelated work into the run branch.
+    """
+    try:
+        proc = subprocess.run(
+            ["git", "-C", root, "status", "--porcelain", "--untracked-files=no"],
+            capture_output=True, text=True,
+        )
+    except OSError:
+        return []
+    if proc.returncode != 0:
+        return []
+    return [line.strip() for line in proc.stdout.splitlines() if line.strip()]
+
+
 def cmd_transition(args):
     root = find_root()
     run = resolve_run(root, args)
@@ -430,6 +450,12 @@ def cmd_transition(args):
             sys.exit("approval user_message is not an accepted confirmation phrase")
         if approval.get("snapshot") != intent_snapshot(intent):
             sys.exit("intent changed after approval; re-sign before executing")
+        dirty = _dirty_files(root)
+        if dirty:
+            sys.exit(
+                "working tree has uncommitted tracked changes; commit or stash "
+                "before starting the run branch: " + ", ".join(dirty[:5])
+            )
     if nxt == "reviewing":
         wos = data.get("work_orders", {})
         if not wos:
