@@ -846,6 +846,28 @@ class SancaiCoreTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertNotIn("permissionDecision", proc.stdout)
 
+    def test_subagent_types_are_stage_limited(self):
+        def run_task(subtype):
+            payload = json.dumps({
+                "cwd": self.tmp,
+                "session_id": "s1",
+                "tool_name": "Task",
+                "tool_input": {"subagent_type": subtype},
+            })
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--pre-tool"],
+                cwd=self.tmp, input=payload, capture_output=True, text=True,
+                env=self.env,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            return proc.stdout
+
+        self.assertNotIn("permissionDecision", run_task("sancai-explorer"))
+        self.assertIn("permissionDecision", run_task("general-purpose"))
+        self.start_execution()
+        self.assertNotIn("permissionDecision", run_task("sancai-executor"))
+        self.assertIn("permissionDecision", run_task("sancai-explorer"))
+
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})
         proc = subprocess.run(

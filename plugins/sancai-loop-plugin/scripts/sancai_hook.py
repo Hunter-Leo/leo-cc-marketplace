@@ -296,6 +296,34 @@ def main():
         state = run_data.get("state")
         claim = run_data.get("claim")
 
+        if tool in ("Task", "Agent"):
+            subtype = str(
+                ti.get("subagent_type")
+                or ti.get("agent_type")
+                or ti.get("agent_name")
+                or ti.get("name")
+                or ""
+            )
+            allowed = {
+                "planning": {
+                    "sancai-explorer", "sancai-design-critic",
+                    "sancai-researcher", "sancai-science-auditor",
+                },
+                "executing": {
+                    "sancai-executor", "sancai-verifier",
+                    "sancai-researcher", "sancai-science-auditor",
+                },
+                "reviewing": {
+                    "sancai-verifier", "sancai-science-auditor",
+                },
+            }.get(state, set())
+            if subtype in allowed:
+                allow()
+            deny(
+                f"Sancai: subagent {subtype or '<missing>'} is not allowed "
+                f"while state={state}; use a role from the H1/L2 role table"
+            )
+
         if state == "executing" and claim:
             if tool == "Bash":
                 decision = decision_call(command)
