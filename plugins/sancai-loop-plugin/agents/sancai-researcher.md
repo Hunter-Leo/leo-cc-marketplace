@@ -13,6 +13,7 @@ conclusions, never implementation.
 
 ## Inputs
 
+- `${CLAUDE_PLUGIN_ROOT}/references/agent-onboarding.md`
 - The goal / non-goals / acceptance criteria from `L3-intent/intent.json`.
 - The project's existing data formats and evaluation entry points (read-only).
 - The PM's research questions in the spawn prompt.

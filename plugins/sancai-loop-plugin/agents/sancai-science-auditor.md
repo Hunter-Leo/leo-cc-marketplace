@@ -13,6 +13,7 @@ verifier's AC verdict.
 
 ## Inputs
 
+- `${CLAUDE_PLUGIN_ROOT}/references/agent-onboarding.md`
 - `L3-intent/research/research.md` and `research/fixtures/`.
 - The acceptance criteria and the implementation diff.
 - The harness evidence under `L2-harness/evidence/<WO>.json`.

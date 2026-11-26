@@ -262,19 +262,20 @@ Everything else (style, naming, normal test failures, reversible refactors) is t
 ## Subagents (MVP)
 
 ```text
-PM (main session) ──► sancai-executor (L1)   writes code
-                  ├─► sancai-verifier (L2/G3) reads evidence, judges
-                  ├─► sancai-researcher       H1 external evidence (conditional)
-                  └─► sancai-science-auditor  G3 scientific validity (conditional)
+H1  PM ──► sancai-explorer        read-only facts (conditional)
+    PM ──► sancai-design-critic   options / intent review (conditional)
+    PM ──► sancai-researcher      external evidence (conditional)
+
+L2  PM ──► sancai-executor        writes code
+    PM ──► sancai-verifier        reads evidence, judges
+    PM ──► sancai-science-auditor scientific validity (conditional)
 ```
 
-The science roles are not human-selected. PM runs
-`sancai_science.py detect` during H1 and writes `intent.science`; when
-`required=true`, researcher/auditor are mandatory. The human signs the final
-intent and may reject the decision, but does not choose the role.
-
-Explorer/architect/intent-critic are future roles, added only after eval proves
-the need.
+H1 roles are spawned only when the routing matrix applies; the human does not
+choose them. The PM must know the full flow. Subagents read
+`references/agent-onboarding.md`, their upstream artifacts, and role-specific
+references; they do not need the full SKILL. The future `intent-critic` role is
+the `intent-review` mode of `sancai-design-critic`.
 
 ## Required reading
 

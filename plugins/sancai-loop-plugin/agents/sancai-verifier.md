@@ -24,6 +24,7 @@ You are the **independent verifier**. You operate at **L2 (G3)**, not L1.
 
 You may read these to judge the diff; they are not executor narrative:
 
+- `${CLAUDE_PLUGIN_ROOT}/references/agent-onboarding.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`

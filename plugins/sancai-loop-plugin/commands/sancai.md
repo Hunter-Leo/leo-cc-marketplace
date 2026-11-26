@@ -109,6 +109,42 @@ machines and capture points.
 
 ## start (H1 + automatic loop)
 
+### 0. H1 research routing
+
+The PM must know the full flow. Subagents need only
+`references/agent-onboarding.md`, their role card, the upstream artifacts, and
+role-specific references — do not make them read the whole SKILL.
+
+Spawn only when the trigger applies:
+
+| Trigger | Agent |
+|---|---|
+| unfamiliar module, cross-module, large repo, unknown callers/reuse/conflicts | `sancai-explorer` |
+| two or more technical routes, algorithm/data-model/API choice, new module boundary | `sancai-design-critic` |
+| ambiguous AC, missing non-goals, high-risk/irreversible work | `sancai-design-critic` with `intent-review` mode |
+| formula/numeric/statistical/external evidence | `sancai-researcher` / `sancai-science-auditor` (automatic detection below) |
+| small, clear, single-module task | no spawn; PM reads directly |
+
+Explorer runs before the PM finalizes the draft. Design-critic runs after the
+draft (and after `inspect.md` when it exists). At most three H1 research agents;
+no recursive spawn.
+
+Each spawn prompt must include:
+
+```text
+Role:        sancai-explorer | sancai-design-critic
+Stage:       H1 / pre-intent | post-draft
+Run:         <run>
+Inputs:      <upstream artifact paths>
+Lane:        read-only code; write <research artifact>
+Output:      verdict + artifact paths
+Stop:        BLOCKED if upstream is missing
+Must read:   references/agent-onboarding.md + role-specific refs
+```
+
+Write returned artifacts into `L3-intent/research/` and record their paths in
+`intent.research_refs`. Do not let a research agent write code or intent.
+
 ### 1. Draft the intent
 
 Create `.sancai/runs/<run>/L3-intent/intent.json`:
@@ -160,6 +196,15 @@ Validate:
 - every AC has an executable `run` and a concrete `expect`
 - manual AC is forbidden by default; exceptions need a written reason and total ≤ 20%
 - reject vague criteria
+
+### 1.2 Design and intent review
+
+After the draft, if it has multiple viable routes, an algorithm/data-model
+choice, a new module boundary, or ambiguous AC, spawn `sancai-design-critic`
+using the spawn packet above. For ambiguous AC/high-risk work, ask for
+`intent-review` mode. Add the returned paths to `intent.research_refs`; the PM
+still decides what goes into the intent. Do not ask the human whether to use
+these agents.
 
 ### 2. Initialize (state=planning)
 

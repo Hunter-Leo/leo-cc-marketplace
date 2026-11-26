@@ -22,10 +22,15 @@ implement.
 
 ## May delegate
 
-- Fact exploration to `sancai-explorer` (when added).
-- Architecture/algorithm trade-offs to `sancai-design-critic` (when added).
+- Fact exploration to `sancai-explorer`.
+- Architecture/algorithm trade-offs and intent review to
+  `sancai-design-critic`.
 - External scientific evidence to `sancai-researcher`.
 - Scientific/numerical validity to `sancai-science-auditor`.
+
+Each spawn prompt must include the role, stage, run, upstream artifact paths,
+lane, output path, and stop condition. Subagents read
+`references/agent-onboarding.md`; they do not need the whole SKILL.
 
 ## Cannot delegate
 

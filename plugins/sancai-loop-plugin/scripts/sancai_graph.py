@@ -419,6 +419,7 @@ def build_graph(root, run):
         "requirements": intent.get("requirements", []),
         "revision": intent.get("revision"),
         "science": intent.get("science") or {},
+        "research_refs": intent.get("research_refs") or [],
     }
     captured_todos = [
         {

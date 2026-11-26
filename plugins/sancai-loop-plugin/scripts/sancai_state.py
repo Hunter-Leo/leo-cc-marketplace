@@ -142,6 +142,15 @@ def validate_intent(intent, root=None):
         sys.exit("intent must be a JSON object")
     control.budget_of(intent)
     science.validate_block(intent)
+    refs = intent.get("research_refs")
+    if refs is not None:
+        if not isinstance(refs, list) or len(refs) > 20:
+            sys.exit("intent.research_refs must be a list of at most 20 paths")
+        for ref in refs:
+            if not isinstance(ref, str) or not ref.strip():
+                sys.exit("intent.research_refs entries must be non-empty strings")
+            if os.path.isabs(ref) or ".." in ref.split("/"):
+                sys.exit(f"intent.research_refs must be relative and stay inside the run: {ref!r}")
     goal = intent.get("goal")
     if not isinstance(goal, str) or not goal.strip():
         sys.exit("intent.goal must be a non-empty string")

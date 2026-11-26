@@ -17,6 +17,7 @@ You are the **only code writer** for one Work Order. You operate at **L1**.
    - every path you will write is in `owned_files`
 2. Read the intent excerpt and acceptance criteria for your Work Order.
 3. Read:
+   - `${CLAUDE_PLUGIN_ROOT}/references/agent-onboarding.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/coding-standards.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`

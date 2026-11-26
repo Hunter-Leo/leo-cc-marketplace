@@ -281,7 +281,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.10.0-rc.7)
+## Physical layout (v0.10.0-rc.8)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
@@ -405,7 +405,9 @@ For high-risk repos: enable `SANCAI_REQUIRE_TTY_SIGN=1`, run `mint`/`sign` in a 
 - Single repository, single writer, serial.
 - **No worktree.** The plugin runs in the current working tree; `git worktree` is only used by the separate `evals/` harness for isolated evaluation runs.
 - No trust ledger, SQLite, daemon, shadow review queue, or parallel Router/Worker.
-- Two subagents only: `sancai-executor` (L1) and `sancai-verifier` (L2/G3).
+- Subagents: `sancai-executor` (L1), `sancai-verifier` (L2/G3), conditional H1
+  `sancai-explorer` / `sancai-design-critic`, and conditional
+  `sancai-researcher` / `sancai-science-auditor`.
 
 ## Scripts
 
@@ -417,6 +419,8 @@ For high-risk repos: enable `SANCAI_REQUIRE_TTY_SIGN=1`, run `mint`/`sign` in a 
 | `sancai_intent.py` | H1 intent assessment, ambiguity signals, alignment record |
 | `sancai_check_ac.py` | G0: run acceptance checks, write harness-owned evidence |
 | `sancai_capability.py` | tool capability table, fail-closed check, capability tokens |
+| `sancai_control.py` | three-parameter budget, progress fingerprint, pause/grant state |
+| `sancai_science.py` | automatic science routing, audit check/record |
 | `sancai_gate.py` | combine G0 + G3, write the gate verdict |
 | `sancai_verdict.py` | verifier writes a structured verdict via Bash |
 | `sancai_escalate.py` | structured escalation, dedupe, queue, approval record |
@@ -447,7 +451,7 @@ reference set lives in `references/`:
 - `method-playbooks.md` — trigger-gated methods
 
 Versions follow semver. Release candidates use `X.Y.Z-rc.N` (for example
-`0.10.0-rc.7`); `plugin.json`, `marketplace.json`, the tag, and the changelog
+`0.10.0-rc.8`); `plugin.json`, `marketplace.json`, the tag, and the changelog
 must match. Promote to `X.Y.Z` only after H3 acceptance. See
 `references/git-workflow.md`.
 
