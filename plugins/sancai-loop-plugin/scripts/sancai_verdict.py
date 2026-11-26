@@ -186,11 +186,7 @@ def cmd_write(args):
         sys.exit(f"cannot write a verdict for a {run_data['state']} run")
     evidence_sha = _evidence_sha(root, args.run, args.wo)
     verifier_token = ""
-    if args.verifier_token:
-        verifier_token = _consume_verifier_token(
-            root, args.run, args.verifier_token, args.wo, evidence_sha
-        )
-    elif os.environ.get("SANCAI_ALLOW_UNATTESTED_VERDICT") != "1":
+    if not args.verifier_token and os.environ.get("SANCAI_ALLOW_UNATTESTED_VERDICT") != "1":
         sys.exit(
             "verifier token required; prepare one with "
             "sancai_verdict.py prepare (human-approved via sancai_decide.py)"
@@ -208,6 +204,11 @@ def cmd_write(args):
         blockers = [f for f in findings if f.get("severity") in ("blocker", "critical")]
         if blockers:
             sys.exit("pass verdict cannot contain blocker/critical findings")
+
+    if args.verifier_token:
+        verifier_token = _consume_verifier_token(
+            root, args.run, args.verifier_token, args.wo, evidence_sha
+        )
 
     verdict = {
         "run": args.run,

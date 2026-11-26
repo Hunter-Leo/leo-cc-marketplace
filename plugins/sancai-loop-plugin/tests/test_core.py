@@ -646,6 +646,30 @@ class SancaiCoreTest(unittest.TestCase):
         self.assertNotEqual(replay.returncode, 0)
         self.assertIn("already used", replay.stderr + replay.stdout)
 
+    def test_verifier_token_not_burned_on_invalid_verdict(self):
+        self.start_execution()
+        self.run_script(
+            "sancai_check_ac.py", "--run", "001-test", "--wo", "WO-001",
+        )
+        self.env.pop("SANCAI_ALLOW_UNATTESTED_VERDICT", None)
+        token = self.run_script(
+            "sancai_verdict.py", "prepare",
+            "--run", "001-test", "--wo", "WO-001", check=True,
+        ).stdout.strip()
+        invalid = self.run_script(
+            "sancai_verdict.py", "write", "--run", "001-test", "--wo", "WO-001",
+            "--verdict", "pass", "--session-id", "v", "--context-id", "s1",
+            "--prompt-hash", "h", "--verifier-token", token,
+        )
+        self.assertNotEqual(invalid.returncode, 0)
+        self.assertIn("context", invalid.stderr + invalid.stdout)
+        valid = self.run_script(
+            "sancai_verdict.py", "write", "--run", "001-test", "--wo", "WO-001",
+            "--verdict", "pass", "--session-id", "v", "--context-id", "ctx-v",
+            "--prompt-hash", "h", "--verifier-token", token, check=True,
+        )
+        self.assertEqual(valid.returncode, 0)
+
     def test_verifier_prepare_is_human_only(self):
         command = (
             f"python3 {SCRIPTS / 'sancai_verdict.py'} prepare "
