@@ -139,11 +139,16 @@ Inputs:      <upstream artifact paths>
 Lane:        read-only code; write <research artifact>
 Output:      verdict + artifact paths
 Stop:        BLOCKED if upstream is missing
+Session:     reuse within this H1 task; fresh for a new task/run
 Must read:   references/agent-onboarding.md + role-specific refs
 ```
 
 Write returned artifacts into `L3-intent/research/` and record their paths in
 `intent.research_refs`. Do not let a research agent write code or intent.
+
+H1 research roles may keep one session for follow-up questions inside this H1
+task. Start fresh when the task or run changes, and never carry their context
+into L2.
 
 ### 1. Draft the intent
 
@@ -371,6 +376,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" progress \
 
 Then spawn **`sancai-executor`** with:
 
+- one session for this Work Order (reuse for fixes/retries, fresh for the next WO)
 - the Work Order id and `owned_files`
 - the acceptance criteria excerpt
 - `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
@@ -401,10 +407,11 @@ Pass the printed `<token-id>:<secret>` pair to the verifier; it must use it as
 reading the token directory does not reveal the secret. Without a token,
 `write` fails closed.
 
-Then spawn **`sancai-verifier`** with the raw evidence + AC + diff (never the executor's narrative). The verifier writes its verdict through `sancai_verdict.py` with a fresh `--context-id` (different from the executor and its claim) and a `--prompt-hash`; a pass verdict carrying a blocker/critical finding is rejected.
+Then spawn **`sancai-verifier`** as a fresh one-shot `Task`/`Agent` with the raw evidence + AC + diff (never the executor's narrative, and never a session that saw earlier work). The verifier writes its verdict through `sancai_verdict.py` with a fresh `--context-id` (different from the executor and its claim) and a `--prompt-hash`; a pass verdict carrying a blocker/critical finding is rejected.
 
-If `intent.science.required` is true, spawn `sancai-science-auditor` as well and
-record its audit through `sancai_science.py record-audit`. The gate requires a
+If `intent.science.required` is true, spawn `sancai-science-auditor` as another
+fresh one-shot instance and record its audit through
+`sancai_science.py record-audit`. The gate requires a
 `pass` audit for every Work Order; `fail` sends the WO back, and
 `unverifiable`/missing blocks it.
 

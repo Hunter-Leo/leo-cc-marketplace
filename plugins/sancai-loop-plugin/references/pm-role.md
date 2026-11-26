@@ -32,6 +32,25 @@ Each spawn prompt must include the role, stage, run, upstream artifact paths,
 lane, output path, and stop condition. Subagents read
 `references/agent-onboarding.md`; they do not need the whole SKILL.
 
+## Session policy
+
+- PM stays in the main session.
+- H1 research roles (explorer, design-critic, researcher) may be reused for
+  follow-up questions within one H1 task; resume the same agent with
+  `SendMessage`, or use a teammate session, instead of spawning a duplicate.
+  Start fresh for a new task or run.
+- The executor may be reused for fixes and retries within one Work Order; resume
+  the same agent. Start a new session for the next Work Order.
+- The verifier and science-auditor are always a fresh one-shot `Task`/`Agent`
+  invocation. Do not resume an earlier verifier/auditor, and do not give them a
+  session that has seen the executor's work or an earlier verdict.
+- Teammate mode is optional for H1 research roles and is not a default. L2
+  executor, verifier, and science-auditor run as `Task`/`Agent` sessions; the
+  verifier and auditor must still be fresh. Teammate mode never relaxes the
+  freshness rules above. Verifier attestation comes from `SubagentStop`'s agent
+  transcript path, so a verifier must be a one-shot `Task`/`Agent`, not a
+  teammate.
+
 ## Cannot delegate
 
 - The final intent choice.

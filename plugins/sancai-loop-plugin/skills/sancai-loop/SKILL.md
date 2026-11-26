@@ -277,6 +277,22 @@ choose them. The PM must know the full flow. Subagents read
 references; they do not need the full SKILL. The future `intent-critic` role is
 the `intent-review` mode of `sancai-design-critic`.
 
+### Session policy
+
+```text
+PM                              main session
+explorer/design-critic/researcher  reuse within one H1 task; fresh for a new task/run
+executor                        reuse within one WO; fresh across WOs
+verifier/science-auditor        fresh one-shot Task/Agent per verification/audit
+```
+
+Teammate mode may preserve useful H1 context; it is not a default. L2 roles
+(executor, verifier, science-auditor) run as `Task`/`Agent` sessions. Verifier
+attestation comes from `SubagentStop`'s agent transcript path, so the verifier
+must be a fresh one-shot `Task`/`Agent`, never a teammate. A session that has
+seen the executor's work, an earlier verdict, or an earlier audit must not
+verify or audit.
+
 ## Required reading
 
 1. `${CLAUDE_PLUGIN_ROOT}/references/pm-role.md`

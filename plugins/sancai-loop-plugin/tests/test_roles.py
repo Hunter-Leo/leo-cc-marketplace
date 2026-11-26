@@ -43,6 +43,39 @@ class RoleContractTest(unittest.TestCase):
             self.assertIn("agent-onboarding.md", text)
 
 
+class SessionPolicyTest(unittest.TestCase):
+    def test_onboarding_defines_role_session_policy(self):
+        text = (PLUGIN / "references" / "agent-onboarding.md").read_text()
+        for token in (
+            "## Session policy",
+            "reuse within one H1 task",
+            "reuse within one Work Order",
+            "fresh per verification",
+            "fresh per audit",
+        ):
+            self.assertIn(token, text)
+
+    def test_role_cards_declare_session_policy(self):
+        expected = {
+            "sancai-explorer": "one H1 task",
+            "sancai-design-critic": "one H1 task",
+            "sancai-researcher": "one H1 task",
+            "sancai-executor": "one Work Order",
+            "sancai-verifier": "fresh one-shot",
+            "sancai-science-auditor": "fresh one-shot",
+        }
+        for name, token in expected.items():
+            text = (PLUGIN / "agents" / f"{name}.md").read_text()
+            self.assertIn("## Session policy", text, name)
+            self.assertIn(token, text, name)
+
+    def test_pm_stays_in_main_session(self):
+        text = (PLUGIN / "references" / "pm-role.md").read_text()
+        self.assertIn("main session", text)
+        self.assertIn("Teammate mode", text)
+        self.assertIn("not a default", text)
+
+
 class ResearchRefsTest(unittest.TestCase):
     def intent(self, refs):
         return {

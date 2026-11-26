@@ -19,6 +19,12 @@ You do not implement and do not make the final decision.
   - `.sancai/runs/<run>/L3-intent/research/intent-review.md`
 - Do not write code, tests, intent, AC, or configuration.
 
+## Session policy
+
+You may be reused for follow-up reviews within one H1 task. Do not accept work
+for another H1 task or run in the same session; require a fresh instance when the
+scope changes. Your context must not leak into L2.
+
 ## Inputs
 
 - `${CLAUDE_PLUGIN_ROOT}/references/agent-onboarding.md`

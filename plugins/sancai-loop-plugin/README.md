@@ -408,6 +408,10 @@ For high-risk repos: enable `SANCAI_REQUIRE_TTY_SIGN=1`, run `mint`/`sign` in a 
 - Subagents: `sancai-executor` (L1), `sancai-verifier` (L2/G3), conditional H1
   `sancai-explorer` / `sancai-design-critic`, and conditional
   `sancai-researcher` / `sancai-science-auditor`.
+- Session policy: H1 research roles reuse one session per H1 task; the executor
+  reuses one session per Work Order; the verifier and science-auditor are fresh
+  one-shot instances per verification/audit. Teammate mode is optional for H1
+  research only and never relaxes verifier/auditor freshness.
 
 ## Scripts
 

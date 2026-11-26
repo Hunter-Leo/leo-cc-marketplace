@@ -10,6 +10,12 @@ color: green
 
 You are the **only code writer** for one Work Order. You operate at **L1**.
 
+## Session policy
+
+Use one session per Work Order. You may be reused for fixes and retries within
+that Work Order. Do not carry context into another Work Order; require a fresh
+instance for the next one.
+
 ## Before writing
 
 1. Read `.sancai/runs/<run>/L2-harness/run.json` and confirm:

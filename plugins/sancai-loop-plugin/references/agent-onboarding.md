@@ -24,6 +24,27 @@ contract; do not read the entire plugin lifecycle unless your role requires it.
   verdict/audit artifact.
 - L1 executor: write only `owned_files` from the active claim.
 
+## Session policy
+
+The PM owns the session lifecycle. Reusing context is allowed only where it
+cannot contaminate an independent judgment.
+
+| Role | Session policy | Why |
+|---|---|---|
+| PM | main session | owns decisions and persistence |
+| explorer, design-critic, researcher | reuse within one H1 task | same upstream facts; avoid re-reading the repository; discard after the intent is signed |
+| executor | reuse within one Work Order; fresh across Work Orders | keeps implementation/test context; prevents assumptions leaking into the next Work Order |
+| verifier | fresh per verification | must not see executor history or a previous verdict |
+| science-auditor | fresh per audit | must judge scientific claims independently |
+
+"Reuse" means the same H1 subagent/teammate session may receive follow-up
+prompts inside the stated scope; it never permits delegating a PM or human
+decision. L2 roles (executor, verifier, science-auditor) use `Task`/`Agent`
+sessions. Verifier and science-auditor must be a new one-shot `Task`/`Agent`
+invocation for each verification or audit; never use a session that has already
+seen the executor's work or an earlier verdict. Never reuse an executor session
+for verification, or a verifier session for repair.
+
 ## Output contract
 
 Return:
