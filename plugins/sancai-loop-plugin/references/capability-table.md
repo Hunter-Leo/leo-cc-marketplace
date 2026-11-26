@@ -46,10 +46,13 @@ Even when the capability table allows an action, an irreversible action still ne
 
 ```bash
 SANCAI_SECRET=<outside workspace> \
-python3 scripts/sancai_capability.py mint --run <run> --action "<action>" --diff-sha "<sha>"
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" mint \
+  --run <run> --action "<action>" --diff-sha "<sha>"
 ```
 
-The token binds action + diff + nonce + expiry. It is single-use, and the agent cannot mint it.
+The hook turns this into the native permission prompt; the human clicks Allow.
+The token binds action + diff + nonce + expiry. It is single-use, and the agent
+cannot mint it without that human prompt.
 
 ## Boundary
 

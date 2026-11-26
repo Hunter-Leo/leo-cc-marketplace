@@ -163,7 +163,12 @@ verbatim. Before asking, the model also draws its own ASCII diagram of the
 material under review (intent at H1, operation at H2, implementation and evidence
 at H3); that diagram has no fixed format and must be grounded in the artifacts.
 
-## Phase 1 card binding (v0.3.0)
+## Historical: Phase 1 card binding (v0.3.0)
+
+The commands in this historical subsection are shown for the original CLI
+contract. Current agent-facing decisions use `sancai_decide.py` and the native
+permission prompt described above; direct `sancai_state.py sign/accept` and
+`sancai_escalate.py approve/reject` are agent-denied.
 
 Every actionable card is persisted under `.sancai/runs/<run>/L3-intent/decisions/cards/` and ends
 with a binding footer:
