@@ -69,7 +69,7 @@ capture TODO ──► human promote ──► REQ (proposed) ──► human ac
 - A TODO never mutates an intent. Unrelated discoveries stay in the backlog.
 - An intent without `requirements` is legacy: Work Orders need no `--req`.
 - H3 refuses acceptance until every selected REQ has a verified Work Order.
-- H3 `--disposition defer:<WO-ID>` captures a backlog TODO; it does not create
+- H3 `--disposition defer:<FOLLOWUP-ID>` captures a backlog TODO; it does not create
   a Work Order in the accepted run.
 
 ## Commands
@@ -104,8 +104,8 @@ context, draft 2-3 grounded candidates with consequences, and ask one at a time
 through the native question UI (Other = the human writes their own). Record the
 choices with `record --resolutions` (every signal must be covered), then ask
 `Start / Edit / Cancel` in the interactive UI and record the explicit choice with
-`sancai_state.py record-intent`. High-risk runs use the card +
-`sancai_decide.py sign`; the hook turns it into the host permission prompt, so
+`sancai_decide.py record-intent`. High-risk runs use the card +
+`sancai_decide.py sign`; the hook turns both into the host permission prompt, so
 the human clicks Allow. `sancai_human.py` is only the T4/terminal fallback.
 H2/H3 use the card + `sancai_decide.py approve|reject|accept`; no command
 copying.
@@ -165,7 +165,7 @@ sign    --card-id <CARD-ID> --card-code <CODE>
 approve --card-id <CARD-ID> --card-code <CODE>
 reject  --card-id <CARD-ID> --card-code <CODE>
 accept  --card-id <CARD-ID> --card-code <CODE> --session-id <id>
-        [--ack-findings] [--disposition defer:<WO-ID> | waive:<reason>]
+        [--ack-findings] [--disposition defer:<FOLLOWUP-ID> | waive:<reason>]
 ```
 
 Binding rules:
@@ -179,7 +179,7 @@ Binding rules:
 - Cards have a dwell tier: `T0`/`T1` immediate, `T2` (default) 3s, `T3` 10s,
   `T4` 60s. "too fresh" means wait; do not retry in a tight loop to bypass it.
 - Accept cards hash the verdict findings. Findings require `--ack-findings`;
-  major findings also require exactly one `defer:<WO-ID>` or `waive:<reason>`;
+  major findings also require exactly one `defer:<FOLLOWUP-ID>` or `waive:<reason>`;
   blocker/critical findings can never be accepted.
 - Verify a card at any time with
   `sancai_card.py verify --run <run> --card-id <CARD-ID> --json`.

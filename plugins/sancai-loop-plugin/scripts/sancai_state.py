@@ -289,6 +289,16 @@ def cmd_init(args):
     run_path = paths.run_path(root, args.run)
     if os.path.isfile(run_path) and not args.force:
         sys.exit(f"run already exists: {args.run}; use --force to overwrite")
+    if args.force and active and active.get("run") == args.run:
+        try:
+            previous = load(run_path)
+        except (OSError, ValueError):
+            previous = {}
+        if previous.get("state") not in ("accepted", "abandoned") and not args.takeover:
+            sys.exit(
+                f"refusing to reset active run {args.run} in state "
+                f"{previous.get('state')}; use --takeover after explicit human approval"
+            )
     if args.force and os.path.isdir(rd):
         suffix = re.sub(r"[^0-9A-Za-z_.-]", "-", now())
         os.replace(rd, f"{rd}.superseded-{suffix}")
@@ -377,9 +387,9 @@ def cmd_sign(args):
 def cmd_record_intent(args):
     """Record an H1 approval collected through an interactive UI.
 
-    H1 is a contract gate, not proof of an irreversible action. The agent may
-    record the human's explicit interactive choice without a card; H2/H3 still
-    require a rendered card and a human-run entrypoint.
+    H1 is a contract gate, not proof of an irreversible action. Agents must go
+    through ``sancai_decide.py record-intent`` so Claude Code asks the human for
+    Allow; a bare call to this command is denied by the capability table.
     """
     root = find_root()
     run = resolve_run(root, args)
@@ -708,7 +718,7 @@ def cmd_abandon(args):
     data["claim"] = None
     data["updated_at"] = now()
     save(path, data)
-    write_active(root, run, "abandoned")
+    clear_active(root, run)
     append_event(root, run, "abandoned", {"reason": args.reason})
     print(f"abandoned {run}: {args.reason}")
 
@@ -834,14 +844,13 @@ def cmd_accept(args):
     wos = data.get("work_orders", {})
     if not wos or any(wo.get("state") not in ("verified", "merged") for wo in wos.values()):
         sys.exit("not all work orders are verified")
-    rd = run_dir(root, run)
     esc_dir = paths.escalations_dir(root, run)
     if os.path.isdir(esc_dir):
         for name in os.listdir(esc_dir):
             if not name.endswith(".json"):
                 continue
             esc = load(os.path.join(esc_dir, name))
-            if esc.get("status") == "open":
+            if esc.get("status") == "open" and esc.get("blocking", True):
                 sys.exit(f"cannot accept with open escalation: {esc.get('id', name)}")
     for wid in wos:
         gate_path = os.path.join(paths.gates_dir(root, run), f"{wid}.json")
@@ -872,7 +881,7 @@ def cmd_accept(args):
     if majors and len(dispositions) != 1:
         sys.exit(
             "major findings require exactly one --disposition "
-            "defer:<WO-ID> or waive:<reason>"
+            "defer:<FOLLOWUP-ID> or waive:<reason>"
         )
     if dispositions and not majors:
         sys.exit("--disposition is only valid when major findings exist")
@@ -925,7 +934,7 @@ def cmd_accept(args):
             disposition_record = {"raw": raw, "kind": "waive", "reason": reason}
         else:
             sys.exit(
-                "unknown disposition; use defer:<WO-ID> or waive:<non-empty reason>"
+                "unknown disposition; use defer:<FOLLOWUP-ID> or waive:<non-empty reason>"
             )
 
     dispositions_record = [disposition_record] if disposition_record else []
@@ -996,6 +1005,9 @@ def cmd_budget_grant(args):
     ctl["status"] = "active"
     ctl["reason"] = ""
     ctl["paused_at"] = ""
+    ctl["no_progress_streak"] = 0
+    ctl["last_progress_fingerprint"] = ""
+    ctl["last_progress_at"] = now()
     data["updated_at"] = now()
     save(path, data)
     append_event(root, run, "budget_granted", {

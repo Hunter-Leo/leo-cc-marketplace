@@ -122,7 +122,7 @@ Spawn only when the trigger applies:
 | unfamiliar module, cross-module, large repo, unknown callers/reuse/conflicts | `sancai-explorer` |
 | two or more technical routes, algorithm/data-model/API choice, new module boundary | `sancai-design-critic` |
 | ambiguous AC, missing non-goals, high-risk/irreversible work | `sancai-design-critic` with `intent-review` mode |
-| formula/numeric/statistical/external evidence | `sancai-researcher` / `sancai-science-auditor` (automatic detection below) |
+| formula/numeric/statistical/external evidence | `sancai-researcher` in H1; `sancai-science-auditor` at G3 (automatic detection below) |
 | small, clear, single-module task | no spawn; PM reads directly |
 
 Explorer runs before the PM finalizes the draft. Design-critic runs after the
@@ -321,21 +321,27 @@ shown, not just a count.
 Present the card, then use the interactive question UI (Start / Edit / Cancel).
 This is the default H1 path: the human does not copy card ids or run a command.
 
-- If the human chooses **Start**, call the agent-allowed recorder with the
+- If the human chooses **Start**, call the native decision entrypoint with the
   human's exact choice:
 
 ```bash
-python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" record-intent \
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" record-intent \
   --run <run> --session-id "${CLAUDE_CODE_SESSION_ID:-}" --message "confirmed"
 ```
+
+  The `PreToolUse` hook turns this into Claude Code's permission prompt; the
+  human clicks Allow, so the approval cannot be recorded by a bare
+  `sancai_state.py record-intent` call.
 
 - If the human chooses **Edit** or **Cancel**, update the intent or stop; do not
   record an approval.
 
-H1 is a contract gate, not proof of an irreversible action. For high-risk runs
-(`T3`/`T4`, or `SANCAI_REQUIRE_TTY_SIGN=1`), use the native decision entrypoint;
-the PreToolUse hook turns it into Claude Code's permission prompt, so the human
-clicks Allow instead of copying a command:
+H1 is a contract gate, not proof of an irreversible action. The native
+`sancai_decide.py record-intent` entrypoint still asks the host for Allow, so a
+human is in the loop even when no signed card is used. For high-risk runs
+(`T3`/`T4`, or `SANCAI_REQUIRE_TTY_SIGN=1`), use the card + `sancai_decide.py
+sign` path; the PreToolUse hook turns it into the same permission prompt, so the
+human clicks Allow instead of copying a command:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" sign \
@@ -577,10 +583,10 @@ sourced to `run:<run>/WO:<WO-ID>`. It does **not** create a new Work Order in
 the accepted run; the human promotes it later if it should be planned.
 
 Blocking (blocker/critical) findings can never be accepted. If the human
-refuses acceptance, do not record an accept: keep the run in `reviewing`,
-record their reason (e.g. as a new escalation or progress note), and send the
-Work Order back for rework. A consumed card is single-use — each attempt needs
-a freshly rendered card.
+refuses acceptance, do not record an accept: keep the run in `reviewing` and
+record their reason. Verified Work Orders are terminal; rework after H3
+requires abandoning this run and starting a new one. A consumed card is
+single-use — each attempt needs a freshly rendered card.
 
 Merge/deploy is a separate irreversible action; use `/sancai approve` if needed.
 

@@ -100,6 +100,19 @@ class ControlIntegrationTest(unittest.TestCase):
         run_data = json.loads(run_path.read_text())
         self.assertEqual(run_data["control"]["status"], "paused")
         self.assertEqual(run_data["control"]["attempts"], 1)
+        nxt = json.loads(
+            self.run_script(
+                "sancai_graph.py", "next", "--run", "001", "--json", check=True
+            ).stdout
+        )
+        self.assertEqual(nxt["action"], "budget-grant")
+        self.assertIn("paused", nxt["reason"])
+        status = json.loads(
+            self.run_script(
+                "sancai_state.py", "status", "--run", "001", "--json", check=True
+            ).stdout
+        )
+        self.assertEqual(status["control"]["status"], "paused")
         self.run_script(
             "sancai_state.py", "budget-grant", "--run", "001",
             "--field", "max_attempts", "--to", "2", "--reason", "test",

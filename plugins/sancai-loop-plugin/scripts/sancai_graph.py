@@ -162,6 +162,7 @@ def build_graph(root, run):
         "state": run_data.get("state"),
         "claim": run_data.get("claim"),
         "session_id": run_data.get("session_id"),
+        "control": run_data.get("control") or {},
         "created_at": run_data.get("created_at"),
         "updated_at": run_data.get("updated_at"),
     })
@@ -515,7 +516,24 @@ def next_step(graph):
     action = nxt["action"]
     wo = nxt.get("wo")
     run = graph["run"]
+    ctl = run_node.get("control") or {}
 
+    if ctl.get("status") == "paused":
+        reason = f"run is paused: {ctl.get('reason') or 'budget exhausted'}"
+        check = (
+            f"sancai_decide.py budget-grant --run {run} "
+            "--field max_attempts --to <new-cap>"
+        )
+        allowed, forbidden = _allowed_for(state, claim)
+        return {
+            "action": "budget-grant",
+            "wo": None,
+            "escalation": nxt.get("escalation"),
+            "reason": reason,
+            "check": check,
+            "allowed": ["status", "budget-grant", "accept", "abandon"],
+            "forbidden": forbidden,
+        }
     if action == "start":
         reason, check = "intent is not signed", f"sancai_card.py intent --run {run}"
     elif action == "approve":
@@ -599,6 +617,11 @@ def position(graph):
             "verified": verified, "total": total, "current_wo": current_wo,
         },
         "claim": claim,
+        "control": {
+            "status": (run.get("control") or {}).get("status"),
+            "reason": (run.get("control") or {}).get("reason"),
+            "attempts": (run.get("control") or {}).get("attempts", 0),
+        },
         "trigger": trigger,
         "trigger_detail": (
             {"type": blocking[0].get("esc_type"), "id": blocking[0]["id"], "blocking": True}

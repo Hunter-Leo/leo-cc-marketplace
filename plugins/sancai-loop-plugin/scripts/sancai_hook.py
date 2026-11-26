@@ -9,6 +9,8 @@ modes:
   --precompact   no-op in MVP
   --status-line  UserPromptSubmit: inject one deduplicated status line
 """
+from __future__ import annotations
+
 import argparse
 import datetime
 import hashlib
@@ -215,6 +217,32 @@ def decision_call(command):
     return None
 
 
+def read_only_status_call(command):
+    """True for status/card/timeline calls that remain safe while paused."""
+    if not command:
+        return False
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return False
+    for i, token in enumerate(tokens):
+        base = os.path.basename(token)
+        if base not in ("sancai_state.py", "sancai_graph.py", "sancai_card.py"):
+            continue
+        rest = [t for t in tokens[i + 1:] if not t.startswith("-")]
+        sub = rest[0] if rest else ""
+        return sub in ("status", "card", "timeline", "next")
+    return False
+
+
+def paused_reason(run_data):
+    ctl = control.control_of(run_data)
+    if ctl.get("status") == "paused":
+        return ctl.get("pause_reason") or "run is paused"
+    return None
+
+
+
 def ask_decision(decision, run):
     """Show one native prompt for a sancai_decide.py call."""
     sub, opts = decision
@@ -222,7 +250,9 @@ def ask_decision(decision, run):
     card = opts.get("card-id") or "<missing card>"
     target = opts.get("id") or ""
     detail = ""
-    if sub == "mint":
+    if sub == "record-intent":
+        detail = f" message={opts.get('message')}"
+    elif sub == "mint":
         detail = f" action={opts.get('action')} diff={opts.get('diff-sha')}"
     elif sub == "abandon":
         detail = f" reason={opts.get('reason')}"
@@ -267,7 +297,6 @@ def main():
     STATUS["root"] = root
     STATUS["run"] = run
 
-    rd = paths.run_dir(root, run)
     run_path = paths.run_path(root, run)
     if not os.path.isfile(run_path):
         reason = f"Sancai active run {run} has no {run_path}; refusing to continue blindly"
@@ -295,23 +324,40 @@ def main():
         path = ti.get("file_path") or ti.get("path")
         state = run_data.get("state")
         claim = run_data.get("claim")
+        paused = paused_reason(run_data)
+
+        if paused:
+            if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+                deny(f"Sancai: run is paused ({paused}); writes are disabled")
+            if tool in ("Task", "Agent"):
+                deny(f"Sancai: run is paused ({paused}); subagents are disabled")
+            if tool == "Bash":
+                decision = decision_call(command)
+                if decision and decision[0] in (
+                    "budget-grant", "abandon", "accept", "sign", "record-intent",
+                ):
+                    ask_decision(decision, run)
+                if read_only_status_call(command):
+                    ok, reason = cap_check(root, tool, command, path, run)
+                    if not ok:
+                        deny(f"Sancai capability denied: {reason}")
+                    allow()
+                deny(
+                    f"Sancai: run is paused ({paused}); use budget-grant, accept, "
+                    "abandon, or status before mutating anything"
+                )
+            if tool.startswith("mcp__"):
+                deny(f"Sancai: run is paused ({paused}); external tools are disabled")
 
         if tool in ("Task", "Agent"):
-            subtype = str(
-                ti.get("subagent_type")
-                or ti.get("agent_type")
-                or ti.get("agent_name")
-                or ti.get("name")
-                or ""
-            )
+            subtype = str(ti.get("subagent_type") or "")
             allowed = {
                 "planning": {
                     "sancai-explorer", "sancai-design-critic",
-                    "sancai-researcher", "sancai-science-auditor",
+                    "sancai-researcher",
                 },
                 "executing": {
                     "sancai-executor", "sancai-verifier",
-                    "sancai-researcher", "sancai-science-auditor",
                 },
                 "reviewing": {
                     "sancai-verifier", "sancai-science-auditor",
@@ -337,7 +383,7 @@ def main():
         # Outside an active execution claim, code writes are denied. The only
         # exceptions are the H1 intent draft, H1 research artifacts, and the
         # science audit written by the independent auditor.
-        if tool in ("Write", "Edit", "NotebookEdit"):
+        if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
             intent_path = paths.intent_path(root, run, run_data)
             research_root = os.path.realpath(paths.research_dir(root, run))
             audit_root = os.path.realpath(paths.science_audit_dir(root, run))
@@ -360,6 +406,12 @@ def main():
             decision = decision_call(command)
             if decision:
                 ask_decision(decision, run)
+            allow()
+
+        if tool.startswith("mcp__"):
+            ok, reason = cap_check(root, tool, command, path, run)
+            if not ok:
+                deny(f"Sancai capability denied: {reason}")
             allow()
 
         allow()

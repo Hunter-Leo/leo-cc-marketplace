@@ -30,6 +30,7 @@ DEFAULT_TABLE = {
     "Glob": {"reversible": True, "network": False, "mutates_external_state": False},
     "Write": {"reversible": True, "network": False, "mutates_external_state": False},
     "Edit": {"reversible": True, "network": False, "mutates_external_state": False},
+    "MultiEdit": {"reversible": True, "network": False, "mutates_external_state": False},
     "NotebookEdit": {"reversible": True, "network": False, "mutates_external_state": False},
     "TodoWrite": {"reversible": True, "network": False, "mutates_external_state": False},
     "Task": {"reversible": True, "network": False, "mutates_external_state": False},
@@ -131,7 +132,7 @@ HARNESS_SCRIPTS = {
     "sancai_science.py",
 }
 HUMAN_DECISION_COMMANDS = {
-    "sancai_state.py": {"sign", "accept", "abandon", "budget-grant"},
+    "sancai_state.py": {"record-intent", "sign", "accept", "abandon", "budget-grant"},
     "sancai_escalate.py": {"approve", "reject"},
     "sancai_human.py": {"sign", "approve", "reject", "accept"},
     "sancai_verdict.py": {"prepare"},
@@ -476,7 +477,7 @@ def check(root, tool, command=None, path=None, run=None, token_path=None):
         ok, reason, _ = find_token(root, run, action)
         return ok, reason
 
-    if tool in ("Write", "Edit", "NotebookEdit"):
+    if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
         if not path:
             return False, f"{tool} did not provide a path"
         claim, owned = _claim(root, run)

@@ -10,6 +10,7 @@ commands that `sancai_human.py` calls, so card binding, dwell, phrase checks, an
 state guards stay in one place.
 
 usage:
+  sancai_decide.py record-intent --run R --message confirmed --session-id S
   sancai_decide.py sign    --run R --message confirmed --session-id S \
                          --card-id CARD-... --card-code ........
   sancai_decide.py approve --run R --id ESC-001 --message approved --session-id S \
@@ -48,6 +49,11 @@ def main(argv=None):
         description="Sancai decision entrypoint gated by Claude Code's native permission prompt."
     )
     sub = ap.add_subparsers(dest="cmd", required=True)
+
+    p = sub.add_parser("record-intent", help="record H1 approval after the native prompt")
+    p.add_argument("--run", required=True)
+    p.add_argument("--message", required=True)
+    p.add_argument("--session-id", default="")
 
     p = sub.add_parser("sign", help="approve the run intent")
     p.add_argument("--run", required=True)
@@ -144,6 +150,13 @@ def main(argv=None):
             file=sys.stderr,
         )
         return 2
+
+    if args.cmd == "record-intent":
+        return _run("sancai_state.py", "record-intent", [
+            "--run", args.run,
+            "--message", args.message,
+            "--session-id", session,
+        ])
 
     forwarded = []
     if args.cmd in ("sign", "accept"):

@@ -162,12 +162,42 @@ def _file_sha(path):
         return ""
 
 
+_VOLATILE_KEYS = {
+    "collected_at", "written_at", "created_at", "updated_at",
+    "started_at", "finished_at", "timestamp", "duration_ms",
+}
+
+
+def _strip_volatile(value):
+    if isinstance(value, dict):
+        return {
+            key: _strip_volatile(item)
+            for key, item in value.items()
+            if key not in _VOLATILE_KEYS
+        }
+    if isinstance(value, list):
+        return [_strip_volatile(item) for item in value]
+    return value
+
+
+def _semantic_sha(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return _file_sha(path)
+    clean = _strip_volatile(data)
+    return hashlib.sha256(
+        json.dumps(clean, sort_keys=True, ensure_ascii=False).encode()
+    ).hexdigest()
+
+
 def _dir_hashes(directory, names):
     out = {}
     for name in names:
         path = os.path.join(directory, f"{name}.json")
         if os.path.isfile(path):
-            out[name] = _file_sha(path)
+            out[name] = _semantic_sha(path)
     return out
 
 

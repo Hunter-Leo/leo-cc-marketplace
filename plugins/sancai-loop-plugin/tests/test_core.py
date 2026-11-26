@@ -566,9 +566,11 @@ class SancaiCoreTest(unittest.TestCase):
         ]
         for name, *args in commands:
             proc = self.run_script(name, *args)
+            out = proc.stderr + proc.stdout
             self.assertNotEqual(proc.returncode, 0, f"{name} {args}")
-            self.assertIn(
-                "abandoned", proc.stderr + proc.stdout, f"{name} {args}"
+            self.assertTrue(
+                "abandoned" in out or "no active Sancai run" in out,
+                f"{name} {args}: {out}",
             )
 
         proc = self.run_script(
@@ -863,10 +865,101 @@ class SancaiCoreTest(unittest.TestCase):
             return proc.stdout
 
         self.assertNotIn("permissionDecision", run_task("sancai-explorer"))
+        self.assertNotIn("permissionDecision", run_task("sancai-researcher"))
+        self.assertIn("permissionDecision", run_task("sancai-science-auditor"))
         self.assertIn("permissionDecision", run_task("general-purpose"))
         self.start_execution()
         self.assertNotIn("permissionDecision", run_task("sancai-executor"))
+        self.assertNotIn("permissionDecision", run_task("sancai-verifier"))
         self.assertIn("permissionDecision", run_task("sancai-explorer"))
+        self.assertIn("permissionDecision", run_task("sancai-researcher"))
+        self.assertIn("permissionDecision", run_task("sancai-science-auditor"))
+
+    def run_pre_tool(self, payload):
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--pre-tool"],
+            cwd=self.tmp, input=json.dumps(payload), capture_output=True, text=True,
+            env=self.env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        return json.loads(proc.stdout) if proc.stdout.strip() else {}
+
+    def pause_run(self):
+        run_path = pathlib.Path(self.tmp, ".sancai/runs/001-test/L2-harness/run.json")
+        data = json.loads(run_path.read_text())
+        control = data.setdefault("control", {})
+        control["status"] = "paused"
+        control["pause_reason"] = "test pause"
+        run_path.write_text(json.dumps(data))
+
+    def test_paused_run_denies_mutations(self):
+        self.start_execution()
+        self.pause_run()
+        a = str(pathlib.Path(self.tmp) / "a.txt")
+        for tool, tool_input in (
+            ("Write", {"file_path": a}),
+            ("MultiEdit", {"file_path": a, "edits": []}),
+            ("Task", {"subagent_type": "sancai-executor"}),
+            ("Bash", {"command": "git add a.txt"}),
+        ):
+            out = self.run_pre_tool({
+                "cwd": self.tmp, "session_id": "s1",
+                "tool_name": tool, "tool_input": tool_input,
+            })
+            self.assertEqual(
+                out.get("hookSpecificOutput", {}).get("permissionDecision"), "deny",
+                f"{tool} should be denied while paused: {out}",
+            )
+        out = self.run_pre_tool({
+            "cwd": self.tmp, "session_id": "s1", "tool_name": "Bash",
+            "tool_input": {"command": f"{sys.executable} {SCRIPTS / 'sancai_state.py'} status"},
+        })
+        self.assertNotEqual(
+            out.get("hookSpecificOutput", {}).get("permissionDecision"), "deny",
+            out,
+        )
+
+    def test_multiedit_and_mcp_fail_closed_outside_claim(self):
+        a = str(pathlib.Path(self.tmp) / "a.txt")
+        for tool, tool_input in (
+            ("MultiEdit", {"file_path": a, "edits": []}),
+            ("mcp__unknown__write", {}),
+            ("mcp__github__merge_pr", {"pr": 1}),
+        ):
+            out = self.run_pre_tool({
+                "cwd": self.tmp, "session_id": "s1",
+                "tool_name": tool, "tool_input": tool_input,
+            })
+            self.assertEqual(
+                out.get("hookSpecificOutput", {}).get("permissionDecision"), "deny",
+                f"{tool} should fail closed: {out}",
+            )
+
+    def test_record_intent_requires_decide_entrypoint(self):
+        direct = (
+            f"{sys.executable} {SCRIPTS / 'sancai_state.py'} record-intent "
+            "--run 001-test --message confirmed --session-id s1"
+        )
+        proc = self.run_script("sancai_capability.py", "check", "--tool", "Bash",
+                               "--command", direct, "--run", "001-test")
+        self.assertNotEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        via_decide = (
+            f"{sys.executable} {SCRIPTS / 'sancai_decide.py'} record-intent "
+            "--run 001-test --message confirmed --session-id s1"
+        )
+        proc = self.run_script("sancai_capability.py", "check", "--tool", "Bash",
+                               "--command", via_decide, "--run", "001-test")
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+
+    def test_gate_rejects_unknown_or_escaping_work_order(self):
+        self.start_execution()
+        run_path = pathlib.Path(self.tmp, ".sancai/runs/001-test/L2-harness/run.json")
+        before = run_path.read_text()
+        for wo in ("WO-999", "../run", "../../../../project/requirements"):
+            proc = self.run_script("sancai_gate.py", "--run", "001-test",
+                                   "--wo", wo, "--apply")
+            self.assertNotEqual(proc.returncode, 0, f"{wo} should be rejected")
+        self.assertEqual(run_path.read_text(), before)
 
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})
@@ -938,19 +1031,13 @@ class SancaiCoreTest(unittest.TestCase):
     def test_status_line_terminal_pointer(self):
         self.run_script("sancai_state.py", "abandon", "--reason", "test")
         active = pathlib.Path(self.tmp) / ".sancai" / "active"
-        self.assertEqual(json.loads(active.read_text())["state"], "abandoned")
-        active.write_text(json.dumps({"run": "001-test", "state": "abandoned"}))
+        self.assertFalse(active.exists(), "abandon must clear the active pointer")
         payload = json.dumps({"cwd": self.tmp})
-        first = subprocess.run(
+        proc = subprocess.run(
             [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--status-line"],
             cwd=self.tmp, input=payload, capture_output=True, text=True, env=self.env,
         )
-        self.assertIn("abandoned", first.stdout)
-        second = subprocess.run(
-            [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--status-line"],
-            cwd=self.tmp, input=payload, capture_output=True, text=True, env=self.env,
-        )
-        self.assertEqual(second.stdout.strip(), "")
+        self.assertEqual(proc.stdout.strip(), "")
 
     def test_timeline_and_progress_card(self):
         self.start_execution()

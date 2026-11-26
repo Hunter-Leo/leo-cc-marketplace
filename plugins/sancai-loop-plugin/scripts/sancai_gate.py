@@ -22,7 +22,7 @@ os.umask(0o077)
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from sancai_state import append_event  # type: ignore  # noqa: E402
+from sancai_state import append_event, validate_id  # type: ignore  # noqa: E402
 
 
 def now():
@@ -138,9 +138,12 @@ def main():
     args = ap.parse_args()
 
     root = find_root()
-    rd = paths.run_dir(root, args.run)
+    validate_id(args.run, "run id")
+    validate_id(args.wo, "work order id")
     run_path = paths.run_path(root, args.run)
     run_data = load(run_path)
+    if args.wo not in (run_data.get("work_orders") or {}):
+        sys.exit(f"unknown work order: {args.wo}")
 
     # G0: deterministic acceptance checks, harness-owned.
     proc = subprocess.run(
@@ -236,6 +239,11 @@ def main():
 
     if args.apply and args.wo in run_data.get("work_orders", {}):
         wo = run_data["work_orders"][args.wo]
+        if result in ("verified", "changes_requested") and wo["state"] != "for_review":
+            sys.exit(
+                f"{args.wo} is {wo['state']}; a gate result can only apply to "
+                "a for_review work order"
+            )
         if result == "verified" and wo["state"] == "for_review":
             wo["state"] = "verified"
         elif result == "changes_requested" and wo["state"] == "for_review":
@@ -246,7 +254,9 @@ def main():
                     f"refusing to downgrade {wo['state']} work order {args.wo} to blocked"
                 )
             wo["state"] = "blocked"
-        run_data["claim"] = None
+        claim = run_data.get("claim") or {}
+        if claim.get("wo") == args.wo:
+            run_data["claim"] = None
         run_data["updated_at"] = now()
         if (
             run_data["state"] == "executing"
