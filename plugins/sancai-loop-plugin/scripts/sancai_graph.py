@@ -22,6 +22,7 @@ import json
 import os
 
 import sancai_paths as paths  # type: ignore
+import sancai_control as control  # type: ignore  # noqa: E402
 import sancai_requirements as requirements  # type: ignore
 
 import statistics
@@ -387,6 +388,19 @@ def build_graph(root, run):
     # Intent summary (for the intent card).
     intent_path = paths.intent_path(root, run, run_data)
     intent = load(intent_path) if os.path.isfile(intent_path) else {}
+    ctl = control.control_of(run_data)
+    budget = control.effective_budget(intent, ctl)
+    metrics.update({
+        "control_status": ctl.get("status"),
+        "control_reason": ctl.get("reason"),
+        "attempts_budget": budget["max_attempts"],
+        "attempts_remaining": max(
+            0, budget["max_attempts"] - ctl.get("attempts", 0)
+        ),
+        "human_rounds_budget": budget["max_human_rounds"],
+        "human_rounds_used": ctl.get("human_rounds", 0),
+        "no_progress_streak": ctl.get("no_progress_streak", 0),
+    })
     intent_summary = {
         "goal": intent.get("goal", ""),
         "non_goals": intent.get("non_goals", []),
@@ -804,7 +818,9 @@ def cmd_metrics(args):
         "wo_total", "wo_verified", "wo_blocked", "attempts", "rework",
         "rejections", "escalations", "approvals", "open_escalations",
         "tokens", "human_minutes", "decisions", "median_latency_seconds",
-        "fatigue_suspected",
+        "fatigue_suspected", "control_status", "control_reason",
+        "attempts_budget", "attempts_remaining", "human_rounds_budget",
+        "human_rounds_used", "no_progress_streak",
     ):
         print(f"{key:26s} {metrics[key]}")
 

@@ -122,6 +122,14 @@ def build_card(graph, kind, esc_id=None, wo_id=None):
         "why": "",
         "impact": "",
         "options": [],
+        "control": {
+            "status": graph.get("metrics", {}).get("control_status"),
+            "reason": graph.get("metrics", {}).get("control_reason"),
+            "attempts": graph.get("metrics", {}).get("attempts"),
+            "attempts_budget": graph.get("metrics", {}).get("attempts_budget"),
+            "human_rounds_used": graph.get("metrics", {}).get("human_rounds_used"),
+            "human_rounds_budget": graph.get("metrics", {}).get("human_rounds_budget"),
+        },
     }
 
     if kind == "intent":
@@ -462,6 +470,17 @@ def render(card):
     lines.append(f"Stage  {card['stage']}")
     lines.append(f"Layer  {card['layer']}")
     lines.append(f"Progress      {card['progress']}")
+    control = card.get("control") or {}
+    if control.get("status"):
+        lines.append(
+            f"Budget        attempts {control.get('attempts', 0)}"
+            f"/{control.get('attempts_budget', '?')} · "
+            f"human {control.get('human_rounds_used', 0)}"
+            f"/{control.get('human_rounds_budget', '?')} · "
+            f"{control.get('status')}"
+        )
+        if control.get("reason"):
+            lines.append(f"Paused        {control['reason']}")
     lines.append(f"Trigger      {card['trigger'] or '—'}")
     lines.append("")
     lines.append("What happened")

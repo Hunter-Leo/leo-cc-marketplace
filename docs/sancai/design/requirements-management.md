@@ -1,6 +1,6 @@
 # Sancai 需求管理设计：项目账本 + Run 意图快照
 
-- 状态：Implemented v0.10.0-rc.5
+- 状态：Implemented v0.10.0-rc.6
 - 日期：2026-11-25
 - 范围：单仓库、单写者、串行（与 MVP 一致）
 - 代码：`plugins/sancai-loop-plugin/scripts/sancai_requirements.py`
@@ -273,7 +273,7 @@ Phase 2 连同依赖图与里程碑一起设计。
   检查，旧 run 可继续。
 - 有账本但 intent 无 `requirements`：仍按 legacy 处理；`select` 才会开启强制。
 - 账本只追加，不删除；`blueprint.md` 可随时从 JSON 重新生成。
-- 版本：`0.10.0-rc.5`。
+- 版本：`0.10.0-rc.6`。
 
 ---
 

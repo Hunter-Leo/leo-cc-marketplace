@@ -28,9 +28,23 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import sancai_cards  # type: ignore  # noqa: E402
+import sancai_control as control  # type: ignore  # noqa: E402
 from sancai_state import append_event, validate_id  # type: ignore  # noqa: E402
 
 ALLOWED_APPROVALS = {"confirmed", "approve execution", "approved", "yes"}
+
+
+def consume_human_round(root, run, action):
+    run_path = paths.run_path(root, run)
+    data = load(run_path)
+    intent = load(paths.intent_path(root, run, data))
+    ctl = control.control_of(data)
+    ok, reason = control.consume_human_round(
+        ctl, control.effective_budget(intent, ctl), action
+    )
+    if not ok:
+        sys.exit(reason)
+    save(run_path, data)
 
 
 def now():
@@ -178,6 +192,7 @@ def cmd_approve(args):
     e = load(path)
     if e.get("status") != "open":
         sys.exit(f"escalation is {e.get('status')}, not open")
+    consume_human_round(root, args.run, "escalation decision")
     card = consume_bound_card(root, e, args.card_id, args.card_code)
     latency = round(sancai_cards.card_age_seconds(card), 3)
     e["status"] = "approved"
@@ -213,6 +228,7 @@ def cmd_reject(args):
     e = load(path)
     if e.get("status") != "open":
         sys.exit(f"escalation is {e.get('status')}, not open")
+    consume_human_round(root, args.run, "escalation decision")
     card = consume_bound_card(root, e, args.card_id, args.card_code)
     latency = round(sancai_cards.card_age_seconds(card), 3)
     e["status"] = "rejected"

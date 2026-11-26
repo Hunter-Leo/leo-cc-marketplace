@@ -28,6 +28,7 @@ import re
 import sys
 
 import sancai_cards  # type: ignore
+import sancai_control as control  # type: ignore
 import sancai_graph  # type: ignore
 import sancai_requirements as requirements  # type: ignore
 
@@ -73,6 +74,20 @@ def default_session(value=""):
 def require_nonterminal(data, action):
     if data.get("state") in ("accepted", "abandoned"):
         sys.exit(f"cannot {action} a {data['state']} run")
+
+
+def require_control(root, run, path, data, action="continue"):
+    intent_path = paths.intent_path(root, run, data)
+    intent = load(intent_path) if os.path.isfile(intent_path) else {}
+    ctl = control.control_of(data)
+    if ctl.get("status") == "paused":
+        sys.exit(f"run is paused: {ctl.get('reason') or 'budget exhausted'}")
+    reason = control.deadline_reason(ctl, control.effective_budget(intent, ctl))
+    if reason:
+        control.pause(ctl, reason)
+        save(path, data)
+        append_event(root, run, "budget_exhausted", {"reason": reason, "action": action})
+        sys.exit(reason)
 
 
 def resolve_run(root, args):
@@ -124,6 +139,7 @@ def intent_snapshot(intent):
 def validate_intent(intent, root=None):
     if not isinstance(intent, dict):
         sys.exit("intent must be a JSON object")
+    control.budget_of(intent)
     goal = intent.get("goal")
     if not isinstance(goal, str) or not goal.strip():
         sys.exit("intent.goal must be a non-empty string")
@@ -277,6 +293,7 @@ def cmd_init(args):
         "intent_version": intent.get("version", 1),
         "work_orders": {},
         "claim": None,
+        "control": control.new_control(),
         "created_at": now(),
         "updated_at": now(),
     }
@@ -289,7 +306,8 @@ def cmd_init(args):
 def cmd_sign(args):
     root = find_root()
     run = resolve_run(root, args)
-    _, data = load_run(root, run)
+    run_path, data = load_run(root, run)
+    require_control(root, run, run_path, data, "H1 approval")
     if data["state"] != "planning":
         sys.exit(f"run must be planning to sign, currently {data['state']}")
     if args.message not in ALLOWED_APPROVALS:
@@ -303,6 +321,12 @@ def cmd_sign(args):
     validate_intent(intent, root)
     require_alignment(intent)
     snapshot = intent_snapshot(intent)
+    ctl = control.control_of(data)
+    budget = control.effective_budget(intent, ctl)
+    ok, reason = control.consume_human_round(ctl, budget, "sign")
+    if not ok:
+        sys.exit(reason)
+    save(run_path, data)
     expected = {
         "intent_sha": snapshot,
         "goal": intent.get("goal", ""),
@@ -348,7 +372,8 @@ def cmd_record_intent(args):
     """
     root = find_root()
     run = resolve_run(root, args)
-    _, data = load_run(root, run)
+    run_path, data = load_run(root, run)
+    require_control(root, run, run_path, data, "H1 approval")
     if data["state"] != "planning":
         sys.exit(f"run must be planning to sign, currently {data['state']}")
     if args.message not in ALLOWED_APPROVALS:
@@ -362,6 +387,12 @@ def cmd_record_intent(args):
     validate_intent(intent, root)
     require_alignment(intent)
     snapshot = intent_snapshot(intent)
+    ctl = control.control_of(data)
+    budget = control.effective_budget(intent, ctl)
+    ok, reason = control.consume_human_round(ctl, budget, "record-intent")
+    if not ok:
+        sys.exit(reason)
+    save(run_path, data)
     latency = 0.0
     card = sancai_cards.latest_card(root, run, "intent")
     if (
@@ -471,6 +502,7 @@ def cmd_transition(args):
     root = find_root()
     run = resolve_run(root, args)
     path, data = load_run(root, run)
+    require_control(root, run, path, data, "transition the run")
     cur, nxt = data["state"], args.to
     if nxt == "accepted":
         sys.exit("use accept to accept a run; transition cannot set accepted")
@@ -527,6 +559,7 @@ def cmd_add_wo(args):
     validate_id(args.id, "work order")
     path, data = load_run(root, run)
     require_nonterminal(data, "add a work order to")
+    require_control(root, run, path, data, "add a work order")
     if args.id in data["work_orders"]:
         sys.exit(f"work order already exists: {args.id}")
     intent = load(paths.intent_path(root, run, data))
@@ -581,6 +614,19 @@ def cmd_claim(args):
         sys.exit(f"work order not found: {args.wo}")
     if wo["state"] not in ("pending", "changes_requested", "blocked"):
         sys.exit(f"work order {args.wo} is {wo['state']}, not claimable")
+    intent = load(paths.intent_path(root, run, data))
+    ctl = control.control_of(data)
+    budget = control.effective_budget(intent, ctl)
+    ok, reason = control.consume_attempt(ctl, budget, wo)
+    if not ok:
+        control.pause(ctl, reason)
+        data["updated_at"] = now()
+        save(path, data)
+        append_event(root, run, "budget_exhausted", {
+            "wo": args.wo,
+            "reason": reason,
+        })
+        sys.exit(reason)
     data["claim"] = {
         "wo": args.wo,
         "by": args.by,
@@ -616,6 +662,7 @@ def cmd_wo_transition(args):
     validate_id(args.wo, "work order")
     path, data = load_run(root, run)
     require_nonterminal(data, "transition a work order in")
+    require_control(root, run, path, data, "transition a work order")
     wo = data["work_orders"].get(args.wo)
     if not wo:
         sys.exit(f"work order not found: {args.wo}")
@@ -660,6 +707,8 @@ def cmd_event(args):
     run = resolve_run(root, args)
     _, data = load_run(root, run)
     require_nonterminal(data, "record an event in")
+    path = paths.run_path(root, run)
+    require_control(root, run, path, data, "record an event")
     try:
         meta = json.loads(args.meta) if args.meta else {}
     except json.JSONDecodeError:
@@ -673,6 +722,8 @@ def cmd_progress(args):
     run = resolve_run(root, args)
     _, data = load_run(root, run)
     require_nonterminal(data, "record progress in")
+    path = paths.run_path(root, run)
+    require_control(root, run, path, data, "record progress")
     rd = run_dir(root, run)
     os.makedirs(rd, exist_ok=True)
     symbol = {"done": "✅", "doing": "▶", "blocked": "⏸", "todo": " "}.get(args.status, " ")
@@ -766,6 +817,8 @@ def cmd_accept(args):
         coverage[req_id] = covered
     if data["state"] != "reviewing":
         sys.exit(f"run must be reviewing, currently {data['state']}")
+    ctl = control.control_of(data)
+    ctl["human_rounds"] = ctl.get("human_rounds", 0) + 1
     expected = accept_payload(root, run, data)
     wos = data.get("work_orders", {})
     if not wos or any(wo.get("state") not in ("verified", "merged") for wo in wos.values()):
@@ -905,6 +958,43 @@ def cmd_accept(args):
     print(f"outcome accepted: {run}")
 
 
+def cmd_budget_grant(args):
+    root = find_root()
+    run = resolve_run(root, args)
+    path, data = load_run(root, run)
+    require_nonterminal(data, "grant budget to")
+    intent = load(paths.intent_path(root, run, data))
+    ctl = control.control_of(data)
+    budget = control.effective_budget(intent, ctl)
+    if args.field not in budget:
+        sys.exit(f"unknown budget field: {args.field}")
+    if args.to <= budget[args.field]:
+        sys.exit(f"grant must raise {args.field}: current {budget[args.field]}")
+    if args.field == "max_human_rounds" and args.to <= ctl.get("human_rounds", 0):
+        sys.exit("grant must exceed the human rounds already consumed")
+    if args.field == "max_attempts" and args.to <= ctl.get("attempts", 0):
+        sys.exit("grant must exceed the attempts already consumed")
+    ctl["grants"].append({
+        "field": args.field,
+        "from": budget[args.field],
+        "to": args.to,
+        "reason": args.reason,
+        "by": "human",
+        "at": now(),
+    })
+    ctl["status"] = "active"
+    ctl["reason"] = ""
+    ctl["paused_at"] = ""
+    data["updated_at"] = now()
+    save(path, data)
+    append_event(root, run, "budget_granted", {
+        "field": args.field,
+        "to": args.to,
+        "reason": args.reason,
+    })
+    print(f"granted {args.field} -> {args.to}")
+
+
 def main():
     ap = argparse.ArgumentParser()
     sub = ap.add_subparsers(dest="cmd", required=True)
@@ -933,6 +1023,8 @@ def main():
     p = sub.add_parser("wo-transition"); p.add_argument("--run"); p.add_argument("--wo", required=True); p.add_argument("--to", required=True); p.set_defaults(func=cmd_wo_transition)
 
     p = sub.add_parser("abandon"); p.add_argument("--run"); p.add_argument("--reason", required=True); p.set_defaults(func=cmd_abandon)
+
+    p = sub.add_parser("budget-grant"); p.add_argument("--run"); p.add_argument("--field", required=True, choices=["max_attempts", "max_human_rounds", "deadline_seconds"]); p.add_argument("--to", type=int, required=True); p.add_argument("--reason", default="human approved budget extension"); p.set_defaults(func=cmd_budget_grant)
 
     p = sub.add_parser("event"); p.add_argument("--run"); p.add_argument("--type", required=True); p.add_argument("--meta", default="{}"); p.set_defaults(func=cmd_event)
 

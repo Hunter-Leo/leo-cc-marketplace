@@ -11,6 +11,7 @@ import json
 import os
 
 import sancai_paths as paths  # type: ignore
+import sancai_control as control  # type: ignore  # noqa: E402
 
 import subprocess
 import sys
@@ -154,6 +155,21 @@ def main():
     problems = validate_verifier(verifier, run_data, evidence)
     if verifier:
         problems += validate_attestation(root, args.run, args.wo, verifier)
+    intent = load(paths.intent_path(root, args.run, run_data))
+    ctl = control.control_of(run_data)
+    budget = control.effective_budget(intent, ctl)
+    deadline = control.deadline_reason(ctl, budget)
+    if deadline:
+        control.pause(ctl, deadline)
+        problems.append(deadline)
+        append_event(root, args.run, "budget_exhausted", {"reason": deadline})
+    fp = control.fingerprint(root, args.run, run_data, intent)
+    if control.observe_progress(ctl, fp, budget["max_attempts"]):
+        reason = "no-progress lease exhausted"
+        control.pause(ctl, reason)
+        problems.append(reason)
+        append_event(root, args.run, "budget_exhausted", {"reason": reason})
+    save(run_path, run_data)
     blockers = []
     if verifier:
         blockers = [
@@ -195,6 +211,9 @@ def main():
         "reasons": reasons,
     })
     print(json.dumps(gate, ensure_ascii=False, indent=2))
+
+    if args.apply and ctl.get("status") == "paused":
+        sys.exit(f"run is paused: {ctl.get('reason') or 'budget exhausted'}")
 
     if args.apply and run_data.get("state") in ("accepted", "abandoned"):
         sys.exit(

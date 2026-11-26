@@ -85,6 +85,13 @@ def main(argv=None):
     p.add_argument("--run", required=True)
     p.add_argument("--reason", required=True)
 
+    p = sub.add_parser("budget-grant", help="extend a paused run's budget")
+    p.add_argument("--run", required=True)
+    p.add_argument("--field", required=True,
+                   choices=["max_attempts", "max_human_rounds", "deadline_seconds"])
+    p.add_argument("--to", type=int, required=True)
+    p.add_argument("--reason", default="human approved budget extension")
+
     p = sub.add_parser("verifier-prepare", help="prepare a one-time verifier token")
     p.add_argument("--run", required=True)
     p.add_argument("--wo", required=True)
@@ -121,6 +128,13 @@ def main(argv=None):
         return _run("sancai_verdict.py", "prepare", [
             "--run", args.run,
             "--wo", args.wo,
+        ])
+    if args.cmd == "budget-grant":
+        return _run("sancai_state.py", "budget-grant", [
+            "--run", args.run,
+            "--field", args.field,
+            "--to", str(args.to),
+            "--reason", args.reason,
         ])
 
     session = _session(args.session_id)

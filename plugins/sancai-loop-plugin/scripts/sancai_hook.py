@@ -16,6 +16,7 @@ import json
 import os
 
 import sancai_paths as paths  # type: ignore
+import sancai_control as control  # type: ignore  # noqa: E402
 
 import shlex
 import sys
@@ -227,6 +228,8 @@ def ask_decision(decision, run):
         detail = f" reason={opts.get('reason')}"
     elif sub == "verifier-prepare":
         detail = f" work_order={opts.get('wo')}"
+    elif sub == "budget-grant":
+        detail = f" field={opts.get('field')} to={opts.get('to')}"
     ask(
         f"Sancai human decision: {sub} run={run_arg}"
         + (f" target={target}" if target else "")
@@ -364,7 +367,23 @@ def main():
         wo = claim.get("wo") or "UNKNOWN"
         verdict = os.path.join(paths.verdicts_dir(root, run), f"{wo}.json")
         if not os.path.isfile(verdict):
-            block(f"Sancai: subagent stopped without verdict for {wo}; write .sancai/runs/{run}/L2-harness/verdicts/{wo}.json")
+            wo_data = (run_data.get("work_orders") or {}).get(wo)
+            if wo_data and wo_data.get("state") in ("in_progress", "for_review"):
+                wo_data["state"] = "changes_requested"
+            run_data["claim"] = None
+            _write_status_last(paths.run_path(root, run), run_data)
+            try:
+                with open(paths.events_path(root, run), "a", encoding="utf-8") as f:
+                    f.write(json.dumps({
+                        "ts": now(),
+                        "run": run,
+                        "event": "verifier_stopped_without_verdict",
+                        "actor": "harness",
+                        "meta": {"wo": wo},
+                    }, ensure_ascii=False) + "\n")
+            except OSError:
+                pass
+            allow()
         transcript = (
             payload.get("transcript_path")
             or payload.get("agent_transcript_path")
@@ -403,6 +422,41 @@ def main():
         if os.environ.get("SANCAI_SKIP_STOP") == "1":
             allow()
         if run_data.get("state") in ("accepted", "abandoned", "reviewing"):
+            allow()
+        intent_path = paths.intent_path(root, run, run_data)
+        try:
+            intent = json.load(open(intent_path, encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            intent = {}
+        ctl = control.control_of(run_data)
+        budget = control.effective_budget(intent, ctl)
+        if ctl.get("status") == "paused":
+            allow()
+        fp = control.fingerprint(root, run, run_data, intent)
+        exhausted = control.observe_progress(ctl, fp, budget["max_attempts"])
+        save_path = paths.run_path(root, run)
+        try:
+            _write_status_last(save_path, run_data)
+        except OSError:
+            pass
+        if exhausted:
+            reason = (
+                "no-progress lease exhausted: "
+                f"{ctl.get('no_progress_streak', 0)} identical stops"
+            )
+            control.pause(ctl, reason)
+            _write_status_last(save_path, run_data)
+            try:
+                with open(paths.events_path(root, run), "a", encoding="utf-8") as f:
+                    f.write(json.dumps({
+                        "ts": now(),
+                        "run": run,
+                        "event": "budget_exhausted",
+                        "actor": "harness",
+                        "meta": {"reason": reason},
+                    }, ensure_ascii=False) + "\n")
+            except OSError:
+                pass
             allow()
         sid = payload.get("session_id")
         run_sid = run_data.get("session_id")

@@ -505,6 +505,10 @@ class SancaiCoreTest(unittest.TestCase):
                 f"python3 {SCRIPTS / 'sancai_decide.py'} verifier-prepare "
                 "--run 001-test --wo WO-001"
             ),
+            (
+                f"python3 {SCRIPTS / 'sancai_decide.py'} budget-grant "
+                "--run 001-test --field max_attempts --to 12"
+            ),
         ]
         for command in commands:
             payload = json.dumps({
@@ -704,12 +708,9 @@ class SancaiCoreTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertEqual(json.loads(proc.stdout)["tier"], "T2")
 
-    def test_subagent_stop_only_guards_the_verifier(self):
+    def test_subagent_stop_only_releases_the_verifier_claim(self):
         self.start_execution()
-        for agent_type, blocked in (
-            ("general-purpose", False),
-            ("sancai-verifier", True),
-        ):
+        for agent_type in ("general-purpose", "sancai-verifier"):
             payload = json.dumps({
                 "cwd": self.tmp,
                 "session_id": "s1",
@@ -721,8 +722,18 @@ class SancaiCoreTest(unittest.TestCase):
                 env=self.env,
             )
             self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
-            output = json.loads(proc.stdout) if proc.stdout.strip() else {}
-            self.assertEqual(output.get("decision") == "block", blocked, agent_type)
+            self.assertNotIn("permissionDecision", proc.stdout)
+            run_data = json.loads(pathlib.Path(
+                self.tmp, ".sancai/runs/001-test/L2-harness/run.json"
+            ).read_text())
+            if agent_type == "sancai-verifier":
+                self.assertIsNone(run_data["claim"])
+                self.assertEqual(
+                    run_data["work_orders"]["WO-001"]["state"],
+                    "changes_requested",
+                )
+            else:
+                self.assertIsNotNone(run_data["claim"])
 
     def test_verifier_stop_writes_attestation(self):
         self.start_execution()

@@ -154,6 +154,14 @@ TODO instead of creating a Work Order in an already accepted run.
 
 See `references/requirements-management.md` for the state machines.
 
+## Loop budget
+
+`intent.budget` has three fields only: `max_attempts`, `max_human_rounds`, and
+`deadline_seconds`. Per-WO attempts, verifier retries, and no-progress Stop
+leases derive from `max_attempts`. Exhaustion pauses the run; writes are
+rejected, Stop is allowed, and a human can `sancai_decide.py budget-grant` or
+abandon/accept.
+
 ## Human touchpoints
 
 Before every human decision, render the card:
@@ -264,7 +272,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.10.0-rc.5)
+## Physical layout (v0.10.0-rc.6)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
@@ -430,7 +438,7 @@ reference set lives in `references/`:
 - `method-playbooks.md` — trigger-gated methods
 
 Versions follow semver. Release candidates use `X.Y.Z-rc.N` (for example
-`0.10.0-rc.5`); `plugin.json`, `marketplace.json`, the tag, and the changelog
+`0.10.0-rc.6`); `plugin.json`, `marketplace.json`, the tag, and the changelog
 must match. Promote to `X.Y.Z` only after H3 acceptance. See
 `references/git-workflow.md`.
 

@@ -124,7 +124,7 @@ Create `.sancai/runs/<run>/L3-intent/intent.json`:
   ],
   "manual_ac_ratio": 0.0,
   "risk_policy_ref": "policy/risk@1",
-  "budget": {"human_rounds": 3, "wall_clock": "2d", "tokens": 2000000}
+  "budget": {"max_attempts": 10, "max_human_rounds": 6, "deadline_seconds": 172800}
 }
 ```
 
@@ -132,6 +132,11 @@ Do not hand-write `requirements` here unless the project ledger already contains
 those accepted REQs. A new project has no `REQ-001`; `init` rejects unknown
 requirements. Initialize the run first, then use
 `sancai_requirements.py select` in step 2 to snapshot accepted requirements.
+
+`budget` has only three fields: `max_attempts`, `max_human_rounds`, and
+`deadline_seconds`. When a limit is exhausted the run becomes `paused`; only
+`accept`, `abandon`, and a human-approved `sancai_decide.py budget-grant` remain
+available. Per-WO/verifier/no-progress limits are derived from `max_attempts`.
 
 Validate:
 

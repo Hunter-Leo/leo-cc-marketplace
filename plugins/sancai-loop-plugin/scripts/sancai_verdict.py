@@ -19,6 +19,7 @@ import os
 import uuid
 
 import sancai_paths as paths  # type: ignore
+import sancai_control as control  # type: ignore  # noqa: E402
 from sancai_state import validate_id  # type: ignore  # noqa: E402
 
 import sys
@@ -124,6 +125,14 @@ def cmd_prepare(args):
     run_data = load(paths.run_path(root, args.run))
     if run_data.get("state") in ("accepted", "abandoned"):
         sys.exit(f"cannot prepare a verifier token for a {run_data['state']} run")
+    intent = load(paths.intent_path(root, args.run, run_data))
+    ctl = control.control_of(run_data)
+    ok, reason = control.consume_human_round(
+        ctl, control.effective_budget(intent, ctl), "verifier-prepare"
+    )
+    if not ok:
+        sys.exit(reason)
+    save(paths.run_path(root, args.run), run_data)
     token_id = "VT-" + uuid.uuid4().hex[:12]
     token_value = uuid.uuid4().hex + uuid.uuid4().hex
     payload = {

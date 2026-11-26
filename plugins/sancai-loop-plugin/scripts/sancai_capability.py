@@ -130,7 +130,7 @@ HARNESS_SCRIPTS = {
     "sancai_decide.py", "sancai_requirements.py", "sancai_intent.py",
 }
 HUMAN_DECISION_COMMANDS = {
-    "sancai_state.py": {"sign", "accept", "abandon"},
+    "sancai_state.py": {"sign", "accept", "abandon", "budget-grant"},
     "sancai_escalate.py": {"approve", "reject"},
     "sancai_human.py": {"sign", "approve", "reject", "accept"},
     "sancai_verdict.py": {"prepare"},

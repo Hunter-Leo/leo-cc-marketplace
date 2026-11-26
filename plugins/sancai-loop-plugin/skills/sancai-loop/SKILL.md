@@ -32,6 +32,23 @@ L1 Code     isolated executor: plan → act → verify → repair
 | `evidence/<wo>.json` | Harness | commands, exit codes, hashes, hidden checks |
 | `verdicts/<wo>.json` | Verifier | independent pass/fail + findings |
 
+## Loop control
+
+`intent.budget` has exactly three fields:
+
+```text
+max_attempts       run-wide claim -> G3 attempts (default 10)
+max_human_rounds   human decisions (default 6)
+deadline_seconds   wall clock from init (default 172800)
+```
+
+Per-WO attempts, verifier retries, and the no-progress Stop lease are derived
+from `max_attempts`; do not add separate budget fields. When a limit is hit the
+run becomes `paused`: writes are rejected, Stop is allowed, and only
+`accept`, `abandon`, or a human-approved `sancai_decide.py budget-grant` can
+continue. `budget-grant` appends to `run.control.grants`; it never edits the
+signed intent.
+
 ## Requirements span runs
 
 A run's intent snapshots only the accepted requirements it covers:
