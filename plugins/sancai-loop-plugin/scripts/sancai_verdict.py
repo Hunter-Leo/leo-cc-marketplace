@@ -174,6 +174,7 @@ def _consume_verifier_token(root, run, token_arg, wo, evidence_sha):
         os.close(fd)
     token["used_at"] = now()
     save(path, token)
+    return token_id
 
 
 def cmd_write(args):
@@ -184,8 +185,11 @@ def cmd_write(args):
     if run_data.get("state") in ("accepted", "abandoned"):
         sys.exit(f"cannot write a verdict for a {run_data['state']} run")
     evidence_sha = _evidence_sha(root, args.run, args.wo)
+    verifier_token = ""
     if args.verifier_token:
-        _consume_verifier_token(root, args.run, args.verifier_token, args.wo, evidence_sha)
+        verifier_token = _consume_verifier_token(
+            root, args.run, args.verifier_token, args.wo, evidence_sha
+        )
     elif os.environ.get("SANCAI_ALLOW_UNATTESTED_VERDICT") != "1":
         sys.exit(
             "verifier token required; prepare one with "
@@ -214,6 +218,7 @@ def cmd_write(args):
         "prompt_hash": args.prompt_hash,
         "tools": "read_only",
         "saw_executor_reasoning": False,
+        "verifier_token": verifier_token,
         "evidence_sha": evidence_sha,
         "findings": findings,
         "findings_hash": sancai_cards.findings_hash(findings),

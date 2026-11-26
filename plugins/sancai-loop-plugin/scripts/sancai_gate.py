@@ -78,6 +78,8 @@ def validate_verifier(v, run_data, evidence):
         problems.append("verifier context_id equals the claimed executor context")
     if not v.get("prompt_hash"):
         problems.append("missing verifier prompt_hash")
+    if not v.get("verifier_token") and os.environ.get("SANCAI_ALLOW_UNATTESTED_VERDICT") != "1":
+        problems.append("missing verifier token id")
     if v.get("tools") != "read_only":
         problems.append("verifier tools must be read_only")
     if v.get("saw_executor_reasoning") is not False:
