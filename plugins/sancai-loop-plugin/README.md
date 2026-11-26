@@ -29,6 +29,104 @@ Humans only need one entrypoint and five subcommands:
 add-wo → claim → executor → G0 → G3 → gate automatically, and stops only on
 the three escalation triggers.
 
+## End-to-end workflow
+
+```text
+PROJECT LEDGER (spans runs)
+  capture (agent) ──► TODO-* ──► promote + accept (human) ──► REQ-*
+                                                              │
+                             select --run <run> --req REQ-… ─┘
+                                        │
+                                        ▼
+H1  INTENT (run = planning)
+  draft intent (goal / non-goals / AC / owned_files / budget)
+    ├─ [optional] requirements select ──► requirements[] + revision+1
+    ├─ assess ──► ambiguity signals
+    ├─ agent reads repo context ──► 2-3 grounded candidates per signal
+    │    (draws ASCII: material under review + option branches)
+    ├─ AskUserQuestion, one question at a time (Other = free-form)
+    ├─ record --resolutions (aligned) | --reason (deferred)
+    ├─ card intent ──► human Start / Edit / Cancel ──► record-intent / sign
+    ├─ clean tracked tree check
+    └─ git switch -c sancai/<run>
+                                        │
+                                        ▼ transition --to executing
+L2  WORK ORDER LOOP (run = executing)
+  add-wo --req REQ-… ──► claim ──► sancai-executor
+                                      │
+                                      ▼
+                              G0 sancai_check_ac.py
+                              (harness runs AC, writes evidence)
+                                      │
+                                      ▼
+                              sancai-verifier
+                              (fresh context, read-only, independent)
+                                      │
+                                      ▼
+                              sancai_verdict.py
+                                      │
+                                      ▼
+                              G3 sancai_gate.py --apply
+                                ├─ changes_requested ──► executor rework
+                                ├─ blocked ──► H2 / human
+                                └─ verified
+  all WOs verified/merged ──► executing → reviewing
+
+H2  ESCALATION (only three triggers)
+  irreversible | out_of_scope | spec_ambiguous
+    └─ open ──► card ──► human approve/reject
+         └─ approve ──► one-time capability token ──► one scoped action
+              (replay, expiry, or changed diff fails closed)
+
+H3  ACCEPTANCE (run = reviewing)
+  preflight: all WOs verified/merged · gates passed ·
+             every selected REQ covered · no open escalation
+    └─ accept card ──► human /sancai accept
+         ├─ blocker/critical ──► refused
+         ├─ major ──► defer:<WO-ID> (writes backlog TODO) | waive:<reason>
+         └─ minor ──► --ack-findings
+              └─ run = accepted
+
+ABANDON
+  planning | executing | reviewing ──► abandoned (reason recorded, audited)
+```
+
+## State machines
+
+```text
+Run
+  planning ──► executing ──► reviewing ──► accepted
+      │            │             │
+      └────────────┴─────────────┴──────► abandoned
+
+Work Order
+  pending ──► in_progress ──► for_review ──► verified ──► merged
+                  ▲               │
+                  └── changes_requested
+  blocked ◄──► in_progress          (blocked is cleared by a human)
+
+TODO
+  pending ──► promoted
+     ├─────► deferred ──► promoted
+     └─────► rejected
+
+REQ
+  proposed ──► accepted ──► (in_progress / verified: Phase 2)
+      │           └──────► deferred / rejected
+      └──────────────────► rejected
+```
+
+## Gates at a glance
+
+| Point | Gate | Enforced by |
+|---|---|---|
+| H1 | ambiguity addressed, resolutions complete, intent signed, tracked tree clean | `sancai_intent.py`, `sancai_state.py sign`, `transition executing` |
+| WO start | WO binds a selected `REQ-*`; claim recorded | `sancai_state.py add-wo/claim` |
+| G0 | acceptance commands run by harness, evidence hashed | `sancai_check_ac.py` |
+| G3 | verifier independent (context, prompt hash, read-only), evidence matches | `sancai_gate.py`, `sancai_verdict.py` |
+| Reviewing | every WO verified or merged | `sancai_state.py transition` |
+| H3 | all gates passed, requirements covered, findings dispositioned | `sancai_state.py accept` |
+
 ## Requirements across runs
 
 Requirements live in a project ledger, not in a single run:
@@ -183,24 +281,24 @@ L1 Code     isolated executor: plan → act → verify → repair
 │   ├── backlog.json
 │   └── blueprint.md
 └── runs/<run>/
-├── L3-intent/
-│   ├── intent.json
-│   └── decisions/
-│       ├── cards/CARD-*.json
-│       └── escalations/ESC-*.json
-├── L2-harness/
-│   ├── run.json
-│   ├── progress.md
-│   ├── gates/<wo>.json
-│   ├── evidence/<wo>.json
-│   ├── verdicts/<wo>.json
-│   └── tokens/*.json
-├── L1-code/
-│   ├── attempts/
-│   └── scratch/
-└── audit/
-    ├── events.jsonl
-    └── graph.json
+    ├── L3-intent/
+    │   ├── intent.json
+    │   └── decisions/
+    │       ├── cards/CARD-*.json
+    │       └── escalations/ESC-*.json
+    ├── L2-harness/
+    │   ├── run.json
+    │   ├── progress.md
+    │   ├── gates/<wo>.json
+    │   ├── evidence/<wo>.json
+    │   ├── verdicts/<wo>.json
+    │   └── tokens/*.json
+    ├── L1-code/
+    │   ├── attempts/
+    │   └── scratch/
+    └── audit/
+        ├── events.jsonl
+        └── graph.json
 ```
 
 Local state is created with `0700` directories and `0600` files. `.sancai/` is
@@ -210,10 +308,23 @@ gitignored; never commit evidence, cards, tokens, or scratch.
 
 1. Authority belongs to the layer, not the role.
 2. Completion is decided by harness-collected evidence, not narration.
-3. Irreversible actions only leave through a human-minted capability token.
+3. Irreversible actions only leave through a human-approved capability.
 4. Unlisted tools are denied (fail closed).
 5. The plugin is **not a sandbox**; pair it with OS-level isolation.
 6. No eval, no autonomy.
+7. The graph is a read model; it explains state, it never authorizes.
+8. H1/H3 are contract gates, not cryptographic proof of a human; high-risk
+   repos set `SANCAI_REQUIRE_TTY_SIGN=1` and use the native-prompt sign/mint
+   path (T4 may use `sancai_human.py`).
+9. Human decisions consume a rendered card: no card id + code, no decision.
+   The model never invents a code.
+10. `sancai_decide.py` is the only agent-allowed decision path; the hook forces
+    `permissionDecision: "ask"`. Direct `sign/approve/reject/accept/write` and
+    `sancai_human.py` are agent-denied.
+11. The status line and timeline are generated by scripts; the model never
+    invents progress.
+12. A raw capture never mutates an intent. Only `select` writes
+    `requirements[]`, only in planning, and only with human-accepted REQs.
 
 ## Fool-proofing (v0.2.2)
 
@@ -269,7 +380,10 @@ For high-risk repos: enable `SANCAI_REQUIRE_TTY_SIGN=1`, run `mint`/`sign` in a 
 
 | Script | Purpose |
 |---|---|
+| `sancai_paths.py` | shared `.sancai/` path layout |
 | `sancai_state.py` | run / work-order state, claim, progress, accept, abandon |
+| `sancai_requirements.py` | project `REQ-*` / `TODO-*` ledger, selection, blueprint |
+| `sancai_intent.py` | H1 intent assessment, ambiguity signals, alignment record |
 | `sancai_check_ac.py` | G0: run acceptance checks, write harness-owned evidence |
 | `sancai_capability.py` | tool capability table, fail-closed check, capability tokens |
 | `sancai_gate.py` | combine G0 + G3, write the gate verdict |
