@@ -225,6 +225,8 @@ def ask_decision(decision, run):
         detail = f" action={opts.get('action')} diff={opts.get('diff-sha')}"
     elif sub == "abandon":
         detail = f" reason={opts.get('reason')}"
+    elif sub == "verifier-prepare":
+        detail = f" work_order={opts.get('wo')}"
     ask(
         f"Sancai human decision: {sub} run={run_arg}"
         + (f" target={target}" if target else "")

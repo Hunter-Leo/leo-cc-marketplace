@@ -54,6 +54,7 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_verdict.py" write \
   --run <run> --wo <WO-ID> --verdict pass \
   --session-id "<this session>" \
   --context-id "<fresh verifier context>" \
+  --verifier-token "<one-time token from the PM>" \
   --prompt-hash "sha256:<hash of prompt + inputs>" \
   --finding "major|path:line|evidence|fix"
 ```

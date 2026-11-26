@@ -223,7 +223,10 @@ requirement has no verified work order: REQ-002
 旧行为在已接受的 run 里新建 `pending` WO，产生永远不会执行的死条目。新行为：
 
 ```bash
-sancai_state.py accept ... --disposition defer:WO-003
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" accept \
+  --run <run> --message accepted --session-id <session> \
+  --card-id <CARD-ID> --card-code <CODE> \
+  --ack-findings --disposition "defer:WO-003"
 ```
 
 写入 `.sancai/project/backlog.json`：

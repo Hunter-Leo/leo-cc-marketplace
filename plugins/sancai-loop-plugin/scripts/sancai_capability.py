@@ -133,6 +133,7 @@ HUMAN_DECISION_COMMANDS = {
     "sancai_state.py": {"sign", "accept", "abandon"},
     "sancai_escalate.py": {"approve", "reject"},
     "sancai_human.py": {"sign", "approve", "reject", "accept"},
+    "sancai_verdict.py": {"prepare"},
     "sancai_requirements.py": {"promote", "accept", "defer", "reject"},
 }
 READ_ONLY_GIT = {"diff", "status", "log", "show", "branch", "rev-parse", "ls-files", "grep"}

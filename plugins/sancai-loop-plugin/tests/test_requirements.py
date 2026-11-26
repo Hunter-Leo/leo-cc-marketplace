@@ -24,6 +24,7 @@ class RequirementsTest(unittest.TestCase):
         self.root = pathlib.Path(self.tmp)
         self.env = os.environ.copy()
         self.env["SANCAI_SECRET"] = "test-secret"
+        self.env["SANCAI_ALLOW_UNATTESTED_VERDICT"] = "1"
         self.env["SANCAI_ALLOW_NONINTERACTIVE_MINT"] = "1"
         self.git("init", "-q")
         self.git("config", "user.email", "t@t")

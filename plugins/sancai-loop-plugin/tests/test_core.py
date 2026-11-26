@@ -20,6 +20,7 @@ class SancaiCoreTest(unittest.TestCase):
         self.tmp = tempfile.mkdtemp(prefix="sancai-test-")
         self.env = os.environ.copy()
         self.env["SANCAI_SECRET"] = "test-secret"
+        self.env["SANCAI_ALLOW_UNATTESTED_VERDICT"] = "1"
         self.env["SANCAI_ALLOW_NONINTERACTIVE_MINT"] = "1"
         self.git("init", "-q")
         self.git("config", "user.email", "t@t")
@@ -499,6 +500,10 @@ class SancaiCoreTest(unittest.TestCase):
                 f"python3 {SCRIPTS / 'sancai_decide.py'} abandon "
                 "--run 001-test --reason 'scope changed'"
             ),
+            (
+                f"python3 {SCRIPTS / 'sancai_decide.py'} verifier-prepare "
+                "--run 001-test --wo WO-001"
+            ),
         ]
         for command in commands:
             payload = json.dumps({
@@ -606,6 +611,51 @@ class SancaiCoreTest(unittest.TestCase):
                 "--command", command,
             )
             self.assertIn("DENY", proc.stdout, command)
+
+    def test_verifier_token_is_required_and_single_use(self):
+        self.start_execution()
+        (pathlib.Path(self.tmp) / "a.txt").write_text("changed\n")
+        self.run_script(
+            "sancai_check_ac.py", "--run", "001-test", "--wo", "WO-001",
+            check=True,
+        )
+        self.env.pop("SANCAI_ALLOW_UNATTESTED_VERDICT", None)
+        write_args = (
+            "--run", "001-test", "--wo", "WO-001", "--verdict", "pass",
+            "--session-id", "v", "--context-id", "ctx-v", "--prompt-hash", "h",
+        )
+        denied = self.run_script("sancai_verdict.py", "write", *write_args)
+        self.assertNotEqual(denied.returncode, 0)
+        self.assertIn("verifier token required", denied.stderr + denied.stdout)
+
+        prepare = self.run_script(
+            "sancai_verdict.py", "prepare",
+            "--run", "001-test", "--wo", "WO-001", check=True,
+        )
+        token = prepare.stdout.strip()
+        accepted = self.run_script(
+            "sancai_verdict.py", "write", *write_args,
+            "--verifier-token", token, check=True,
+        )
+        self.assertEqual(accepted.returncode, 0)
+        replay = self.run_script(
+            "sancai_verdict.py", "write", *write_args,
+            "--verifier-token", token,
+        )
+        self.assertNotEqual(replay.returncode, 0)
+        self.assertIn("already used", replay.stderr + replay.stdout)
+
+    def test_verifier_prepare_is_human_only(self):
+        command = (
+            f"python3 {SCRIPTS / 'sancai_verdict.py'} prepare "
+            "--run 001-test --wo WO-001"
+        )
+        proc = self.run_script(
+            "sancai_capability.py", "check", "--tool", "Bash",
+            "--command", command,
+        )
+        self.assertIn("DENY", proc.stdout)
+        self.assertIn("human decision", proc.stdout + proc.stderr)
 
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})

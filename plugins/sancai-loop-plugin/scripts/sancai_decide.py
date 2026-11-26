@@ -85,6 +85,10 @@ def main(argv=None):
     p.add_argument("--run", required=True)
     p.add_argument("--reason", required=True)
 
+    p = sub.add_parser("verifier-prepare", help="prepare a one-time verifier token")
+    p.add_argument("--run", required=True)
+    p.add_argument("--wo", required=True)
+
     p = sub.add_parser("mint", help="mint a one-time token after the native prompt")
     p.add_argument("--run", required=True)
     p.add_argument("--action", required=True)
@@ -112,6 +116,11 @@ def main(argv=None):
         return _run("sancai_state.py", "abandon", [
             "--run", args.run,
             "--reason", args.reason,
+        ])
+    if args.cmd == "verifier-prepare":
+        return _run("sancai_verdict.py", "prepare", [
+            "--run", args.run,
+            "--wo", args.wo,
         ])
 
     session = _session(args.session_id)

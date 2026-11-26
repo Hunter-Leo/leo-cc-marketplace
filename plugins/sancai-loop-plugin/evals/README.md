@@ -4,7 +4,7 @@ Behavior-level regression tests for the `sancai-loop` plugin, run with
 `claude plugin eval`.
 
 These are **not** unit tests. Every run starts a real `claude -p` child process
-and is billed to your account. The Go/Python unit tests in `../tests/` stay the
+and is billed to your account. The Python unit tests in `../tests/` stay the
 cheap, deterministic layer.
 
 Requirements:

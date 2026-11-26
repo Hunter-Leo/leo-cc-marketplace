@@ -313,6 +313,19 @@ After the executor reports:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_check_ac.py" --run <run> --wo WO-001
 ```
 
+Before spawning the verifier, prepare a one-time token bound to this Work Order's
+current evidence. This is a human-approved native prompt:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" verifier-prepare \
+  --run <run> --wo <WO-ID>
+```
+
+Pass the printed `<token-id>:<secret>` pair to the verifier; it must use it as
+`--verifier-token` when writing the verdict. The file stores only a hash, so
+reading the token directory does not reveal the secret. Without a token,
+`write` fails closed.
+
 Then spawn **`sancai-verifier`** with the raw evidence + AC + diff (never the executor's narrative). The verifier writes its verdict through `sancai_verdict.py` with a fresh `--context-id` (different from the executor and its claim) and a `--prompt-hash`; a pass verdict carrying a blocker/critical finding is rejected.
 
 Then:
@@ -462,11 +475,12 @@ the human acknowledges them:
 Major findings require exactly one disposition in addition:
 
 ```bash
-  --ack-findings --disposition "defer:<WO-ID>"    # capture a backlog TODO
+  --ack-findings --disposition "defer:<FOLLOWUP-ID>"    # capture a backlog TODO
   --ack-findings --disposition "waive:<reason>"   # accept the risk explicitly
 ```
 
-`defer:<WO-ID>` captures a `finding` TODO in `.sancai/project/backlog.json`
+`defer:<FOLLOWUP-ID>` must be a new, unused id. It captures a `finding` TODO in
+`.sancai/project/backlog.json`
 sourced to `run:<run>/WO:<WO-ID>`. It does **not** create a new Work Order in
 the accepted run; the human promotes it later if it should be planned.
 
