@@ -130,7 +130,7 @@ HARNESS_SCRIPTS = {
     "sancai_decide.py", "sancai_requirements.py", "sancai_intent.py",
 }
 HUMAN_DECISION_COMMANDS = {
-    "sancai_state.py": {"sign", "accept"},
+    "sancai_state.py": {"sign", "accept", "abandon"},
     "sancai_escalate.py": {"approve", "reject"},
     "sancai_human.py": {"sign", "approve", "reject", "accept"},
     "sancai_requirements.py": {"promote", "accept", "defer", "reject"},
@@ -201,6 +201,22 @@ def _git_policy(root, run, tokens):
     if sub in READ_ONLY_GIT:
         if any(t == "--output" or t.startswith("--output=") for t in tokens[2:]):
             return "deny", "git output redirection is not allowed"
+        if sub == "branch" and any(
+            t in ("-d", "-D", "--delete", "-m", "-M", "--move",
+                  "-c", "--copy", "--edit-description")
+            for t in tokens[2:]
+        ):
+            return "deny", "git branch mutation is not allowed"
+        if sub in ("diff", "show") and any(
+            t in ("--no-index", "--ext-diff", "--textconv",
+                  "--open-files-in-pager")
+            for t in tokens[2:]
+        ):
+            return "deny", "git diff/show executable or outside-repo flags are not allowed"
+        if sub == "grep" and any(
+            t == "-O" or t.startswith("-O") for t in tokens[2:]
+        ):
+            return "deny", "git grep -O can execute arbitrary commands"
         return "allow", f"read-only git {sub}"
     if sub == "add":
         claim, owned = _claim(root, run)
@@ -246,6 +262,8 @@ def _read_paths_ok(root, paths):
     for p in paths:
         if not p or p.startswith("-"):
             continue
+        if p.startswith("~") or re.search(r"\$(?:\{?[A-Za-z_])", p):
+            return False
         if p.startswith("/") or ".." in p.split(os.sep):
             if _norm_path(root, p) is None:
                 return False
@@ -318,6 +336,9 @@ def _bash_policy(root, run, tokens):
     if base == "git":
         return _git_policy(root, run, tokens)
     if base in ("rg", "grep"):
+        if any(t == "--pre" or t.startswith("--pre=") or t == "--pre-glob"
+               or t.startswith("--pre-glob=") for t in tokens[1:]):
+            return "deny", "rg --pre can execute arbitrary commands"
         if not _read_paths_ok(root, tokens[2:]):
             return "deny", "reading outside the repository is not allowed"
         return "allow", "read-only search"
@@ -335,6 +356,8 @@ def _bash_policy(root, run, tokens):
     if base == "sed":
         if "-i" in tokens or "--in-place" in tokens:
             return "token", "in-place edit requires a human token"
+        if not _read_paths_ok(root, tokens[1:]):
+            return "deny", "reading outside the repository is not allowed"
         return "allow", "read-only sed"
     if base == "make":
         target = next((t for t in tokens[1:] if not t.startswith("-")), "")
@@ -451,7 +474,9 @@ def check(root, tool, command=None, path=None, run=None, token_path=None):
         ok, reason, _ = find_token(root, run, action)
         return ok, reason
 
-    if tool in ("Write", "Edit", "NotebookEdit") and path:
+    if tool in ("Write", "Edit", "NotebookEdit"):
+        if not path:
+            return False, f"{tool} did not provide a path"
         claim, owned = _claim(root, run)
         if not claim:
             return False, "no active claim; write denied"

@@ -82,8 +82,13 @@ def executing(tmp, run_id="001-poc"):
     run(tmp, "sancai_state.py", "claim", "--wo", "WO-001")
 
 
+FAILED = []
+
+
 def result(name, vulnerable, detail):
     print(f"[{'VULN' if vulnerable else 'OK  '}] {name}: {detail}")
+    if vulnerable:
+        FAILED.append(name)
 
 
 def main():
@@ -195,6 +200,7 @@ def main():
     result("stop guard without session id", "block" not in p.stdout, p.stdout.strip() or "allowed")
 
     print("\nTemporary repos are left in /tmp for inspection.")
+    sys.exit(1 if FAILED else 0)
 
 
 if __name__ == "__main__":

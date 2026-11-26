@@ -129,7 +129,8 @@ class IntentAlignmentTest(unittest.TestCase):
 
         self.write_intent(goal="make it better", non_goals=[], owned_files=[])
         self.run_script("sancai_state.py", "init", "--run", "002-vague",
-                        "--intent", "intent.json", "--session-id", "s1", check=True)
+                        "--intent", "intent.json", "--session-id", "s1",
+                        "--takeover", check=True)
         proc = self.run_script("sancai_intent.py", "questions", "--run", "002-vague",
                                "--json", check=True)
         data = json.loads(proc.stdout)
@@ -140,7 +141,8 @@ class IntentAlignmentTest(unittest.TestCase):
     def init_vague_run(self):
         self.write_intent(goal="make it better and fast", non_goals=[], owned_files=[])
         self.run_script("sancai_state.py", "init", "--run", "002-vague",
-                        "--intent", "intent.json", "--session-id", "s1", check=True)
+                        "--intent", "intent.json", "--session-id", "s1",
+                        "--takeover", check=True)
         proc = self.run_script("sancai_intent.py", "assess", "--run", "002-vague", "--json")
         self.assertEqual(proc.returncode, 2)
         return [s["code"] for s in json.loads(proc.stdout)["signals"]]

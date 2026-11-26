@@ -189,7 +189,8 @@ Mechanisms:
   freshly rendered card.
 - **Signed payload.** `sancai_cards.py` HMAC-signs the payload (`SANCAI_SECRET` /
   `SANCAI_CARD_SECRET`); editing the goal, escalation evidence, WO states, gate
-  results, or findings fails verification.
+  results, or findings fails verification. If neither variable is set, card
+  creation and verification fail closed.
 - **Live-state binding.** `sign`/`approve`/`reject`/`accept` also check the
   current state still matches the card payload, so a stale card cannot approve
   a changed action.

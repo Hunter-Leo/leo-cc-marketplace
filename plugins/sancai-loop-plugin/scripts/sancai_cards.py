@@ -86,6 +86,8 @@ def _atomic_save(path, data):
 
 def _signed_object(card):
     return {
+        "card_id": card.get("card_id"),
+        "run": card.get("run"),
         "kind": card.get("kind"),
         "tier": card.get("tier"),
         "payload": card.get("payload"),
@@ -108,12 +110,18 @@ def make_card(root, run, kind, payload, options, tier="T2"):
         raise CardError(f"invalid card kind: {kind!r}")
     if tier not in DWELL_SECONDS:
         raise CardError(f"invalid card tier: {tier!r}")
+    if not card_secret():
+        raise CardError(
+            "SANCAI_SECRET or SANCAI_CARD_SECRET is required to issue a card"
+        )
     if options is None:
         options = []
 
     card_id = "CARD-" + uuid.uuid4().hex[:12]
     created_at = now()
     signed = {
+        "card_id": card_id,
+        "run": run,
         "kind": kind,
         "tier": tier,
         "payload": payload,
@@ -217,6 +225,8 @@ def verify_card(card, expected_payload=None):
     problems = []
     if not isinstance(card, dict):
         return ["card is not a JSON object"]
+    if not card_secret():
+        return ["card secret is not set; refusing to verify an unsigned card"]
 
     if "kind" in card and card.get("kind") not in CARD_KINDS:
         problems.append(f"unknown kind: {card.get('kind')!r}")
@@ -293,6 +303,14 @@ def consume_card(root, run, card_id, card_code=None, expected_payload=None):
             f"card is too fresh: tier {tier} requires {dwell}s dwell, "
             f"{math.ceil(remaining)}s remaining"
         )
+
+    marker = card_path(root, run, card_id) + ".used"
+    try:
+        fd = os.open(marker, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+    except FileExistsError:
+        raise CardError("card already used (consumption marker exists)")
+    else:
+        os.close(fd)
 
     card["used_at"] = now()
     _atomic_save(card_path(root, run, card_id), card)

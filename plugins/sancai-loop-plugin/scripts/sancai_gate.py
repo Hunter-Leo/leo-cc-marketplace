@@ -161,6 +161,11 @@ def main():
     })
     print(json.dumps(gate, ensure_ascii=False, indent=2))
 
+    if args.apply and run_data.get("state") in ("accepted", "abandoned"):
+        sys.exit(
+            f"cannot apply a gate result to a {run_data['state']} run"
+        )
+
     if args.apply and args.wo in run_data.get("work_orders", {}):
         wo = run_data["work_orders"][args.wo]
         if result == "verified" and wo["state"] == "for_review":
@@ -168,6 +173,10 @@ def main():
         elif result == "changes_requested" and wo["state"] == "for_review":
             wo["state"] = "changes_requested"
         elif result == "blocked":
+            if wo["state"] in ("verified", "merged"):
+                sys.exit(
+                    f"refusing to downgrade {wo['state']} work order {args.wo} to blocked"
+                )
             wo["state"] = "blocked"
         run_data["claim"] = None
         run_data["updated_at"] = now()

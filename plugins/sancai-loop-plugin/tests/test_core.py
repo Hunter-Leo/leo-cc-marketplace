@@ -113,7 +113,7 @@ class SancaiCoreTest(unittest.TestCase):
         unsigned_path = pathlib.Path(self.tmp) / "unsigned-intent.json"
         unsigned_path.write_text(json.dumps(unsigned))
         self.run_script("sancai_state.py", "init", "--run", "002-tty",
-                        "--intent", str(unsigned_path), check=True)
+                        "--intent", str(unsigned_path), "--takeover", check=True)
         self.run_script("sancai_intent.py", "record", "--run", "002-tty",
                         "--status", "aligned", "--answers", "clear",
                         "--session-id", "sess-h", check=True)
@@ -483,6 +483,130 @@ class SancaiCoreTest(unittest.TestCase):
         output = json.loads(proc.stdout)
         self.assertEqual(output.get("hookSpecificOutput", {}).get("permissionDecision"), "deny")
 
+    def test_hook_asks_for_decide_while_executing_with_claim(self):
+        self.start_execution()
+        commands = [
+            (
+                f"python3 {SCRIPTS / 'sancai_decide.py'} approve "
+                "--run 001-test --id ESC-001 --message approved "
+                "--card-id CARD-x --card-code y"
+            ),
+            (
+                f"python3 {SCRIPTS / 'sancai_decide.py'} mint "
+                "--run 001-test --action 'git push' --diff-sha abc"
+            ),
+            (
+                f"python3 {SCRIPTS / 'sancai_decide.py'} abandon "
+                "--run 001-test --reason 'scope changed'"
+            ),
+        ]
+        for command in commands:
+            payload = json.dumps({
+                "cwd": self.tmp,
+                "session_id": "s1",
+                "tool_name": "Bash",
+                "tool_input": {"command": command},
+            })
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--pre-tool"],
+                cwd=self.tmp, input=payload, capture_output=True, text=True,
+                env=self.env,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            output = json.loads(proc.stdout)
+            self.assertEqual(
+                output.get("hookSpecificOutput", {}).get("permissionDecision"),
+                "ask",
+                command,
+            )
+
+    def test_state_abandon_requires_human_decision(self):
+        command = (
+            f"python3 {SCRIPTS / 'sancai_state.py'} abandon "
+            "--run 001-test --reason 'scope changed'"
+        )
+        proc = self.run_script(
+            "sancai_capability.py", "check", "--tool", "Bash",
+            "--command", command,
+        )
+        self.assertIn("DENY", proc.stdout)
+        self.assertIn("human decision", proc.stdout + proc.stderr)
+
+    def test_init_refuses_while_another_run_is_open(self):
+        self.start_execution()
+        intent = pathlib.Path(self.tmp) / ".sancai/runs/001-test/L3-intent/intent.json"
+        proc = self.run_script(
+            "sancai_state.py", "init", "--run", "002-new",
+            "--intent", str(intent),
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("active run is still open", proc.stderr + proc.stdout)
+
+    def test_terminal_run_rejects_mutations(self):
+        self.start_execution()
+        self.run_script(
+            "sancai_state.py", "abandon", "--reason", "test", check=True,
+        )
+        commands = [
+            ("sancai_state.py", "add-wo", "--id", "WO-002",
+             "--files", "a.txt"),
+            ("sancai_state.py", "claim", "--wo", "WO-001"),
+            ("sancai_state.py", "event", "--type", "note"),
+            ("sancai_state.py", "progress", "--item", "late"),
+        ]
+        for name, *args in commands:
+            proc = self.run_script(name, *args)
+            self.assertNotEqual(proc.returncode, 0, f"{name} {args}")
+            self.assertIn(
+                "abandoned", proc.stderr + proc.stdout, f"{name} {args}"
+            )
+
+        proc = self.run_script(
+            "sancai_gate.py", "--run", "001-test", "--wo", "WO-001", "--apply",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("abandoned", proc.stderr + proc.stdout)
+
+    def test_hidden_check_blocks_g0(self):
+        self.start_execution()
+        intent_path = pathlib.Path(self.tmp) / ".sancai/runs/001-test/L3-intent/intent.json"
+        intent = json.loads(intent_path.read_text())
+        intent["hidden_checks"] = [{
+            "id": "H-1",
+            "check": "command",
+            "run": "false",
+            "expect": "exit_code == 0",
+        }]
+        intent_path.write_text(json.dumps(intent))
+        (pathlib.Path(self.tmp) / "a.txt").write_text("changed\n")
+        proc = self.run_script(
+            "sancai_check_ac.py", "--run", "001-test", "--wo", "WO-001",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        evidence = json.loads(
+            (pathlib.Path(self.tmp)
+             / ".sancai/runs/001-test/L2-harness/evidence/WO-001.json").read_text()
+        )
+        self.assertFalse(evidence["success"])
+        self.assertEqual(evidence["hidden_passed"], 0)
+
+    def test_read_and_git_escape_flags_are_denied(self):
+        self.start_execution()
+        commands = [
+            "cat ~/.ssh/id_rsa",
+            "rg x $HOME/.ssh",
+            "sed -n 1p /etc/passwd",
+            "git branch -D main",
+            "git diff --no-index /etc/passwd /dev/null",
+            "rg --pre 'cat' x .",
+        ]
+        for command in commands:
+            proc = self.run_script(
+                "sancai_capability.py", "check", "--tool", "Bash",
+                "--command", command,
+            )
+            self.assertIn("DENY", proc.stdout, command)
+
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})
         proc = subprocess.run(
@@ -553,6 +677,7 @@ class SancaiCoreTest(unittest.TestCase):
     def test_status_line_terminal_pointer(self):
         self.run_script("sancai_state.py", "abandon", "--reason", "test")
         active = pathlib.Path(self.tmp) / ".sancai" / "active"
+        self.assertEqual(json.loads(active.read_text())["state"], "abandoned")
         active.write_text(json.dumps({"run": "001-test", "state": "abandoned"}))
         payload = json.dumps({"cwd": self.tmp})
         first = subprocess.run(

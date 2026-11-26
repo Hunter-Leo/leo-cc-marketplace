@@ -19,6 +19,7 @@ usage:
   sancai_decide.py accept  --run R --message accepted --session-id S \
                          --card-id CARD-... --card-code ........ \
                          [--ack-findings] [--disposition defer:WO-005]
+  sancai_decide.py abandon --run R --reason "..."
   sancai_decide.py mint    --run R --action "..." --diff-sha ... --ttl 600
 """
 import argparse
@@ -80,6 +81,10 @@ def main(argv=None):
     p.add_argument("--ack-findings", action="store_true")
     p.add_argument("--disposition", action="append", default=[])
 
+    p = sub.add_parser("abandon", help="abandon a run after the native prompt")
+    p.add_argument("--run", required=True)
+    p.add_argument("--reason", required=True)
+
     p = sub.add_parser("mint", help="mint a one-time token after the native prompt")
     p.add_argument("--run", required=True)
     p.add_argument("--action", required=True)
@@ -102,6 +107,12 @@ def main(argv=None):
             ],
             env=env,
         )
+
+    if args.cmd == "abandon":
+        return _run("sancai_state.py", "abandon", [
+            "--run", args.run,
+            "--reason", args.reason,
+        ])
 
     session = _session(args.session_id)
     if not session:

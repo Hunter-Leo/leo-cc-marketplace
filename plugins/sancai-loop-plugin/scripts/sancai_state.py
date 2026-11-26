@@ -70,6 +70,11 @@ def default_session(value=""):
     )
 
 
+def require_nonterminal(data, action):
+    if data.get("state") in ("accepted", "abandoned"):
+        sys.exit(f"cannot {action} a {data['state']} run")
+
+
 def resolve_run(root, args):
     run = args.run
     if not run:
@@ -239,15 +244,17 @@ def cmd_init(args):
     validate_id(args.run, "run")
     active = sancai_graph.read_active(root)
     if active and active.get("run") != args.run and not args.takeover:
-        try:
-            _, previous = load_run(root, active.get("run"))
+        previous_path = paths.run_path(root, active.get("run"))
+        if os.path.isfile(previous_path):
+            try:
+                previous = load(previous_path)
+            except (OSError, ValueError):
+                previous = {}
             if previous.get("state") not in ("accepted", "abandoned"):
                 sys.exit(
                     f"active run is still open: {active.get('run')}; "
                     "use --takeover to replace it"
                 )
-        except SystemExit:
-            pass
     src = os.path.abspath(args.intent)
     intent = load(src)
     validate_intent(intent, root)
@@ -255,6 +262,9 @@ def cmd_init(args):
     run_path = paths.run_path(root, args.run)
     if os.path.isfile(run_path) and not args.force:
         sys.exit(f"run already exists: {args.run}; use --force to overwrite")
+    if args.force and os.path.isdir(rd):
+        suffix = re.sub(r"[^0-9A-Za-z_.-]", "-", now())
+        os.replace(rd, f"{rd}.superseded-{suffix}")
     paths.ensure_run_layout(root, args.run)
     save(paths.intent_path(root, args.run), intent)
     session_id = default_session(args.session_id)
@@ -516,6 +526,7 @@ def cmd_add_wo(args):
     run = resolve_run(root, args)
     validate_id(args.id, "work order")
     path, data = load_run(root, run)
+    require_nonterminal(data, "add a work order to")
     if args.id in data["work_orders"]:
         sys.exit(f"work order already exists: {args.id}")
     intent = load(paths.intent_path(root, run, data))
@@ -562,6 +573,7 @@ def cmd_claim(args):
     run = resolve_run(root, args)
     validate_id(args.wo, "work order")
     path, data = load_run(root, run)
+    require_nonterminal(data, "claim work in")
     if data.get("claim"):
         sys.exit(f"claim already held: {data['claim']}")
     wo = data["work_orders"].get(args.wo)
@@ -586,6 +598,7 @@ def cmd_release(args):
     root = find_root()
     run = resolve_run(root, args)
     path, data = load_run(root, run)
+    require_nonterminal(data, "release a claim in")
     if not data.get("claim"):
         print("no claim")
         return
@@ -602,6 +615,7 @@ def cmd_wo_transition(args):
     run = resolve_run(root, args)
     validate_id(args.wo, "work order")
     path, data = load_run(root, run)
+    require_nonterminal(data, "transition a work order in")
     wo = data["work_orders"].get(args.wo)
     if not wo:
         sys.exit(f"work order not found: {args.wo}")
@@ -629,14 +643,14 @@ def cmd_abandon(args):
     if not args.reason.strip():
         sys.exit("abandon requires a non-empty reason")
     path, data = load_run(root, run)
-    if data["state"] == "accepted":
-        sys.exit("cannot abandon an accepted run")
+    if data["state"] in ("accepted", "abandoned"):
+        sys.exit(f"cannot abandon a {data['state']} run")
     data["state"] = "abandoned"
     data["abandon"] = {"reason": args.reason, "ts": now()}
     data["claim"] = None
     data["updated_at"] = now()
     save(path, data)
-    clear_active(root, run)
+    write_active(root, run, "abandoned")
     append_event(root, run, "abandoned", {"reason": args.reason})
     print(f"abandoned {run}: {args.reason}")
 
@@ -644,6 +658,8 @@ def cmd_abandon(args):
 def cmd_event(args):
     root = find_root()
     run = resolve_run(root, args)
+    _, data = load_run(root, run)
+    require_nonterminal(data, "record an event in")
     try:
         meta = json.loads(args.meta) if args.meta else {}
     except json.JSONDecodeError:
@@ -655,6 +671,8 @@ def cmd_event(args):
 def cmd_progress(args):
     root = find_root()
     run = resolve_run(root, args)
+    _, data = load_run(root, run)
+    require_nonterminal(data, "record progress in")
     rd = run_dir(root, run)
     os.makedirs(rd, exist_ok=True)
     symbol = {"done": "✅", "doing": "▶", "blocked": "⏸", "todo": " "}.get(args.status, " ")
@@ -746,14 +764,9 @@ def cmd_accept(args):
         if not covered:
             sys.exit(f"requirement has no verified work order: {req_id}")
         coverage[req_id] = covered
-    expected = accept_payload(root, run, data)
-    try:
-        card = sancai_cards.consume_card(root, run, args.card_id, args.card_code, expected)
-    except sancai_cards.CardError as exc:
-        sys.exit(str(exc))
-    latency = round(sancai_cards.card_age_seconds(card), 3)
     if data["state"] != "reviewing":
         sys.exit(f"run must be reviewing, currently {data['state']}")
+    expected = accept_payload(root, run, data)
     wos = data.get("work_orders", {})
     if not wos or any(wo.get("state") not in ("verified", "merged") for wo in wos.values()):
         sys.exit("not all work orders are verified")
@@ -799,6 +812,12 @@ def cmd_accept(args):
         )
     if dispositions and not majors:
         sys.exit("--disposition is only valid when major findings exist")
+
+    try:
+        card = sancai_cards.consume_card(root, run, args.card_id, args.card_code, expected)
+    except sancai_cards.CardError as exc:
+        sys.exit(str(exc))
+    latency = round(sancai_cards.card_age_seconds(card), 3)
 
     disposition_record = None
     deferred_todo = ""

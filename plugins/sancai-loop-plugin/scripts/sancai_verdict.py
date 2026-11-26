@@ -17,6 +17,7 @@ import json
 import os
 
 import sancai_paths as paths  # type: ignore
+from sancai_state import validate_id  # type: ignore  # noqa: E402
 
 import sys
 
@@ -82,8 +83,11 @@ def parse_finding(raw):
 
 def cmd_write(args):
     root = find_root()
-    rd = paths.run_dir(root, args.run)
+    validate_id(args.run, "run")
+    validate_id(args.wo, "work order")
     run_data = load(paths.run_path(root, args.run))
+    if run_data.get("state") in ("accepted", "abandoned"):
+        sys.exit(f"cannot write a verdict for a {run_data['state']} run")
     evidence_path = os.path.join(paths.evidence_dir(root, args.run), f"{args.wo}.json")
     if not os.path.isfile(evidence_path):
         sys.exit(f"evidence not found: {evidence_path}; run G0 first (sancai_check_ac.py)")

@@ -85,6 +85,8 @@ def dedupe_key(wo, typ, tried, evidence):
 
 def cmd_new(args):
     root = find_root()
+    validate_id(args.run, "run")
+    validate_id(args.wo, "work order")
     d = esc_dir(root, args.run)
     for name in sorted(os.listdir(d)) if os.path.isdir(d) else []:
         if not name.endswith(".json"):
@@ -164,6 +166,8 @@ def consume_bound_card(root, e, card_id, card_code):
 
 def cmd_approve(args):
     root = find_root()
+    validate_id(args.run, "run")
+    validate_id(args.id, "escalation")
     path = os.path.join(esc_dir(root, args.run), f"{args.id}.json")
     if not os.path.isfile(path):
         sys.exit(f"escalation not found: {path}")
@@ -197,6 +201,8 @@ def cmd_approve(args):
 
 def cmd_reject(args):
     root = find_root()
+    validate_id(args.run, "run")
+    validate_id(args.id, "escalation")
     path = os.path.join(esc_dir(root, args.run), f"{args.id}.json")
     if not os.path.isfile(path):
         sys.exit(f"escalation not found: {path}")

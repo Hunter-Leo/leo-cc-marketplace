@@ -303,5 +303,18 @@ class Phase1CardTest(unittest.TestCase):
                             sancai_cards.findings_hash([second]))
 
 
+    def test_card_creation_fails_without_secret(self):
+        env = dict(self.env)
+        env.pop("SANCAI_SECRET", None)
+        env.pop("SANCAI_CARD_SECRET", None)
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "sancai_card.py"), "intent",
+             "--run", "001-test", "--json"],
+            cwd=self.tmp, capture_output=True, text=True, env=env,
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("SANCAI_SECRET", proc.stderr + proc.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -11,6 +11,7 @@ import json
 import os
 
 import sancai_paths as paths  # type: ignore
+from sancai_state import validate_id  # type: ignore  # noqa: E402
 
 import re
 import subprocess
@@ -101,6 +102,7 @@ def main():
 
     root = find_root()
     run = args.run or active_run(root)
+    validate_id(run, "run")
     rd = paths.run_dir(root, run)
     run_data = load(paths.run_path(root, run))
     intent = load(paths.intent_path(root, run, run_data))
@@ -109,6 +111,7 @@ def main():
     if not wo_id:
         claim = run_data.get("claim") or {}
         wo_id = claim.get("wo", "GLOBAL")
+    validate_id(wo_id, "work order")
 
     checks = [run_check(c, root) for c in intent.get("acceptance", [])]
     hidden = [run_check(c, root) for c in intent.get("hidden_checks", [])]
@@ -134,7 +137,11 @@ def main():
         "ac_total": ac_total,
         "hidden_passed": hidden_passed,
         "hidden_total": hidden_total,
-        "success": ac_total > 0 and ac_passed == ac_total,
+        "success": (
+            ac_total > 0
+            and ac_passed == ac_total
+            and hidden_passed == hidden_total
+        ),
     }
 
     out_path = os.path.join(paths.evidence_dir(root, run), f"{wo_id}.json")

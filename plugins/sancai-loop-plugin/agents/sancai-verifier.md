@@ -53,6 +53,7 @@ Write the verdict through the harness script (you have read-only tools):
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_verdict.py" write \
   --run <run> --wo <WO-ID> --verdict pass \
   --session-id "<this session>" \
+  --context-id "<fresh verifier context>" \
   --prompt-hash "sha256:<hash of prompt + inputs>" \
   --finding "major|path:line|evidence|fix"
 ```

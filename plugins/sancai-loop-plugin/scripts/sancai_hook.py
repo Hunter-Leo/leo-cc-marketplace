@@ -214,6 +214,26 @@ def decision_call(command):
     return None
 
 
+def ask_decision(decision, run):
+    """Show one native prompt for a sancai_decide.py call."""
+    sub, opts = decision
+    run_arg = opts.get("run") or run
+    card = opts.get("card-id") or "<missing card>"
+    target = opts.get("id") or ""
+    detail = ""
+    if sub == "mint":
+        detail = f" action={opts.get('action')} diff={opts.get('diff-sha')}"
+    elif sub == "abandon":
+        detail = f" reason={opts.get('reason')}"
+    ask(
+        f"Sancai human decision: {sub} run={run_arg}"
+        + (f" target={target}" if target else "")
+        + detail
+        + f" card={card}. "
+        "Allow only if the card above matches what you intend."
+    )
+
+
 def block(reason):
     print(json.dumps({"decision": "block", "reason": reason}))
     sys.exit(0)
@@ -246,7 +266,16 @@ def main():
     run_path = paths.run_path(root, run)
     if not os.path.isfile(run_path):
         allow()
-    run_data = json.load(open(run_path, encoding="utf-8"))
+    try:
+        run_data = json.load(open(run_path, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        reason = f"cannot read Sancai run state {run_path}: {exc}"
+        if args.pre_tool:
+            deny(reason)
+        if args.stop:
+            block(reason)
+        allow()
+        return
 
     if args.pre_tool:
         tool = payload.get("tool_name", "")
@@ -257,6 +286,10 @@ def main():
         claim = run_data.get("claim")
 
         if state == "executing" and claim:
+            if tool == "Bash":
+                decision = decision_call(command)
+                if decision:
+                    ask_decision(decision, run)
             ok, reason = cap_check(root, tool, command, path, run)
             if not ok:
                 deny(f"Sancai capability denied: {reason}")
@@ -278,20 +311,7 @@ def main():
                 deny(f"Sancai capability denied: {reason}")
             decision = decision_call(command)
             if decision:
-                sub, opts = decision
-                run_arg = opts.get("run") or run
-                card = opts.get("card-id") or "<missing card>"
-                target = opts.get("id") or ""
-                detail = ""
-                if sub == "mint":
-                    detail = f" action={opts.get('action')} diff={opts.get('diff-sha')}"
-                ask(
-                    f"Sancai human decision: {sub} run={run_arg}"
-                    + (f" target={target}" if target else "")
-                    + detail
-                    + f" card={card}. "
-                    "Allow only if the card above matches what you intend."
-                )
+                ask_decision(decision, run)
             allow()
 
         allow()
