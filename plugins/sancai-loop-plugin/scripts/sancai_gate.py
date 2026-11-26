@@ -97,6 +97,37 @@ def validate_verifier(v, run_data, evidence):
     return problems
 
 
+def _file_sha(path):
+    with open(path, "rb") as f:
+        return hashlib.sha256(f.read()).hexdigest()
+
+
+def validate_attestation(root, run, wo, verdict):
+    if os.environ.get("SANCAI_ALLOW_UNATTESTED_VERDICT") == "1":
+        return []
+    path = os.path.join(paths.l2_dir(root, run), "verifier", f"{wo}.attest.json")
+    if not os.path.isfile(path):
+        return ["missing verifier stop attestation"]
+    try:
+        attest = load(path)
+    except (OSError, ValueError):
+        return ["unreadable verifier stop attestation"]
+    problems = []
+    if attest.get("run") != run or attest.get("wo") != wo:
+        problems.append("verifier attestation does not match this run/work order")
+    if "verifier" not in str(attest.get("agent_type", "")).lower():
+        problems.append("verifier attestation is not from a verifier subagent")
+    verdict_path = os.path.join(paths.verdicts_dir(root, run), f"{wo}.json")
+    if os.path.isfile(verdict_path):
+        if attest.get("verdict_sha") != _file_sha(verdict_path):
+            problems.append("verifier attestation does not match the current verdict")
+    else:
+        problems.append("verifier verdict missing at attestation check")
+    if attest.get("evidence_sha") != verdict.get("evidence_sha"):
+        problems.append("verifier attestation does not match the verdict evidence")
+    return problems
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--run", required=True)
@@ -121,6 +152,8 @@ def main():
     verifier_path = os.path.join(paths.verdicts_dir(root, args.run), f"{args.wo}.json")
     verifier = load(verifier_path) if os.path.isfile(verifier_path) else None
     problems = validate_verifier(verifier, run_data, evidence)
+    if verifier:
+        problems += validate_attestation(root, args.run, args.wo, verifier)
     blockers = []
     if verifier:
         blockers = [

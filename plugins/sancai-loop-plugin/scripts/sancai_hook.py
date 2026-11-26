@@ -365,6 +365,38 @@ def main():
         verdict = os.path.join(paths.verdicts_dir(root, run), f"{wo}.json")
         if not os.path.isfile(verdict):
             block(f"Sancai: subagent stopped without verdict for {wo}; write .sancai/runs/{run}/L2-harness/verdicts/{wo}.json")
+        transcript = (
+            payload.get("transcript_path")
+            or payload.get("agent_transcript_path")
+            or payload.get("transcriptPath")
+        )
+        if not transcript or not os.path.isfile(str(transcript)):
+            if os.environ.get("SANCAI_ALLOW_UNATTESTED_VERDICT") == "1":
+                allow()
+            block(
+                f"Sancai: verifier stopped without a readable transcript for {wo}; "
+                "refusing to treat narration as verification"
+            )
+        verdict_sha = hashlib.sha256(open(verdict, "rb").read()).hexdigest()
+        transcript_sha = hashlib.sha256(open(str(transcript), "rb").read()).hexdigest()
+        try:
+            verdict_data = json.load(open(verdict, encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            verdict_data = {}
+        attest_dir = os.path.join(paths.l2_dir(root, run), "verifier")
+        os.makedirs(attest_dir, exist_ok=True)
+        attest = {
+            "run": run,
+            "wo": wo,
+            "agent_id": payload.get("agent_id"),
+            "agent_type": agent_type,
+            "session_id": payload.get("session_id"),
+            "evidence_sha": verdict_data.get("evidence_sha"),
+            "verdict_sha": verdict_sha,
+            "transcript_sha": transcript_sha,
+            "stopped_at": now(),
+        }
+        _write_status_last(os.path.join(attest_dir, f"{wo}.attest.json"), attest)
         allow()
 
     if args.stop:

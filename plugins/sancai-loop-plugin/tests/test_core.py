@@ -700,6 +700,62 @@ class SancaiCoreTest(unittest.TestCase):
             output = json.loads(proc.stdout) if proc.stdout.strip() else {}
             self.assertEqual(output.get("decision") == "block", blocked, agent_type)
 
+    def test_verifier_stop_writes_attestation(self):
+        self.start_execution()
+        verdict = pathlib.Path(
+            self.tmp, ".sancai/runs/001-test/L2-harness/verdicts/WO-001.json"
+        )
+        verdict.write_text(json.dumps({"evidence_sha": "sha256:evidence"}))
+        transcript = pathlib.Path(self.tmp, "verifier-transcript.jsonl")
+        transcript.write_text('{"type":"assistant"}\n')
+        payload = json.dumps({
+            "cwd": self.tmp,
+            "session_id": "s1",
+            "agent_id": "agent-v",
+            "agent_type": "sancai-verifier",
+            "transcript_path": str(transcript),
+        })
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--subagent-stop"],
+            cwd=self.tmp, input=payload, capture_output=True, text=True,
+            env=self.env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("block", proc.stdout)
+        attest = json.loads(pathlib.Path(
+            self.tmp, ".sancai/runs/001-test/L2-harness/verifier/WO-001.attest.json"
+        ).read_text())
+        self.assertEqual(attest["agent_type"], "sancai-verifier")
+        self.assertEqual(attest["evidence_sha"], "sha256:evidence")
+        self.assertEqual(len(attest["verdict_sha"]), 64)
+        self.assertEqual(len(attest["transcript_sha"]), 64)
+
+    def test_gate_requires_verifier_attestation(self):
+        self.start_execution()
+        (pathlib.Path(self.tmp) / "a.txt").write_text("changed\n")
+        self.run_script(
+            "sancai_check_ac.py", "--run", "001-test", "--wo", "WO-001",
+            check=True,
+        )
+        self.run_script(
+            "sancai_verdict.py", "write", "--run", "001-test", "--wo", "WO-001",
+            "--verdict", "pass", "--session-id", "v", "--context-id", "ctx-v",
+            "--prompt-hash", "h", check=True,
+        )
+        self.env.pop("SANCAI_ALLOW_UNATTESTED_VERDICT", None)
+        proc = self.run_script(
+            "sancai_gate.py", "--run", "001-test", "--wo", "WO-001", "--apply",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        gate = json.loads(pathlib.Path(
+            self.tmp, ".sancai/runs/001-test/L2-harness/gates/WO-001.json"
+        ).read_text())
+        self.assertEqual(gate["result"], "blocked")
+        self.assertTrue(
+            any("attestation" in reason for reason in gate["reasons"]),
+            gate["reasons"],
+        )
+
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})
         proc = subprocess.run(
