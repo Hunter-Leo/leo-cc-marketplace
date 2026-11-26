@@ -232,5 +232,90 @@ class IntentAlignmentTest(unittest.TestCase):
         self.assertIn("Use Postgres", adr[0].read_text())
 
 
+    def test_h1_intent_script_is_allowed_by_capability(self):
+        self.init_run()
+        command = (
+            f"python3 {SCRIPTS / 'sancai_intent.py'} assess "
+            "--run 001-intent --json"
+        )
+        proc = self.run_script(
+            "sancai_capability.py", "check", "--tool", "Bash",
+            "--command", command,
+        )
+        self.assertIn("ALLOW", proc.stdout)
+        self.assertNotIn("DENY", proc.stdout)
+
+    def test_hook_allows_intent_assess_while_planning(self):
+        self.init_run()
+        command = (
+            f"python3 {SCRIPTS / 'sancai_intent.py'} assess "
+            "--run 001-intent --json"
+        )
+        payload = json.dumps({
+            "cwd": self.tmp,
+            "session_id": "s1",
+            "tool_name": "Bash",
+            "tool_input": {"command": command},
+        })
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--pre-tool"],
+            cwd=self.tmp, input=payload, capture_output=True, text=True,
+            env=self.env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("permissionDecision", proc.stdout)
+
+    def test_init_and_record_intent_use_host_session_id(self):
+        self.write_intent()
+        self.env["CLAUDE_CODE_SESSION_ID"] = "host-session"
+        self.run_script(
+            "sancai_state.py", "init", "--run", "001-intent",
+            "--intent", "intent.json", check=True,
+        )
+        run_path = pathlib.Path(self.tmp) / ".sancai/runs/001-intent/L2-harness/run.json"
+        run_data = json.loads(run_path.read_text())
+        self.assertEqual(run_data["session_id"], "host-session")
+
+        self.run_script(
+            "sancai_intent.py", "record", "--run", "001-intent",
+            "--status", "aligned", "--answers", "clear", check=True,
+        )
+        self.run_script(
+            "sancai_state.py", "record-intent", "--run", "001-intent",
+            "--message", "confirmed", check=True,
+        )
+        intent = json.loads(
+            (pathlib.Path(self.tmp) / ".sancai/runs/001-intent/L3-intent/intent.json")
+            .read_text()
+        )
+        self.assertEqual(
+            intent["approval"]["approved_in_session"], "host-session"
+        )
+        self.run_script(
+            "sancai_state.py", "transition", "--to", "executing", check=True,
+        )
+
+
+    def test_alignment_is_frozen_after_sign(self):
+        self.init_run()
+        self.run_script(
+            "sancai_intent.py", "record", "--run", "001-intent",
+            "--status", "aligned", "--answers", "clear", "--session-id", "s1",
+            check=True,
+        )
+        card_id, card_code = self.bind_intent_card()
+        self.run_script(
+            "sancai_state.py", "sign", "--run", "001-intent",
+            "--session-id", "s1", "--message", "confirmed",
+            "--card-id", card_id, "--card-code", card_code, check=True,
+        )
+        proc = self.run_script(
+            "sancai_intent.py", "record", "--run", "001-intent",
+            "--status", "aligned", "--answers", "changed", "--session-id", "s1",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        self.assertIn("already signed", proc.stderr + proc.stdout)
+
+
 if __name__ == "__main__":
     unittest.main()

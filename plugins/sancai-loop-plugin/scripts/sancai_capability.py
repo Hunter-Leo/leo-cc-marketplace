@@ -127,7 +127,7 @@ def verify_token(path):
 HARNESS_SCRIPTS = {
     "sancai_state.py", "sancai_check_ac.py", "sancai_gate.py", "sancai_escalate.py",
     "sancai_graph.py", "sancai_card.py", "sancai_cards.py", "sancai_verdict.py",
-    "sancai_decide.py", "sancai_requirements.py",
+    "sancai_decide.py", "sancai_requirements.py", "sancai_intent.py",
 }
 HUMAN_DECISION_COMMANDS = {
     "sancai_state.py": {"sign", "accept"},

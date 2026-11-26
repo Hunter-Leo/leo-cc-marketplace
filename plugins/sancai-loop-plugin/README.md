@@ -251,7 +251,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.10.0-rc.4)
+## Physical layout (v0.10.0-rc.5)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
@@ -416,7 +416,7 @@ reference set lives in `references/`:
 - `method-playbooks.md` — trigger-gated methods
 
 Versions follow semver. Release candidates use `X.Y.Z-rc.N` (for example
-`0.10.0-rc.4`); `plugin.json`, `marketplace.json`, the tag, and the changelog
+`0.10.0-rc.5`); `plugin.json`, `marketplace.json`, the tag, and the changelog
 must match. Promote to `X.Y.Z` only after H3 acceptance. See
 `references/git-workflow.md`.
 

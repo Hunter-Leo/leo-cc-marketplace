@@ -35,7 +35,11 @@ def _run(script, subcommand, argv):
 
 
 def _session(value):
-    return value or os.environ.get("CLAUDE_SESSION_ID", "")
+    return (
+        value
+        or os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+        or os.environ.get("CLAUDE_SESSION_ID", "")
+    )
 
 
 def main(argv=None):
@@ -101,7 +105,10 @@ def main(argv=None):
 
     session = _session(args.session_id)
     if not session:
-        print("sancai_decide.py: --session-id or CLAUDE_SESSION_ID is required", file=sys.stderr)
+        print(
+            "sancai_decide.py: --session-id or CLAUDE_CODE_SESSION_ID is required",
+            file=sys.stderr,
+        )
         return 2
 
     forwarded = []

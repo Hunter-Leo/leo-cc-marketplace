@@ -61,6 +61,15 @@ def validate_id(value, label):
         sys.exit(f"invalid {label}: {value!r}")
 
 
+def default_session(value=""):
+    """Resolve the host session id, including Claude Code's current env name."""
+    return (
+        value
+        or os.environ.get("CLAUDE_CODE_SESSION_ID", "")
+        or os.environ.get("CLAUDE_SESSION_ID", "")
+    )
+
+
 def resolve_run(root, args):
     run = args.run
     if not run:
@@ -248,11 +257,12 @@ def cmd_init(args):
         sys.exit(f"run already exists: {args.run}; use --force to overwrite")
     paths.ensure_run_layout(root, args.run)
     save(paths.intent_path(root, args.run), intent)
+    session_id = default_session(args.session_id)
     run = {
         "run": args.run,
         "state": "planning",
-        "session_id": args.session_id or "",
-        "executor_context_id": args.session_id or "",
+        "session_id": session_id,
+        "executor_context_id": session_id,
         "intent_file": "L3-intent/intent.json",
         "intent_version": intent.get("version", 1),
         "work_orders": {},
@@ -274,7 +284,7 @@ def cmd_sign(args):
         sys.exit(f"run must be planning to sign, currently {data['state']}")
     if args.message not in ALLOWED_APPROVALS:
         sys.exit(f"approval must be one of {sorted(ALLOWED_APPROVALS)}; got {args.message!r}")
-    session_id = args.session_id or data.get("session_id", "")
+    session_id = default_session(args.session_id or data.get("session_id", ""))
     if not session_id:
         sys.exit("approval requires a session id; pass --session-id or re-init with --session-id")
     validate_id(session_id, "session id")
@@ -333,7 +343,7 @@ def cmd_record_intent(args):
         sys.exit(f"run must be planning to sign, currently {data['state']}")
     if args.message not in ALLOWED_APPROVALS:
         sys.exit(f"approval must be one of {sorted(ALLOWED_APPROVALS)}; got {args.message!r}")
-    session_id = args.session_id or data.get("session_id", "")
+    session_id = default_session(args.session_id or data.get("session_id", ""))
     if not session_id:
         sys.exit("approval requires a session id; pass --session-id")
     validate_id(session_id, "session id")

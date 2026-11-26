@@ -108,8 +108,12 @@ class SancaiCoreTest(unittest.TestCase):
 
     def test_tty_sign_guard_is_optional(self):
         intent = pathlib.Path(self.tmp) / ".sancai" / "runs" / "001-test" / "L3-intent" / "intent.json"
+        unsigned = json.loads(intent.read_text())
+        unsigned.pop("approval", None)
+        unsigned_path = pathlib.Path(self.tmp) / "unsigned-intent.json"
+        unsigned_path.write_text(json.dumps(unsigned))
         self.run_script("sancai_state.py", "init", "--run", "002-tty",
-                        "--intent", str(intent), check=True)
+                        "--intent", str(unsigned_path), check=True)
         self.run_script("sancai_intent.py", "record", "--run", "002-tty",
                         "--status", "aligned", "--answers", "clear",
                         "--session-id", "sess-h", check=True)

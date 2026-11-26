@@ -78,9 +78,16 @@ the run is `planning` and the intent is unsigned.
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" init
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" list --status pending
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" status --json
+
+# Only after `sancai_state.py init` in step 2:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" select \
   --run <run> --req REQ-001
 ```
+
+`list` shows backlog TODOs; `status --json` shows accepted REQs. If the project
+has no accepted REQ yet, capture a TODO and ask the human to `promote` and
+`accept` it before `select`.
 
 Rules:
 
@@ -113,11 +120,14 @@ Create `.sancai/runs/<run>/L3-intent/intent.json`:
   ],
   "manual_ac_ratio": 0.0,
   "risk_policy_ref": "policy/risk@1",
-  "budget": {"human_rounds": 3, "wall_clock": "2d", "tokens": 2000000},
-  "revision": 1,
-  "requirements": ["REQ-001"]
+  "budget": {"human_rounds": 3, "wall_clock": "2d", "tokens": 2000000}
 }
 ```
+
+Do not hand-write `requirements` here unless the project ledger already contains
+those accepted REQs. A new project has no `REQ-001`; `init` rejects unknown
+requirements. Initialize the run first, then use
+`sancai_requirements.py select` in step 2 to snapshot accepted requirements.
 
 Validate:
 
@@ -129,7 +139,7 @@ Validate:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" init \
-  --run <run> --intent .sancai/runs/<run>/L3-intent/intent.json --session-id "${CLAUDE_SESSION_ID:-}"
+  --run <run> --intent .sancai/runs/<run>/L3-intent/intent.json --session-id "${CLAUDE_CODE_SESSION_ID:-}"
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" activate --run <run>
 ```
 
@@ -190,7 +200,7 @@ wrote their own answer.
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" record \
-  --run <run> --status aligned --session-id "${CLAUDE_SESSION_ID:-}" \
+  --run <run> --status aligned --session-id "${CLAUDE_CODE_SESSION_ID:-}" \
   --resolutions <path|->          # JSON file, inline JSON, or - for stdin
 ```
 
@@ -202,7 +212,7 @@ instead:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_intent.py" record \
-  --run <run> --status deferred --session-id "${CLAUDE_SESSION_ID:-}" \
+  --run <run> --status deferred --session-id "${CLAUDE_CODE_SESSION_ID:-}" \
   --reason "<why this can wait>"
 ```
 
@@ -233,7 +243,7 @@ This is the default H1 path: the human does not copy card ids or run a command.
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" record-intent \
-  --run <run> --session-id "${CLAUDE_SESSION_ID:-}" --message "confirmed"
+  --run <run> --session-id "${CLAUDE_CODE_SESSION_ID:-}" --message "confirmed"
 ```
 
 - If the human chooses **Edit** or **Cancel**, update the intent or stop; do not
@@ -246,7 +256,7 @@ clicks Allow instead of copying a command:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" sign \
-  --run <run> --session-id "${CLAUDE_SESSION_ID:-}" --message "confirmed" \
+  --run <run> --session-id "${CLAUDE_CODE_SESSION_ID:-}" --message "confirmed" \
   --card-id <CARD-ID> --card-code <CODE>
 ```
 
@@ -272,8 +282,10 @@ Then run the loop without asking the human to type commands:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" transition --to executing
+# If step 2 selected requirements, every Work Order must bind one:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" add-wo --id WO-001 \
-  --files "<exact paths>" --reversible true
+  --files "<exact paths>" --req REQ-001 --reversible true
+# Legacy intent without requirements: omit --req.
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" claim --wo WO-001 --by executor
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" progress \
   --wo WO-001 --status doing --item "executor dispatched"
@@ -365,7 +377,7 @@ a command:
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" approve \
   --run <run> --id <ESC-ID> --message "<verbatim>" \
-  --session-id "${CLAUDE_SESSION_ID:-}" \
+  --session-id "${CLAUDE_CODE_SESSION_ID:-}" \
   --card-id <CARD-ID> --card-code <CODE>
 ```
 
@@ -375,7 +387,7 @@ prompt):
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" reject \
   --run <run> --id <ESC-ID> --reason "<verbatim>" \
-  --session-id "${CLAUDE_SESSION_ID:-}" \
+  --session-id "${CLAUDE_CODE_SESSION_ID:-}" \
   --card-id <CARD-ID> --card-code <CODE>
 ```
 
@@ -432,7 +444,7 @@ Require explicit `accept` / `accepted` / `confirmed` **plus the card id/code**. 
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" accept \
-  --run <run> --message "<verbatim>" --session-id "${CLAUDE_SESSION_ID:-}" \
+  --run <run> --message "<verbatim>" --session-id "${CLAUDE_CODE_SESSION_ID:-}" \
   --card-id <CARD-ID> --card-code <CODE>
 ```
 

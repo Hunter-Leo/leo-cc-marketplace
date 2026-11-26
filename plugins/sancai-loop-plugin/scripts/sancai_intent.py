@@ -210,7 +210,12 @@ def _summarize(resolutions):
 def cmd_record(args):
     root = state.find_root()
     run = state.resolve_run(root, args)
+    _, run_data = state.load_run(root, run)
+    if run_data.get("state") != "planning":
+        sys.exit("alignment can only be recorded while the run is planning")
     intent, path = load_intent(root, run)
+    if intent.get("approval"):
+        sys.exit("intent is already signed; alignment is frozen")
     if args.status == "deferred" and not args.reason.strip():
         sys.exit("deferred alignment requires --reason")
     resolutions = _read_resolutions(args.resolutions) if args.resolutions else None

@@ -47,6 +47,10 @@ def run(tmp, script, *args, stdin=None):
     env = os.environ.copy()
     env["SANCAI_SECRET"] = "test-secret"
     env["SANCAI_ALLOW_NONINTERACTIVE_MINT"] = "1"
+    # Scenario 12/13 deliberately omit --session-id; do not let the host's
+    # session leak in through the new CLAUDE_CODE_SESSION_ID fallback.
+    env.pop("CLAUDE_CODE_SESSION_ID", None)
+    env.pop("CLAUDE_SESSION_ID", None)
     return subprocess.run(
         [PY, str(SCRIPTS / script), *args],
         cwd=tmp, capture_output=True, text=True, env=env,
