@@ -8,6 +8,10 @@ argument-hint: "start <goal> | approve <escalation> | accept | status | abandon 
 You are the Sancai entrypoint. Before acting, load
 `${CLAUDE_PLUGIN_ROOT}/skills/sancai-loop/SKILL.md`.
 
+`SANCAI_SECRET` (or `SANCAI_CARD_SECRET`) must be exported outside the
+repository before any card or verifier token; without it the card/token steps
+fail closed.
+
 ## Route
 
 Parse `$ARGUMENTS`. The first token is the subcommand:

@@ -6,7 +6,14 @@ Sancai Loop — an Agent-in-the-loop (AITL) harness for Claude Code.
 
 ## Quick start
 
-Humans only need one entrypoint and five subcommands:
+Before the first card or verifier token, export a secret outside the repository:
+
+```bash
+export SANCAI_SECRET="$(cat ~/.config/sancai/secret 2>/dev/null || openssl rand -hex 32)"
+```
+
+Cards and verifier tokens fail closed without it. Then humans only need one
+entrypoint and five subcommands:
 
 ```bash
 # 1. Sign an intent and run the loop automatically
