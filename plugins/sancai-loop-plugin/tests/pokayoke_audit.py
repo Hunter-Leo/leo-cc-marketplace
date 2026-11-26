@@ -48,6 +48,7 @@ def run(tmp, script, *args, stdin=None):
     env["SANCAI_SECRET"] = "test-secret"
     env["SANCAI_ALLOW_NONINTERACTIVE_MINT"] = "1"
     env["SANCAI_ALLOW_UNATTESTED_VERDICT"] = "1"
+    env["SANCAI_ALLOW_CARD_TIER_OVERRIDE"] = "1"
     # Scenario 12/13 deliberately omit --session-id; do not let the host's
     # session leak in through the new CLAUDE_CODE_SESSION_ID fallback.
     env.pop("CLAUDE_CODE_SESSION_ID", None)

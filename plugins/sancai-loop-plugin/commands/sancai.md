@@ -384,7 +384,10 @@ their consequences. Ground every node in the escalation payload or the diff, and
 choose the shape that makes the trade-off legible.
 
 2. Show the **raw operation**: exact action, arguments, target, diff hash, why it is irreversible, what cannot be undone.
-3. Require explicit `confirmed` / `confirmed` / `approved` / `approved` **plus the card id/code**. A bare number (`1`), `ok`, or a reply without the card pair is **not** approval for an irreversible action; ask the human to reply with the word and the card footer.
+3. Require an explicit confirmation word (`confirmed` / `approved` / `yes`) in
+   the human's reply. The agent reads the card id/code from the rendered card
+   and passes them; the human does not type or copy the pair. A bare number
+   (`1`) or `ok` is **not** approval for an irreversible action.
 4. Mark the escalation approved with the rendered card. Call the native
 decision entrypoint; the hook returns `permissionDecision: "ask"`, so Claude
 Code shows its permission prompt. The human clicks Allow; they do **not** copy
@@ -456,7 +459,9 @@ Show only:
 
 Do not show the raw diff unless asked.
 
-Require explicit `accept` / `accepted` / `confirmed` **plus the card id/code**. A bare `ok` or `1`, or a reply without the card pair, is not acceptance. Call the native decision entrypoint; the human clicks Allow in Claude Code's permission prompt:
+Require an explicit acceptance word (`accept` / `accepted` / `confirmed`) in the
+human's reply. The agent passes the rendered card id/code; the human clicks
+Allow in Claude Code's permission prompt. A bare `ok` or `1` is not acceptance.
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" accept \

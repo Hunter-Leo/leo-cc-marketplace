@@ -127,10 +127,15 @@ def build_card(graph, kind, esc_id=None, wo_id=None):
     if kind == "intent":
         intent = graph.get("intent", {})
         card["title"] = "Confirm intent"
+        checks = intent.get("acceptance_checks") or []
         card["what"] = [
             f"Goal: {intent.get('goal') or '—'}",
             f"Non-goals: {', '.join(intent.get('non_goals', [])) or '—'}",
             f"Acceptance: {intent.get('acceptance', 0)} criteria; Work Orders: {intent.get('work_orders', 0)}",
+            *[
+                f"  [{ac.get('id') or 'AC'}] {ac.get('run') or '—'}  ->  {ac.get('expect') or '—'}"
+                for ac in checks
+            ],
             f"Requirements: {', '.join(intent.get('requirements') or []) or '—'}"
             f" (revision {intent.get('revision') or '—'})",
         ]

@@ -391,6 +391,15 @@ def build_graph(root, run):
         "goal": intent.get("goal", ""),
         "non_goals": intent.get("non_goals", []),
         "acceptance": len(intent.get("acceptance", [])),
+        "acceptance_checks": [
+            {
+                "id": ac.get("id"),
+                "run": ac.get("run"),
+                "expect": ac.get("expect"),
+            }
+            for ac in intent.get("acceptance", [])
+            if isinstance(ac, dict)
+        ],
         "manual_ac_ratio": intent.get("manual_ac_ratio"),
         "work_orders": len(work_orders),
         "requirements": intent.get("requirements", []),

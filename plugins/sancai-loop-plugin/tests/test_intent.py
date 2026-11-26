@@ -17,6 +17,7 @@ class IntentAlignmentTest(unittest.TestCase):
         self.env = os.environ.copy()
         self.env["SANCAI_SECRET"] = "test-secret"
         self.env["SANCAI_ALLOW_UNATTESTED_VERDICT"] = "1"
+        self.env["SANCAI_ALLOW_CARD_TIER_OVERRIDE"] = "1"
         self.git("init", "-q")
         self.git("config", "user.email", "t@t")
         self.git("config", "user.name", "t")

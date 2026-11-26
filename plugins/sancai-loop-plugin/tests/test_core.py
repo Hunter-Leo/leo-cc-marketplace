@@ -21,6 +21,7 @@ class SancaiCoreTest(unittest.TestCase):
         self.env = os.environ.copy()
         self.env["SANCAI_SECRET"] = "test-secret"
         self.env["SANCAI_ALLOW_UNATTESTED_VERDICT"] = "1"
+        self.env["SANCAI_ALLOW_CARD_TIER_OVERRIDE"] = "1"
         self.env["SANCAI_ALLOW_NONINTERACTIVE_MINT"] = "1"
         self.git("init", "-q")
         self.git("config", "user.email", "t@t")
@@ -656,6 +657,28 @@ class SancaiCoreTest(unittest.TestCase):
         )
         self.assertIn("DENY", proc.stdout)
         self.assertIn("human decision", proc.stdout + proc.stderr)
+
+    def test_intent_card_shows_acceptance_commands(self):
+        proc = self.run_script(
+            "sancai_card.py", "intent", "--run", "001-test", "--json",
+            check=True,
+        )
+        card = json.loads(proc.stdout)
+        self.assertTrue(
+            any("grep -q changed" in line for line in card["what"]),
+            card["what"],
+        )
+
+    def test_low_dwell_tier_is_clamped_without_override(self):
+        env = dict(self.env)
+        env.pop("SANCAI_ALLOW_CARD_TIER_OVERRIDE", None)
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "sancai_card.py"), "intent",
+             "--run", "001-test", "--tier", "T0", "--json"],
+            cwd=self.tmp, capture_output=True, text=True, env=env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual(json.loads(proc.stdout)["tier"], "T2")
 
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})

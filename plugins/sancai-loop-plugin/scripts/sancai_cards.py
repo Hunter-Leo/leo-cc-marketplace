@@ -110,6 +110,11 @@ def make_card(root, run, kind, payload, options, tier="T2"):
         raise CardError(f"invalid card kind: {kind!r}")
     if tier not in DWELL_SECONDS:
         raise CardError(f"invalid card tier: {tier!r}")
+    if (
+        tier in ("T0", "T1")
+        and os.environ.get("SANCAI_ALLOW_CARD_TIER_OVERRIDE") != "1"
+    ):
+        tier = "T2"
     if not card_secret():
         raise CardError(
             "SANCAI_SECRET or SANCAI_CARD_SECRET is required to issue a card"
