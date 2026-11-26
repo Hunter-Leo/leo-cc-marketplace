@@ -267,7 +267,13 @@ def main():
     rd = paths.run_dir(root, run)
     run_path = paths.run_path(root, run)
     if not os.path.isfile(run_path):
+        reason = f"Sancai active run {run} has no {run_path}; refusing to continue blindly"
+        if args.pre_tool:
+            deny(reason)
+        if args.stop:
+            block(reason)
         allow()
+        return
     try:
         run_data = json.load(open(run_path, encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -356,7 +362,7 @@ def main():
     if args.stop:
         if os.environ.get("SANCAI_SKIP_STOP") == "1":
             allow()
-        if run_data.get("state") in ("accepted", "abandoned"):
+        if run_data.get("state") in ("accepted", "abandoned", "reviewing"):
             allow()
         sid = payload.get("session_id")
         run_sid = run_data.get("session_id")
