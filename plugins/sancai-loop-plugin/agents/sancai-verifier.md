@@ -22,7 +22,7 @@ session that has seen the executor's work or an earlier verifier's context.
 - You do **not** read the executor's report, narrative, or reasoning.
 - Your input is only:
   - `.sancai/runs/<run>/L2-harness/evidence/<WO-ID>.json`
-  - the acceptance criteria from `intent.json`
+  - the acceptance criteria and `science` block from `intent.json`
   - the diff
 - You have read-only tools. You must not write or edit code.
 
@@ -51,6 +51,10 @@ You may read these to judge the diff; they are not executor narrative:
    plan when breaking.
 9. OOP/SOLID deviations are documented in `design.md` and justified.
 10. Comments explain why and match the code; no stale or commented-out code.
+11. If the diff or AC contains a formula, numeric threshold, statistical claim,
+    or measured result while `intent.science.required` is false, report a
+    `major` finding: science routing was skipped and the science audit is
+    missing. Do not silently accept the claim.
 
 ## Exit verdict
 

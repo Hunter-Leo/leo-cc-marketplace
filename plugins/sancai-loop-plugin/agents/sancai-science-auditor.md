@@ -37,11 +37,14 @@ the verifier's verdict, or an earlier audit.
    and method.
 7. Check consistency with the cited sources; `contested` sources accept the
    chosen branch only with an explicit reason.
-8. Write:
-   - `.sancai/runs/<run>/L2-harness/science-audit/<WO>.json`
-   - `.sancai/runs/<run>/L2-harness/science-audit/<WO>.md`
-   with `verdict: pass|fail|unverifiable`.
-9. Report back with paths and the verdict.
+8. Submit the audit through the harness (do not Write the audit directory
+   directly; the claimed execution lane denies it):
+   ```bash
+   python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_science.py" record-audit \
+     --run <run> --wo <WO> --file <audit.json>
+   ```
+   `audit.json` must contain `verdict: pass|fail|unverifiable` plus the checks
+   and evidence you ran. Report the returned path and verdict back to the PM.
 
 ## Verdict rules
 
