@@ -680,6 +680,26 @@ class SancaiCoreTest(unittest.TestCase):
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
         self.assertEqual(json.loads(proc.stdout)["tier"], "T2")
 
+    def test_subagent_stop_only_guards_the_verifier(self):
+        self.start_execution()
+        for agent_type, blocked in (
+            ("general-purpose", False),
+            ("sancai-verifier", True),
+        ):
+            payload = json.dumps({
+                "cwd": self.tmp,
+                "session_id": "s1",
+                "agent_type": agent_type,
+            })
+            proc = subprocess.run(
+                [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--subagent-stop"],
+                cwd=self.tmp, input=payload, capture_output=True, text=True,
+                env=self.env,
+            )
+            self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+            output = json.loads(proc.stdout) if proc.stdout.strip() else {}
+            self.assertEqual(output.get("decision") == "block", blocked, agent_type)
+
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})
         proc = subprocess.run(

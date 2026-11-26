@@ -54,3 +54,8 @@ The token binds action + diff + nonce + expiry. It is single-use, and the agent 
 ## Boundary
 
 The plugin is not a sandbox. Arbitrary syscalls inside a process, and behavior not wrapped by a tool, must be contained by an OS sandbox, devcontainer, or least-privilege account.
+
+Build and test runners (`npm test`, `make test`, `uv run pytest`, …) execute
+repository code by design. An executor that owns test files can change what
+those runners do; the hidden acceptance checks are the harness-side backstop,
+and a real sandbox is still required for hostile code.

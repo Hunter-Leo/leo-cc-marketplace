@@ -238,6 +238,10 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_card.py" intent --run <run>
 Card creation requires `SANCAI_SECRET` or `SANCAI_CARD_SECRET`; without one,
 `sancai_card.py` fails closed instead of issuing an unsigned card.
 
+The card lists each acceptance command and its expected result. Those commands
+are what G0 will execute with a shell; the human is approving the exact commands
+shown, not just a count.
+
 Present the card, then use the interactive question UI (Start / Edit / Cancel).
 This is the default H1 path: the human does not copy card ids or run a command.
 
