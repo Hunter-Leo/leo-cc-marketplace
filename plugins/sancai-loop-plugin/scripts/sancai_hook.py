@@ -353,6 +353,14 @@ def main():
         claim = run_data.get("claim")
         if not claim:
             allow()
+        agent_type = str(
+            payload.get("agent_type")
+            or payload.get("subagent_type")
+            or payload.get("agent_name")
+            or ""
+        ).lower()
+        if "verifier" not in agent_type:
+            allow()
         wo = claim.get("wo") or "UNKNOWN"
         verdict = os.path.join(paths.verdicts_dir(root, run), f"{wo}.json")
         if not os.path.isfile(verdict):
