@@ -22,6 +22,7 @@ import json
 import os
 
 import sancai_paths as paths  # type: ignore
+import sancai_requirements as requirements  # type: ignore
 
 import statistics
 import sys
@@ -170,6 +171,7 @@ def build_graph(root, run):
             "id": wid,
             "type": "work_order",
             "state": wo.get("state"),
+            "req": wo.get("req"),
             "reversible": wo.get("reversible"),
             "blast_radius": wo.get("blast_radius"),
             "owned_files": wo.get("owned_files", []),
@@ -391,7 +393,18 @@ def build_graph(root, run):
         "acceptance": len(intent.get("acceptance", [])),
         "manual_ac_ratio": intent.get("manual_ac_ratio"),
         "work_orders": len(work_orders),
+        "requirements": intent.get("requirements", []),
+        "revision": intent.get("revision"),
     }
+    captured_todos = [
+        {
+            "id": item["id"],
+            "title": item.get("title"),
+            "status": item.get("status"),
+            "relation": item.get("relation"),
+        }
+        for item in requirements.todos_for_run(root, run)
+    ]
 
     graph = {
         "run": run,
@@ -402,6 +415,7 @@ def build_graph(root, run):
             "events": len(events),
         },
         "intent": intent_summary,
+        "captured_todos": captured_todos,
         "nodes": nodes,
         "edges": edges,
         "metrics": metrics,

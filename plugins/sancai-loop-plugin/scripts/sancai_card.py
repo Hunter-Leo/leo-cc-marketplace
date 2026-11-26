@@ -131,6 +131,8 @@ def build_card(graph, kind, esc_id=None, wo_id=None):
             f"Goal: {intent.get('goal') or '—'}",
             f"Non-goals: {', '.join(intent.get('non_goals', [])) or '—'}",
             f"Acceptance: {intent.get('acceptance', 0)} criteria; Work Orders: {intent.get('work_orders', 0)}",
+            f"Requirements: {', '.join(intent.get('requirements') or []) or '—'}"
+            f" (revision {intent.get('revision') or '—'})",
         ]
         card["why"] = "Intent is the baseline for all later decisions; executing without confirmation amplifies rework."
         card["impact"] = "Approval moves to execution; changing the Intent requires re-signing."
@@ -213,12 +215,30 @@ def build_card(graph, kind, esc_id=None, wo_id=None):
         gates = [n for n in graph["nodes"] if n.get("type") == "gate"]
         gate_text = ", ".join(f"{g['id']}={g.get('result')}" for g in gates) or "—"
         card["title"] = "Acceptance: outcome pending"
+        selected = graph.get("intent", {}).get("requirements") or []
+        coverage = []
+        for req_id in selected:
+            wos = [
+                n["id"] for n in graph["nodes"]
+                if n.get("type") == "work_order"
+                and n.get("req") == req_id
+                and n.get("state") in ("verified", "merged")
+            ]
+            coverage.append(f"{req_id}: {', '.join(wos) or 'uncovered'}")
+        captured = graph.get("captured_todos") or []
         card["what"] = [
             f"{metrics['wo_verified']}/{metrics['wo_total']} Work Orders verified",
             f"Gate: {gate_text}",
             f"verifier findings：{findings}",
             f"Rework: {metrics['rework']} times; escalations: {metrics['escalations']}",
         ]
+        if selected:
+            card["what"].append("Requirement coverage: " + "; ".join(coverage))
+        if captured:
+            card["what"].append(
+                "Out-of-scope captured: "
+                + ", ".join(f"{item['id']} ({item.get('relation')})" for item in captured)
+            )
         card["why"] = "Acceptance is a human decision, not the agent's self-assessment."
         card["impact"] = "Accepting ends the request; sending back re-enters execution."
         card["options"] = [

@@ -127,12 +127,13 @@ def verify_token(path):
 HARNESS_SCRIPTS = {
     "sancai_state.py", "sancai_check_ac.py", "sancai_gate.py", "sancai_escalate.py",
     "sancai_graph.py", "sancai_card.py", "sancai_cards.py", "sancai_verdict.py",
-    "sancai_decide.py",
+    "sancai_decide.py", "sancai_requirements.py",
 }
 HUMAN_DECISION_COMMANDS = {
     "sancai_state.py": {"sign", "accept"},
     "sancai_escalate.py": {"approve", "reject"},
     "sancai_human.py": {"sign", "approve", "reject", "accept"},
+    "sancai_requirements.py": {"promote", "accept", "defer", "reject"},
 }
 READ_ONLY_GIT = {"diff", "status", "log", "show", "branch", "rev-parse", "ls-files", "grep"}
 SHELL_META = (";", "&", "|", "<", ">", "`", "$(", "\n", "\r", "(", ")")

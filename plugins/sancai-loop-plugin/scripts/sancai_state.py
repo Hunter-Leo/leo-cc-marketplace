@@ -29,6 +29,7 @@ import sys
 
 import sancai_cards  # type: ignore
 import sancai_graph  # type: ignore
+import sancai_requirements as requirements  # type: ignore
 
 os.umask(0o077)
 
@@ -106,7 +107,7 @@ def intent_snapshot(intent):
     return "sha256:" + hashlib.sha256(canonical(clean).encode()).hexdigest()
 
 
-def validate_intent(intent):
+def validate_intent(intent, root=None):
     if not isinstance(intent, dict):
         sys.exit("intent must be a JSON object")
     goal = intent.get("goal")
@@ -126,6 +127,25 @@ def validate_intent(intent):
             manual += 1
     if manual / len(acceptance) > 0.2 + 1e-9:
         sys.exit(f"manual acceptance criteria exceed 20% ({manual}/{len(acceptance)})")
+    if "requirements" not in intent:
+        return
+    selected = intent.get("requirements")
+    if not isinstance(selected, list) or not selected:
+        sys.exit("intent.requirements must be a non-empty list when present")
+    if len(set(selected)) != len(selected):
+        sys.exit("intent.requirements must not contain duplicates")
+    revision = intent.get("revision")
+    if not isinstance(revision, int) or revision < 1:
+        sys.exit("intent.revision must be an integer >= 1")
+    project_requirements, _ = requirements.load_ledger(root or find_root())
+    for req_id in selected:
+        req = project_requirements.get("requirements", {}).get(req_id)
+        if not req:
+            sys.exit(f"unknown requirement: {req_id}")
+        if req.get("status") != "accepted":
+            sys.exit(f"requirement {req_id} is {req.get('status')}, not accepted")
+        if not req.get("acceptance"):
+            sys.exit(f"requirement {req_id} has no acceptance criteria")
 
 
 def require_alignment(intent):
@@ -221,7 +241,7 @@ def cmd_init(args):
             pass
     src = os.path.abspath(args.intent)
     intent = load(src)
-    validate_intent(intent)
+    validate_intent(intent, root)
     rd = paths.run_dir(root, args.run)
     run_path = paths.run_path(root, args.run)
     if os.path.isfile(run_path) and not args.force:
@@ -260,7 +280,7 @@ def cmd_sign(args):
     validate_id(session_id, "session id")
     intent_path = paths.intent_path(root, run, data)
     intent = load(intent_path)
-    validate_intent(intent)
+    validate_intent(intent, root)
     require_alignment(intent)
     snapshot = intent_snapshot(intent)
     expected = {
@@ -319,7 +339,7 @@ def cmd_record_intent(args):
     validate_id(session_id, "session id")
     intent_path = paths.intent_path(root, run, data)
     intent = load(intent_path)
-    validate_intent(intent)
+    validate_intent(intent, root)
     require_alignment(intent)
     snapshot = intent_snapshot(intent)
     latency = 0.0
@@ -441,6 +461,7 @@ def cmd_transition(args):
     if nxt == "executing":
         intent_path = paths.intent_path(root, run, data)
         intent = load(intent_path)
+        validate_intent(intent, root)
         approval = intent.get("approval") or {}
         if not approval:
             sys.exit("intent is not signed; run sign first")
@@ -487,6 +508,19 @@ def cmd_add_wo(args):
     path, data = load_run(root, run)
     if args.id in data["work_orders"]:
         sys.exit(f"work order already exists: {args.id}")
+    intent = load(paths.intent_path(root, run, data))
+    selected = intent.get("requirements") or []
+    req = args.req
+    if selected:
+        if not req:
+            sys.exit(
+                "work order must bind an accepted requirement with --req; "
+                f"selected: {', '.join(selected)}"
+            )
+        if req not in selected:
+            sys.exit(f"requirement {req} is not selected in the intent")
+    elif req:
+        sys.exit("run intent has no selected requirements; select requirements first")
     new_files = validate_owned_files(
         root, [f.strip() for f in args.files.split(",") if f.strip()]
     )
@@ -497,6 +531,7 @@ def cmd_add_wo(args):
     data["work_orders"][args.id] = {
         "id": args.id,
         "state": "pending",
+        "req": req,
         "owned_files": new_files,
         "reversible": args.reversible.lower() == "true",
         "blast_radius": args.blast_radius,
@@ -504,8 +539,12 @@ def cmd_add_wo(args):
     }
     data["updated_at"] = now()
     save(path, data)
-    append_event(root, run, "work_order_added", {"id": args.id, "reversible": data["work_orders"][args.id]["reversible"]})
-    print(f"added {args.id}")
+    append_event(root, run, "work_order_added", {
+        "id": args.id,
+        "req": req,
+        "reversible": data["work_orders"][args.id]["reversible"],
+    })
+    print(f"added {args.id}" + (f" for {req}" if req else ""))
 
 
 def cmd_claim(args):
@@ -685,6 +724,18 @@ def cmd_accept(args):
         sys.exit("accept requires a session id; pass --session-id")
     validate_id(session_id, "session id")
     path, data = load_run(root, run)
+    intent = load(paths.intent_path(root, run, data))
+    selected = intent.get("requirements") or []
+    wos = data.get("work_orders", {})
+    coverage = {}
+    for req_id in selected:
+        covered = [
+            wid for wid, wo in wos.items()
+            if wo.get("req") == req_id and wo.get("state") in ("verified", "merged")
+        ]
+        if not covered:
+            sys.exit(f"requirement has no verified work order: {req_id}")
+        coverage[req_id] = covered
     expected = accept_payload(root, run, data)
     try:
         card = sancai_cards.consume_card(root, run, args.card_id, args.card_code, expected)
@@ -740,7 +791,7 @@ def cmd_accept(args):
         sys.exit("--disposition is only valid when major findings exist")
 
     disposition_record = None
-    follow_up_wo = ""
+    deferred_todo = ""
     if majors:
         raw = dispositions[0].strip()
         if raw.startswith("defer:"):
@@ -748,28 +799,32 @@ def cmd_accept(args):
             validate_id(wo_id, "follow-up work order")
             if wo_id in wos:
                 sys.exit(f"follow-up work order already exists: {wo_id}")
-            files = sorted({
-                f for f in (finding_file(x) for x in majors) if f
-            })
-            for wid, wo in wos.items():
-                overlap = set(files) & set(wo.get("owned_files", []))
-                if overlap:
-                    sys.exit(
-                        f"follow-up owned_files overlap with {wid}: {sorted(overlap)}"
-                    )
-            data["work_orders"][wo_id] = {
-                "id": wo_id,
-                "state": "pending",
-                "owned_files": files,
-                "reversible": True,
-                "risk_tier": "T1",
-                "acceptance": [{"id": "AC-1", "text": "Resolve deferred finding"}],
-                "created_at": now(),
-            }
+            finding_text = (
+                majors[0].get("summary")
+                or majors[0].get("message")
+                or "Resolve deferred finding"
+            )
+            title = f"Resolve deferred finding {wo_id}: {finding_text}"
+            item = requirements.capture_todo(
+                root,
+                title,
+                type_="finding",
+                priority="P1",
+                source=f"run:{run}/WO:{wo_id}",
+                relation="related",
+                notes="; ".join(
+                    f"{finding_file(f) or 'unknown'}: {f.get('summary') or f}"
+                    for f in majors
+                ),
+            )
+            deferred_todo = item["id"]
             disposition_record = {
-                "raw": raw, "kind": "defer", "wo": wo_id, "owned_files": files,
+                "raw": raw,
+                "kind": "defer",
+                "wo": wo_id,
+                "todo": item["id"],
+                "title": title,
             }
-            follow_up_wo = wo_id
         elif raw.startswith("waive:"):
             reason = raw[len("waive:"):].strip()
             if not reason:
@@ -781,6 +836,7 @@ def cmd_accept(args):
             )
 
     dispositions_record = [disposition_record] if disposition_record else []
+    captured_todos = [item["id"] for item in requirements.todos_for_run(root, run)]
     data["state"] = "accepted"
     data["outcome"] = {
         "accepted_at": now(),
@@ -788,6 +844,8 @@ def cmd_accept(args):
         "accepted_in_session": session_id,
         "card_id": card["card_id"],
         "latency_seconds": latency,
+        "requirements": coverage,
+        "captured_todos": captured_todos,
     }
     data["acceptance"] = {
         "findings": {
@@ -795,7 +853,9 @@ def cmd_accept(args):
             "count": len(findings),
             "acknowledged": True,
             "dispositions": dispositions_record,
-        }
+        },
+        "requirements": coverage,
+        "captured_todos": captured_todos,
     }
     data["updated_at"] = now()
     save(path, data)
@@ -804,11 +864,14 @@ def cmd_accept(args):
         "hash": expected["findings_hash"],
         "count": len(findings),
         "dispositions": dispositions_record,
-        "follow_up_wo": follow_up_wo,
+        "follow_up_wo": "",
+        "deferred_todo": deferred_todo,
     })
     append_event(root, run, "outcome_accepted", {
         "message": args.message,
         "latency_seconds": latency,
+        "requirements": coverage,
+        "captured_todos": captured_todos,
     })
     print(f"outcome accepted: {run}")
 
@@ -832,7 +895,7 @@ def main():
 
     p = sub.add_parser("transition"); p.add_argument("--run"); p.add_argument("--to", required=True); p.set_defaults(func=cmd_transition)
 
-    p = sub.add_parser("add-wo"); p.add_argument("--run"); p.add_argument("--id", required=True); p.add_argument("--files", required=True); p.add_argument("--reversible", default="true"); p.add_argument("--blast-radius", default="low"); p.set_defaults(func=cmd_add_wo)
+    p = sub.add_parser("add-wo"); p.add_argument("--run"); p.add_argument("--id", required=True); p.add_argument("--files", required=True); p.add_argument("--req"); p.add_argument("--reversible", default="true"); p.add_argument("--blast-radius", default="low"); p.set_defaults(func=cmd_add_wo)
 
     p = sub.add_parser("claim"); p.add_argument("--run"); p.add_argument("--wo", required=True); p.add_argument("--by", default="executor"); p.add_argument("--session-id", default=""); p.add_argument("--context-id", default=""); p.set_defaults(func=cmd_claim)
 

@@ -38,7 +38,7 @@ def load_intent(root, run):
     _, data = state.load_run(root, run)
     path = paths.intent_path(root, run, data)
     intent = state.load(path)
-    state.validate_intent(intent)
+    state.validate_intent(intent, root)
     return intent, path
 
 

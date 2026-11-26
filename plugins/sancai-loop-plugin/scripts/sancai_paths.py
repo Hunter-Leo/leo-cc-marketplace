@@ -35,6 +35,22 @@ def sancai_dir(root):
     return os.path.join(root, ROOT)
 
 
+def project_dir(root):
+    return os.path.join(sancai_dir(root), "project")
+
+
+def requirements_path(root):
+    return os.path.join(project_dir(root), "requirements.json")
+
+
+def backlog_path(root):
+    return os.path.join(project_dir(root), "backlog.json")
+
+
+def blueprint_path(root):
+    return os.path.join(project_dir(root), "blueprint.md")
+
+
 def run_dir(root, run):
     return os.path.join(sancai_dir(root), "runs", run)
 
