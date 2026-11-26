@@ -61,6 +61,41 @@ is rejected as "too fresh". Do not retry in a loop to defeat the dwell.
 
 ---
 
+## Project requirements (before H1)
+
+Requirements outlive a run. The project ledger is:
+
+```
+.sancai/project/requirements.json   REQ-* accepted, testable requirements
+.sancai/project/backlog.json        TODO-* raw captures
+.sancai/project/blueprint.md        generated view
+```
+
+At H1, a run selects the `accepted` requirements it will cover. Selection writes
+`requirements[]` and bumps `revision` in `intent.json`; it is allowed only while
+the run is `planning` and the intent is unsigned.
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" init
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" list --status pending
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" select \
+  --run <run> --req REQ-001
+```
+
+Rules:
+
+- Select only when an `accepted` REQ already covers the goal.
+- If no REQ covers it, capture a TODO and ask the human to `promote` and
+  `accept` it. **Never** promote or accept on the human's behalf.
+- If the project has no ledger, a legacy intent without `requirements` is fine.
+- An unrelated discovery is captured with `--relation unrelated`; it never
+  mutates the current intent.
+
+Read `${CLAUDE_PLUGIN_ROOT}/references/requirements-management.md` for the state
+machines and capture points.
+
+---
+
 ## start (H1 + automatic loop)
 
 ### 1. Draft the intent
@@ -78,7 +113,9 @@ Create `.sancai/runs/<run>/L3-intent/intent.json`:
   ],
   "manual_ac_ratio": 0.0,
   "risk_policy_ref": "policy/risk@1",
-  "budget": {"human_rounds": 3, "wall_clock": "2d", "tokens": 2000000}
+  "budget": {"human_rounds": 3, "wall_clock": "2d", "tokens": 2000000},
+  "revision": 1,
+  "requirements": ["REQ-001"]
 }
 ```
 
@@ -95,6 +132,17 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" init \
   --run <run> --intent .sancai/runs/<run>/L3-intent/intent.json --session-id "${CLAUDE_SESSION_ID:-}"
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" activate --run <run>
 ```
+
+Select the accepted requirements this run covers (optional but all-or-nothing:
+once `requirements` is present, every Work Order must bind one):
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" select \
+  --run <run> --req REQ-001
+```
+
+Work Orders then use `add-wo --req REQ-001`. A Work Order without `--req` is
+refused when the intent has a requirements snapshot.
 
 ### 3. Align the intent (interactive)
 
@@ -268,11 +316,25 @@ Ask the human only when:
 
 Everything else (style, naming, normal test failures, reversible refactors) is the executor's job.
 
+If an escalation reveals work that should not enter this run, capture it in the
+project backlog instead of widening scope:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" capture \
+  --title "<discovery>" --type finding --priority P2 \
+  --source "run:<run>/WO:<wo>" --relation unrelated
+```
+
+Continue the run. A related capture may later be promoted by the human; an
+unrelated one stays in the backlog.
+
 ### 6. Report
 
 When the run reaches `reviewing`, report:
 
 - Work Orders and gate results
+- Requirement coverage (`REQ-*` → verified WOs)
+- backlog items captured during the run
 - evidence paths
 - open findings
 - ask for `/sancai accept`
@@ -351,12 +413,15 @@ evidence → gate/verifier verdicts → what was intentionally left out
 (non-goals). This is the "show the finished work" diagram; there is no fixed
 format, but every node must trace to a file, command, gate result, or verdict.
 
-Preconditions: run is `reviewing`; all Work Orders `verified` or `merged`.
+Preconditions: run is `reviewing`; all Work Orders `verified` or `merged`;
+every requirement selected in the intent has at least one verified Work Order.
 
 Show only:
 
 - Work Orders and gate results
 - AC coverage
+- requirement coverage (`REQ-*` → verified WOs)
+- backlog items captured during this run
 - evidence paths
 - open findings
 - what was **not** done (non-goals)
@@ -382,9 +447,13 @@ the human acknowledges them:
 Major findings require exactly one disposition in addition:
 
 ```bash
-  --ack-findings --disposition "defer:<WO-ID>"    # create a follow-up WO
+  --ack-findings --disposition "defer:<WO-ID>"    # capture a backlog TODO
   --ack-findings --disposition "waive:<reason>"   # accept the risk explicitly
 ```
+
+`defer:<WO-ID>` captures a `finding` TODO in `.sancai/project/backlog.json`
+sourced to `run:<run>/WO:<WO-ID>`. It does **not** create a new Work Order in
+the accepted run; the human promotes it later if it should be planned.
 
 Blocking (blocker/critical) findings can never be accepted. If the human
 refuses acceptance, do not record an accept: keep the run in `reviewing`,

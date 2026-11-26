@@ -27,6 +27,7 @@ docs/
 | [design/loop-design.md](sancai/design/loop-design.md) | Draft v0.4 | 整体架构：L3/L2/L1、H1–H3、G0/G3、能力表 |
 | [design/observability-design.md](sancai/design/observability-design.md) | v0.1 | run 状态、阶段迁移、人工卡点、运行时感知 |
 | [design/v0.11-reliability-design.md](sancai/design/v0.11-reliability-design.md) | Draft v0.11 | 等待、派发、授权、验收四个边界状态 |
+| [design/requirements-management.md](sancai/design/requirements-management.md) | v0.10.0-rc.4 | 项目账本、REQ/TODO 状态机、intent 快照、H3 coverage |
 | [research/harness-vibe-coding-research-2026-11.md](sancai/research/harness-vibe-coding-research-2026-11.md) | 2026-11 | Harness / Vibe Coding 前沿研究 |
 | [research/harness-vibe-coding-research-2026-11.html](sancai/research/harness-vibe-coding-research-2026-11.html) | 2026-11 | 上述研究的可视化版本 |
 | [research/hitl-to-aitl-research-2026-11.html](sancai/research/hitl-to-aitl-research-2026-11.html) | 2026-11 | HITL → AITL 范式迁移调研 |

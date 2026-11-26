@@ -72,7 +72,7 @@ Implemented in **`plugins/sancai-loop-plugin`** (the classic `leo-team-plugin` i
 - **L2 Harness** keeps `L2-harness/run.json`, creates Work Orders, runs G0/G3 gates, collects evidence, handles escalations.
 - **L1 Code** runs an isolated `sancai-executor`; `sancai-verifier` judges independently.
 
-Runtime state is physical: `.sancai/runs/<run>/{L3-intent,L2-harness,L1-code,audit}/`.
+Runtime state is physical: `.sancai/runs/<run>/{L3-intent,L2-harness,L1-code,audit}/`. Cross-run requirements live in `.sancai/project/{requirements.json,backlog.json,blueprint.md}`; a run's intent snapshots the accepted `REQ-*` it covers, Work Orders bind one with `add-wo --req`, and H3 refuses acceptance until every selected requirement has a verified Work Order.
 
 Commands: `/sancai start`, `/sancai approve`, `/sancai accept`, `/sancai status`, `/sancai abandon`.
 `run` and `check` are internal: after H1 the PM agent runs add-wo → claim → executor → G0 → G3 → gate automatically.

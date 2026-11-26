@@ -29,6 +29,26 @@ Humans only need one entrypoint and five subcommands:
 add-wo → claim → executor → G0 → G3 → gate automatically, and stops only on
 the three escalation triggers.
 
+## Requirements across runs
+
+Requirements live in a project ledger, not in a single run:
+
+```
+.sancai/project/requirements.json   accepted REQ-* with acceptance criteria
+.sancai/project/backlog.json        raw TODO-* captures
+.sancai/project/blueprint.md        generated view
+```
+
+A run's `intent.json` snapshots the accepted requirements it covers
+(`requirements[]` + `revision`). Work Orders bind one with `add-wo --req`.
+The agent may capture, list, and select; only the human may promote, accept,
+defer, or reject. Unrelated discoveries are captured in the backlog and never
+widen the current run. H3 acceptance refuses to finish until every selected
+requirement has a verified Work Order, and `defer:<WO-ID>` captures a backlog
+TODO instead of creating a Work Order in an already accepted run.
+
+See `references/requirements-management.md` for the state machines.
+
 ## Human touchpoints
 
 Before every human decision, render the card:
@@ -133,7 +153,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.10.0-rc.3)
+## Physical layout (v0.10.0-rc.4)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
@@ -157,7 +177,12 @@ L1 Code     isolated executor: plan → act → verify → repair
 ## State
 
 ```
-.sancai/runs/<run>/
+.sancai/
+├── project/
+│   ├── requirements.json
+│   ├── backlog.json
+│   └── blueprint.md
+└── runs/<run>/
 ├── L3-intent/
 │   ├── intent.json
 │   └── decisions/
@@ -263,6 +288,7 @@ The executor reads the standards in `skills/sancai-loop/SKILL.md`; the full
 reference set lives in `references/`:
 
 - `intent-alignment.md` — H1 ambiguity signals, questions, glossary, ADR
+- `requirements-management.md` — project ledger, REQ/TODO states, capture points
 - `design-principles.md` — AITL/OOP/SOLID and proportionality
 - `coding-standards.md` — universal and language-specific rules
 - `comment-standard.md` — docstrings, inline comments, TODO
@@ -276,7 +302,7 @@ reference set lives in `references/`:
 - `method-playbooks.md` — trigger-gated methods
 
 Versions follow semver. Release candidates use `X.Y.Z-rc.N` (for example
-`0.10.0-rc.1`); `plugin.json`, `marketplace.json`, the tag, and the changelog
+`0.10.0-rc.4`); `plugin.json`, `marketplace.json`, the tag, and the changelog
 must match. Promote to `X.Y.Z` only after H3 acceptance. See
 `references/git-workflow.md`.
 
