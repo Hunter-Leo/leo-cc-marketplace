@@ -791,6 +791,61 @@ class SancaiCoreTest(unittest.TestCase):
             gate["reasons"],
         )
 
+    def test_gate_requires_science_audit(self):
+        self.start_execution()
+        intent_path = pathlib.Path(
+            self.tmp, ".sancai/runs/001-test/L3-intent/intent.json"
+        )
+        intent = json.loads(intent_path.read_text())
+        intent["science"] = {
+            "required": True,
+            "signals": ["formula"],
+            "reasons": ["formula test"],
+            "agents": ["researcher", "science-auditor"],
+            "confidence": "high",
+        }
+        intent_path.write_text(json.dumps(intent))
+        (pathlib.Path(self.tmp) / "a.txt").write_text("changed\n")
+        self.run_script(
+            "sancai_check_ac.py", "--run", "001-test", "--wo", "WO-001",
+            check=True,
+        )
+        self.run_script(
+            "sancai_verdict.py", "write", "--run", "001-test", "--wo", "WO-001",
+            "--verdict", "pass", "--session-id", "v", "--context-id", "ctx-v",
+            "--prompt-hash", "h", check=True,
+        )
+        self.env.pop("SANCAI_ALLOW_UNATTESTED_VERDICT", None)
+        proc = self.run_script(
+            "sancai_gate.py", "--run", "001-test", "--wo", "WO-001", "--apply",
+        )
+        self.assertNotEqual(proc.returncode, 0)
+        gate = json.loads(pathlib.Path(
+            self.tmp, ".sancai/runs/001-test/L2-harness/gates/WO-001.json"
+        ).read_text())
+        self.assertTrue(
+            any("science audit" in reason for reason in gate["reasons"]),
+            gate["reasons"],
+        )
+
+    def test_hook_allows_research_writes_during_h1(self):
+        research = pathlib.Path(
+            self.tmp, ".sancai/runs/001-test/L3-intent/research/inspect.md"
+        )
+        payload = json.dumps({
+            "cwd": self.tmp,
+            "session_id": "s1",
+            "tool_name": "Write",
+            "tool_input": {"file_path": str(research)},
+        })
+        proc = subprocess.run(
+            [sys.executable, str(SCRIPTS / "sancai_hook.py"), "--pre-tool"],
+            cwd=self.tmp, input=payload, capture_output=True, text=True,
+            env=self.env,
+        )
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertNotIn("permissionDecision", proc.stdout)
+
     def test_hook_stop_blocks_without_session(self):
         payload = json.dumps({"cwd": self.tmp})
         proc = subprocess.run(

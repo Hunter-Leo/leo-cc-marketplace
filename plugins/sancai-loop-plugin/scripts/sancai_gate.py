@@ -12,6 +12,7 @@ import os
 
 import sancai_paths as paths  # type: ignore
 import sancai_control as control  # type: ignore  # noqa: E402
+import sancai_science as science  # type: ignore  # noqa: E402
 
 import subprocess
 import sys
@@ -170,6 +171,16 @@ def main():
         problems.append(reason)
         append_event(root, args.run, "budget_exhausted", {"reason": reason})
     save(run_path, run_data)
+    science_status = science.audit_status(root, args.run, args.wo, intent)
+    science_fail = (
+        science_status.get("required")
+        and science_status.get("verdict") == "fail"
+    )
+    if science_status.get("required") and not science_status.get("ok") and not science_fail:
+        problems.append(
+            "science audit: "
+            + (science_status.get("reason") or science_status.get("verdict") or "not passed")
+        )
     blockers = []
     if verifier:
         blockers = [
@@ -181,6 +192,9 @@ def main():
         if problems:
             result = "blocked"
             reasons = problems
+        elif science_fail:
+            result = "changes_requested"
+            reasons = ["science audit failed"]
         elif blockers:
             result = "changes_requested"
             reasons = [f"blocking findings: {blockers}"]

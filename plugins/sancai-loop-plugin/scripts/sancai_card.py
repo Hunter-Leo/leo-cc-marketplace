@@ -147,6 +147,12 @@ def build_card(graph, kind, esc_id=None, wo_id=None):
             f"Requirements: {', '.join(intent.get('requirements') or []) or '—'}"
             f" (revision {intent.get('revision') or '—'})",
         ]
+        science = intent.get("science") or {}
+        if science.get("required"):
+            card["what"].append(
+                "Science: required"
+                f" ({', '.join(science.get('agents') or []) or 'researcher'})"
+            )
         card["why"] = "Intent is the baseline for all later decisions; executing without confirmation amplifies rework."
         card["impact"] = "Approval moves to execution; changing the Intent requires re-signing."
         card["options"] = [

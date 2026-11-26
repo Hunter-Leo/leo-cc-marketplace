@@ -1,6 +1,6 @@
 # Sancai Loop Control：三参数预算
 
-- 状态：Implemented 0.10.0-rc.6
+- 状态：Implemented 0.10.0-rc.7
 - 日期：2026-11-26
 - 范围：单仓库、单写者、串行
 

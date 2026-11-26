@@ -307,10 +307,19 @@ def main():
             allow()
 
         # Outside an active execution claim, code writes are denied. The only
-        # exception is drafting the intent during planning.
+        # exceptions are the H1 intent draft, H1 research artifacts, and the
+        # science audit written by the independent auditor.
         if tool in ("Write", "Edit", "NotebookEdit"):
             intent_path = paths.intent_path(root, run, run_data)
-            if state == "planning" and path and os.path.realpath(path) == os.path.realpath(intent_path):
+            research_root = os.path.realpath(paths.research_dir(root, run))
+            audit_root = os.path.realpath(paths.science_audit_dir(root, run))
+            real = os.path.realpath(path) if path else ""
+            if state == "planning" and real and (
+                real == os.path.realpath(intent_path)
+                or real.startswith(research_root + os.sep)
+            ):
+                allow()
+            if state in ("executing", "reviewing") and real.startswith(audit_root + os.sep):
                 allow()
             deny(f"Sancai: code writes are not allowed while state={state}")
 

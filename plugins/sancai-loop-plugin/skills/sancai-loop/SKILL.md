@@ -263,15 +263,24 @@ Everything else (style, naming, normal test failures, reversible refactors) is t
 
 ```text
 PM (main session) ──► sancai-executor (L1)   writes code
-                  └─► sancai-verifier (L2/G3) reads evidence, judges
+                  ├─► sancai-verifier (L2/G3) reads evidence, judges
+                  ├─► sancai-researcher       H1 external evidence (conditional)
+                  └─► sancai-science-auditor  G3 scientific validity (conditional)
 ```
 
-Only these two. Explorer/architect are added only when eval proves the need.
+The science roles are not human-selected. PM runs
+`sancai_science.py detect` during H1 and writes `intent.science`; when
+`required=true`, researcher/auditor are mandatory. The human signs the final
+intent and may reject the decision, but does not choose the role.
+
+Explorer/architect/intent-critic are future roles, added only after eval proves
+the need.
 
 ## Required reading
 
-1. `${CLAUDE_PLUGIN_ROOT}/references/intent-alignment.md`
-2. `${CLAUDE_PLUGIN_ROOT}/references/requirements-management.md`
+1. `${CLAUDE_PLUGIN_ROOT}/references/pm-role.md`
+2. `${CLAUDE_PLUGIN_ROOT}/references/intent-alignment.md`
+3. `${CLAUDE_PLUGIN_ROOT}/references/requirements-management.md`
 3. `${CLAUDE_PLUGIN_ROOT}/references/design-principles.md`
 3. `${CLAUDE_PLUGIN_ROOT}/references/coding-standards.md`
 4. `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`

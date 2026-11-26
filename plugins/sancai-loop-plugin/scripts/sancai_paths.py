@@ -108,6 +108,14 @@ def decisions_dir(root, run):
     return os.path.join(l3_dir(root, run), "decisions")
 
 
+def research_dir(root, run):
+    return os.path.join(l3_dir(root, run), "research")
+
+
+def science_audit_dir(root, run):
+    return os.path.join(l2_dir(root, run), "science-audit")
+
+
 def cards_dir(root, run):
     return os.path.join(decisions_dir(root, run), "cards")
 
@@ -146,10 +154,12 @@ def ensure_run_layout(root, run):
         decisions_dir(root, run),
         cards_dir(root, run),
         escalations_dir(root, run),
+        research_dir(root, run),
         l2_dir(root, run),
         evidence_dir(root, run),
         gates_dir(root, run),
         verdicts_dir(root, run),
+        science_audit_dir(root, run),
         tokens_dir(root, run),
         l1_dir(root, run),
         attempts_dir(root, run),

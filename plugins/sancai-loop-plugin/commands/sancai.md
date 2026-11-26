@@ -138,6 +138,23 @@ requirements. Initialize the run first, then use
 `accept`, `abandon`, and a human-approved `sancai_decide.py budget-grant` remain
 available. Per-WO/verifier/no-progress limits are derived from `max_attempts`.
 
+### 1.1 Science routing (automatic)
+
+Do not ask the human whether to use science agents. Run the detector after the
+intent draft:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_science.py" detect \
+  --intent .sancai/runs/<run>/L3-intent/intent.json --json
+```
+
+Write the result into `intent.science` with `required`, `signals`, `reasons`,
+`agents`, and `confidence`. If `required=true`, spawn `sancai-researcher` before
+asking the human about the intent; if numeric/statistical claims exist, also
+spawn `sancai-science-auditor`. Uncertain detection defaults to `required=true`.
+The human still signs the final intent and may reject the science decision, but
+is not asked to choose the role.
+
 Validate:
 
 - every AC has an executable `run` and a concrete `expect`
@@ -340,6 +357,11 @@ reading the token directory does not reveal the secret. Without a token,
 `write` fails closed.
 
 Then spawn **`sancai-verifier`** with the raw evidence + AC + diff (never the executor's narrative). The verifier writes its verdict through `sancai_verdict.py` with a fresh `--context-id` (different from the executor and its claim) and a `--prompt-hash`; a pass verdict carrying a blocker/critical finding is rejected.
+
+If `intent.science.required` is true, spawn `sancai-science-auditor` as well and
+record its audit through `sancai_science.py record-audit`. The gate requires a
+`pass` audit for every Work Order; `fail` sends the WO back, and
+`unverifiable`/missing blocks it.
 
 Then:
 

@@ -130,7 +130,7 @@ REQ
 | H1 | ambiguity addressed, resolutions complete, intent signed, tracked tree clean | `sancai_intent.py`, `sancai_state.py sign`, `transition executing` |
 | WO start | WO binds a selected `REQ-*`; claim recorded | `sancai_state.py add-wo/claim` |
 | G0 | acceptance commands run by harness, evidence hashed | `sancai_check_ac.py` |
-| G3 | verifier independent (context, prompt hash, read-only), evidence matches | `sancai_gate.py`, `sancai_verdict.py` |
+| G3 | verifier independent (context, prompt hash, read-only), evidence matches; science audit passes when required | `sancai_gate.py`, `sancai_verdict.py`, `sancai_science.py` |
 | Reviewing | every WO verified or merged | `sancai_state.py transition` |
 | H3 | all gates passed, requirements covered, findings dispositioned | `sancai_state.py accept` |
 
@@ -161,6 +161,15 @@ See `references/requirements-management.md` for the state machines.
 leases derive from `max_attempts`. Exhaustion pauses the run; writes are
 rejected, Stop is allowed, and a human can `sancai_decide.py budget-grant` or
 abandon/accept.
+
+## Science routing
+
+Science roles are automatic, not a human checkbox. During H1 the PM runs
+`sancai_science.py detect` and writes `intent.science`. Formula, paper,
+dataset, statistical, numeric, simulation, and experiment signals set
+`required=true`; uncertain detection also defaults to true. The PM then spawns
+`sancai-researcher` and, for numeric claims, `sancai-science-auditor`. G3
+requires a `pass` science audit for every WO when `required=true`.
 
 ## Human touchpoints
 
@@ -272,7 +281,7 @@ wrong, tampered, stale, or already-used pair fails closed.
   and `forbidden`; `init` refuses to overwrite a different non-terminal run
   unless `--takeover` is explicit.
 
-## Physical layout (v0.10.0-rc.6)
+## Physical layout (v0.10.0-rc.7)
 
 **Sancai** (three powers: Heaven, Earth, and Human) means the runtime mirrors
 that: `L3-intent` (human intent), `L2-harness` (execution control), and
@@ -438,7 +447,7 @@ reference set lives in `references/`:
 - `method-playbooks.md` — trigger-gated methods
 
 Versions follow semver. Release candidates use `X.Y.Z-rc.N` (for example
-`0.10.0-rc.6`); `plugin.json`, `marketplace.json`, the tag, and the changelog
+`0.10.0-rc.7`); `plugin.json`, `marketplace.json`, the tag, and the changelog
 must match. Promote to `X.Y.Z` only after H3 acceptance. See
 `references/git-workflow.md`.
 

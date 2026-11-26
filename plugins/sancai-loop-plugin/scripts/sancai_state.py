@@ -31,6 +31,7 @@ import sancai_cards  # type: ignore
 import sancai_control as control  # type: ignore
 import sancai_graph  # type: ignore
 import sancai_requirements as requirements  # type: ignore
+import sancai_science as science  # type: ignore
 
 os.umask(0o077)
 
@@ -140,6 +141,7 @@ def validate_intent(intent, root=None):
     if not isinstance(intent, dict):
         sys.exit("intent must be a JSON object")
     control.budget_of(intent)
+    science.validate_block(intent)
     goal = intent.get("goal")
     if not isinstance(goal, str) or not goal.strip():
         sys.exit("intent.goal must be a non-empty string")
