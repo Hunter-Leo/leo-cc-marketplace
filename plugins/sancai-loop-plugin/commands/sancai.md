@@ -30,6 +30,7 @@ If `$ARGUMENTS` is empty, infer from state:
 no .sancai/active                     → start
 active run + open escalation        → show it, ask to approve
 active run, state=reviewing         → show summary, ask to accept
+active run, state=integrating       → show G0-R status + next action
 active run, state=executing         → status + next action
 active run, state=accepted/abandoned→ status
 ```
@@ -184,6 +185,12 @@ Create `.sancai/runs/<run>/L3-intent/intent.json`:
     "max_changed_files": 20,
     "science_audit_above": 0,
     "require_rollback_plan": true
+  },
+  "integration_policy": {
+    "required": true,
+    "command": "npm test && npm run smoke",
+    "timeout_seconds": 1800,
+    "ignore_globs": [".sancai/**"]
   }
 }
 ```
@@ -195,10 +202,11 @@ requirements. Initialize the run first, then use
 
 Both `test_policy` and `change_policy` are optional, but a run that touches
 golden files, corpora, or stored expected outputs must declare
-`change_policy.protected_globs`. Reports must live under
+`change_policy.protected_globs`. `integration_policy` is optional; when
+required, a passing G0-R run is mandatory before H3. Reports must live under
 `.sancai/runs/<run>/L2-harness/`. See
-`${CLAUDE_PLUGIN_ROOT}/references/expected-change.md` for the full schema and
-the expected-change protocol.
+`${CLAUDE_PLUGIN_ROOT}/references/expected-change.md` and
+`${CLAUDE_PLUGIN_ROOT}/references/integration-gate.md` for the full schemas.
 
 `budget` has only three fields: `max_attempts`, `max_human_rounds`, and
 `deadline_seconds`. When a limit is exhausted the run becomes `paused`; only
@@ -465,6 +473,28 @@ Then:
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_gate.py" --run <run> --wo WO-001 --apply
 ```
 
+When the last WO verifies, the gate moves the run to `integrating` if
+`intent.integration_policy` requires it, otherwise directly to `reviewing`
+(legacy). In `integrating`, run the harness-owned integration gate:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_integration.py" check --run <run>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" transition --to reviewing
+```
+
+If integration fails, the run stays `integrating` and the failure blocks H3.
+Return to execution with a concrete integration Work Order:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" transition --to executing
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_state.py" add-wo --integration \
+  --id WO-INT-001 --files "<exact paths>" --reversible true
+```
+
+`WO-INT-*` goes through claim, executor, G0, and G3 like any other Work Order.
+Do not hand-edit integration evidence. See
+`${CLAUDE_PLUGIN_ROOT}/references/integration-gate.md`.
+
 ### 5. Stop only on the three triggers
 
 Ask the human only when:
@@ -476,7 +506,7 @@ Ask the human only when:
 Everything else (style, naming, normal test failures, reversible refactors) is the executor's job.
 
 If an escalation reveals work that should not enter this run, capture it in the
-project backlog instead of widening scope:
+run-local staged backlog instead of widening scope:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_requirements.py" capture \
@@ -575,8 +605,10 @@ evidence → gate/verifier verdicts → what was intentionally left out
 (non-goals). This is the "show the finished work" diagram; there is no fixed
 format, but every node must trace to a file, command, gate result, or verdict.
 
-Preconditions: run is `reviewing`; all Work Orders `verified` or `merged`;
-every requirement selected in the intent has at least one verified Work Order.
+Preconditions: run is `reviewing`; integration evidence passed (when the policy
+requires it); all Work Orders `verified` or `merged`; every requirement selected
+in the intent has at least one verified Work Order; the planning-time ledger
+baseline is unchanged.
 
 Show only:
 
@@ -600,9 +632,9 @@ python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_decide.py" accept \
   --card-id <CARD-ID> --card-code <CODE>
 ```
 
-The accept card binds the run state, every Work Order state, gate results, and
-the findings hash. If verdicts contain findings, acceptance is refused until
-the human acknowledges them:
+The accept card binds the run state, every Work Order state, gate results, the
+findings hash, and the closeout plan hash. If verdicts contain findings,
+acceptance is refused until the human acknowledges them:
 
 ```bash
   --ack-findings
@@ -615,10 +647,20 @@ Major findings require exactly one disposition in addition:
   --ack-findings --disposition "waive:<reason>"   # accept the risk explicitly
 ```
 
-`defer:<FOLLOWUP-ID>` must be a new, unused id. It captures a `finding` TODO in
-`.sancai/project/backlog.json`
-sourced to `run:<run>/WO:<WO-ID>`. It does **not** create a new Work Order in
-the accepted run; the human promotes it later if it should be planned.
+`defer:<FOLLOWUP-ID>` must be a new, unused id. It stages a `finding` TODO in
+`L2-harness/project-updates.json`, published to
+`.sancai/project/backlog.json` by closeout and sourced to
+`run:<run>/WO:<WO-ID>`. It does **not** create a new Work Order in the accepted
+run; the human promotes it later if it should be planned.
+
+On success, one closeout transaction publishes staged TODOs, upgrades selected
+REQs to `verified`, regenerates the blueprint, and marks the run accepted. If
+the process dies mid-closeout, do not re-run accept; resume the journal:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_closeout.py" status --run <run>
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_closeout.py" resume --run <run>
+```
 
 Blocking (blocker/critical) findings can never be accepted. If the human
 refuses acceptance, do not record an accept: keep the run in `reviewing` and

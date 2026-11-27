@@ -31,6 +31,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 import sancai_cards  # type: ignore
+import sancai_closeout as closeout  # type: ignore
 from sancai_graph import (  # type: ignore
     active_run,
     build_graph,
@@ -373,6 +374,16 @@ def _accept_payload(root, run, graph):
         for n in graph["nodes"] if n.get("type") == "gate"
     }
     findings = _all_findings(root, run)
+    try:
+        with open(paths.run_path(root, run), encoding="utf-8") as f:
+            run_data = json.load(f)
+        with open(paths.intent_path(root, run), encoding="utf-8") as f:
+            intent = json.load(f)
+        effect_sha = closeout.closeout_sha(
+            closeout.base_plan(root, run, run_data, intent)
+        )
+    except (OSError, ValueError, KeyError, closeout.CloseoutError):
+        effect_sha = ""
     return {
         "run": run,
         "state": run_node.get("state") or "reviewing",
@@ -380,6 +391,7 @@ def _accept_payload(root, run, graph):
         "gate_results": gate_results,
         "findings_hash": sancai_cards.findings_hash(findings),
         "findings_count": len(findings),
+        "closeout_sha": effect_sha,
     }
 
 
@@ -421,7 +433,7 @@ FLOW_LANES = (
     ("L3 Intent", "L3", (
         "intent", "assess", "align", "H1 sign", "(H2 approve)", "H3 accept",
     )),
-    ("L2 Harness", "L2", ("add-wo", "claim", "G0", "G3", "gate")),
+    ("L2 Harness", "L2", ("add-wo", "claim", "G0", "G3", "gate", "G0-R")),
     ("L1 Code", "L1", ("executor", "verifier")),
 )
 
@@ -443,6 +455,8 @@ def _flow_active(card):
         return {"L3": "H1 sign"}
     if state == "reviewing":
         return {"L3": "H3 accept"}
+    if state == "integrating":
+        return {"L2": "G0-R"}
     if state == "executing":
         if action == "approve":
             return {"L3": "(H2 approve)"}

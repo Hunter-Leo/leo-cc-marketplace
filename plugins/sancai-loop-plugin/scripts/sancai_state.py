@@ -29,8 +29,10 @@ import sys
 
 import sancai_cards  # type: ignore
 import sancai_change as change  # type: ignore
+import sancai_closeout as closeout  # type: ignore
 import sancai_control as control  # type: ignore
 import sancai_graph  # type: ignore
+import sancai_integration as integration  # type: ignore
 import sancai_requirements as requirements  # type: ignore
 import sancai_science as science  # type: ignore
 
@@ -38,8 +40,9 @@ os.umask(0o077)
 
 RUN_TRANSITIONS = {
     "planning": {"executing", "abandoned"},
-    "executing": {"reviewing", "abandoned"},
-    "reviewing": {"accepted", "abandoned"},
+    "executing": {"integrating", "reviewing", "abandoned"},
+    "integrating": {"executing", "reviewing", "abandoned"},
+    "reviewing": {"accepted", "executing", "abandoned"},
     "accepted": set(),
     "abandoned": set(),
 }
@@ -146,8 +149,9 @@ def validate_intent(intent, root=None, run=None):
     try:
         change.validate_test_policy(intent.get("test_policy"), run)
         change.validate_change_policy(intent.get("change_policy"))
-    except change.ChangeError as exc:
-        sys.exit(f"invalid test/change policy: {exc}")
+        integration.validate_policy(intent.get("integration_policy"), run)
+    except (change.ChangeError, integration.IntegrationError) as exc:
+        sys.exit(f"invalid test/change/integration policy: {exc}")
     refs = intent.get("research_refs")
     if refs is not None:
         if not isinstance(refs, list) or len(refs) > 20:
@@ -549,17 +553,30 @@ def cmd_transition(args):
         sys.exit("use abandon to abandon a run; transition cannot set abandoned")
     if nxt not in RUN_TRANSITIONS.get(cur, set()):
         sys.exit(f"illegal run transition: {cur} -> {nxt}")
+    intent = load(paths.intent_path(root, run, data))
     if nxt == "executing":
-        intent_path = paths.intent_path(root, run, data)
-        intent = load(intent_path)
         validate_intent(intent, root, run)
         require_signed_intent(run, intent)
-        dirty = _dirty_files(root)
-        if dirty:
-            sys.exit(
-                "working tree has uncommitted tracked changes; commit or stash "
-                "before starting the run branch: " + ", ".join(dirty[:5])
-            )
+        if cur in ("integrating", "reviewing"):
+            evidence = integration.load_evidence(root, run)
+            if not evidence or evidence.get("success"):
+                sys.exit(
+                    "returning to executing requires a failed integration attempt; "
+                    "run `sancai_integration.py check` first"
+                )
+        else:
+            dirty = _dirty_files(root)
+            if dirty:
+                sys.exit(
+                    "working tree has uncommitted tracked changes; commit or stash "
+                    "before starting the run branch: " + ", ".join(dirty[:5])
+                )
+            data["project_baseline"] = requirements.record_baseline(root, run)
+    if nxt == "integrating":
+        if cur != "executing":
+            sys.exit("only an executing run can enter integrating")
+        if not integration.required(intent):
+            sys.exit("intent.integration_policy is not required; transition to reviewing")
     if nxt == "reviewing":
         wos = data.get("work_orders", {})
         if not wos:
@@ -574,6 +591,15 @@ def cmd_transition(args):
             gate = load(gate_path)
             if gate.get("result") != "verified":
                 sys.exit(f"gate is not verified for {wid}: {gate.get('result')}")
+        if integration.required(intent):
+            if cur == "executing":
+                sys.exit(
+                    "run integration is required; transition to integrating and "
+                    "run `sancai_integration.py check`"
+                )
+            problems = integration.evidence_problems(root, run, data, intent)
+            if problems:
+                sys.exit("integration evidence is not valid: " + "; ".join(problems))
     data["state"] = nxt
     data["updated_at"] = now()
     save(path, data)
@@ -596,7 +622,15 @@ def cmd_add_wo(args):
     intent = load(paths.intent_path(root, run, data))
     selected = intent.get("requirements") or []
     req = args.req
-    if selected:
+    is_integration = bool(getattr(args, "integration", False))
+    if is_integration:
+        if data.get("state") != "executing":
+            sys.exit("integration work orders are only added while executing")
+        evidence = integration.load_evidence(root, run)
+        if not evidence or evidence.get("success"):
+            sys.exit("integration work orders require a failed integration attempt")
+        req = None
+    elif selected:
         if not req:
             sys.exit(
                 "work order must bind an accepted requirement with --req; "
@@ -609,14 +643,16 @@ def cmd_add_wo(args):
     new_files = validate_owned_files(
         root, [f.strip() for f in args.files.split(",") if f.strip()]
     )
-    for wid, wo in data["work_orders"].items():
-        overlap = set(new_files) & set(wo.get("owned_files", []))
-        if overlap:
-            sys.exit(f"owned_files overlap with {wid}: {sorted(overlap)}; split or serialize")
+    if not is_integration:
+        for wid, wo in data["work_orders"].items():
+            overlap = set(new_files) & set(wo.get("owned_files", []))
+            if overlap:
+                sys.exit(f"owned_files overlap with {wid}: {sorted(overlap)}; split or serialize")
     data["work_orders"][args.id] = {
         "id": args.id,
         "state": "pending",
         "req": req,
+        "kind": "integration" if is_integration else "work",
         "owned_files": new_files,
         "reversible": args.reversible.lower() == "true",
         "blast_radius": args.blast_radius,
@@ -638,6 +674,8 @@ def cmd_claim(args):
     validate_id(args.wo, "work order")
     path, data = load_run(root, run)
     require_nonterminal(data, "claim work in")
+    if data.get("state") != "executing":
+        sys.exit(f"work can only be claimed while executing, run is {data.get('state')}")
     if data.get("claim"):
         sys.exit(f"claim already held: {data['claim']}")
     wo = data["work_orders"].get(args.wo)
@@ -795,6 +833,13 @@ def accept_payload(root, run, data):
         if os.path.isfile(gate_path):
             gate_results[wid] = load(gate_path).get("result")
     findings = _all_findings(root, run)
+    intent = load(paths.intent_path(root, run, data))
+    try:
+        effect_sha = closeout.closeout_sha(
+            closeout.base_plan(root, run, data, intent)
+        )
+    except closeout.CloseoutError:
+        effect_sha = ""
     return {
         "run": run,
         "state": data.get("state") or "reviewing",
@@ -802,6 +847,7 @@ def accept_payload(root, run, data):
         "gate_results": gate_results,
         "findings_hash": sancai_cards.findings_hash(findings),
         "findings_count": len(findings),
+        "closeout_sha": effect_sha,
     }
 
 
@@ -913,96 +959,118 @@ def cmd_accept(args):
         )
     if dispositions and not majors:
         sys.exit("--disposition is only valid when major findings exist")
+    if integration.required(intent):
+        problems = integration.evidence_problems(root, run, data, intent)
+        if problems:
+            sys.exit("integration evidence is not valid: " + "; ".join(problems))
+    drift = requirements.baseline_problems(root, run, data)
+    if drift:
+        sys.exit("project ledger baseline drift: " + "; ".join(drift))
+
+    disposition = dispositions[0] if majors else None
+    try:
+        plan = closeout.build_plan(root, run, data, intent, disposition, args.message)
+    except closeout.CloseoutError as exc:
+        sys.exit(str(exc))
+    if plan.get("effect_sha") != expected.get("closeout_sha"):
+        sys.exit("closeout plan changed after the accept card was issued; regenerate the card")
 
     try:
-        card = sancai_cards.consume_card(root, run, args.card_id, args.card_code, expected)
-    except sancai_cards.CardError as exc:
+        closeout.acquire_lock(root, run)
+    except closeout.CloseoutError as exc:
         sys.exit(str(exc))
-    latency = round(sancai_cards.card_age_seconds(card), 3)
+    try:
+        closeout.write_plan(root, plan)
+        card_path = os.path.join(paths.cards_dir(root, run), args.card_id + ".json")
+        if not os.path.isfile(card_path):
+            sys.exit(f"accept card not found: {args.card_id}")
+        card = load(card_path)
+        problems = sancai_cards.verify_card(card, expected)
+        if problems:
+            sys.exit("card verification failed: " + "; ".join(problems))
+        closeout.advance(
+            root,
+            run,
+            "authorized",
+            plan_sha=plan["plan_sha"],
+            effect_sha=plan["effect_sha"],
+            card_id=card["card_id"],
+            accept_payload_sha=closeout.sha(expected),
+            accept_payload=expected,
+            accept_args={
+                "message": args.message,
+                "session_id": session_id,
+                "disposition": disposition or "",
+            },
+        )
+        try:
+            card = sancai_cards.consume_card(
+                root, run, args.card_id, args.card_code, expected
+            )
+        except sancai_cards.CardError as exc:
+            sys.exit(str(exc))
+        closeout.advance(root, run, "card_consumed", card_id=card["card_id"])
+        latency = round(sancai_cards.card_age_seconds(card), 3)
 
-    disposition_record = None
-    deferred_todo = ""
-    if majors:
-        raw = dispositions[0].strip()
-        if raw.startswith("defer:"):
-            wo_id = raw[len("defer:"):].strip()
-            validate_id(wo_id, "follow-up work order")
-            if wo_id in wos:
-                sys.exit(f"follow-up work order already exists: {wo_id}")
-            finding_text = (
-                majors[0].get("summary")
-                or majors[0].get("message")
-                or "Resolve deferred finding"
-            )
-            title = f"Resolve deferred finding {wo_id}: {finding_text}"
-            item = requirements.capture_todo(
-                root,
-                title,
-                type_="finding",
-                priority="P1",
-                source=f"run:{run}/WO:{wo_id}",
-                relation="related",
-                notes="; ".join(
-                    f"{finding_file(f) or 'unknown'}: {f.get('summary') or f}"
-                    for f in majors
-                ),
-            )
-            deferred_todo = item["id"]
-            disposition_record = {
-                "raw": raw,
-                "kind": "defer",
-                "wo": wo_id,
-                "todo": item["id"],
-                "title": title,
-            }
-        elif raw.startswith("waive:"):
-            reason = raw[len("waive:"):].strip()
-            if not reason:
-                sys.exit("waive requires a non-empty reason")
-            disposition_record = {"raw": raw, "kind": "waive", "reason": reason}
-        else:
-            sys.exit(
-                "unknown disposition; use defer:<FOLLOWUP-ID> or waive:<non-empty reason>"
-            )
+        try:
+            closeout.apply_plan(root, plan)
+        except closeout.CloseoutError as exc:
+            sys.exit(f"closeout apply failed ({exc}); rerun closeout.py resume")
+        closeout.advance(root, run, "project_applied", effect_sha=plan["effect_sha"])
+        dispositions_record = plan.get("dispositions") or []
+        deferred_todo = ""
+        if dispositions_record and dispositions_record[0].get("kind") == "defer":
+            deferred_todo = dispositions_record[0].get("todo", "")
+        captured_todos = [item["id"] for item in plan.get("todos") or []]
+        for item in requirements.todos_for_run(root, run):
+            if item["id"] not in captured_todos and not item.get("staged"):
+                captured_todos.append(item["id"])
 
-    dispositions_record = [disposition_record] if disposition_record else []
-    captured_todos = [item["id"] for item in requirements.todos_for_run(root, run)]
-    data["state"] = "accepted"
-    data["outcome"] = {
-        "accepted_at": now(),
-        "message": args.message,
-        "accepted_in_session": session_id,
-        "card_id": card["card_id"],
-        "latency_seconds": latency,
-        "requirements": coverage,
-        "captured_todos": captured_todos,
-    }
-    data["acceptance"] = {
-        "findings": {
+        data["state"] = "accepted"
+        data["outcome"] = {
+            "accepted_at": now(),
+            "message": args.message,
+            "accepted_in_session": session_id,
+            "card_id": card["card_id"],
+            "latency_seconds": latency,
+            "requirements": coverage,
+            "captured_todos": captured_todos,
+            "integration": plan.get("integration") or {},
+            "closeout_plan_sha": plan["plan_sha"],
+        }
+        data["acceptance"] = {
+            "findings": {
+                "hash": expected["findings_hash"],
+                "count": len(findings),
+                "acknowledged": True,
+                "dispositions": dispositions_record,
+            },
+            "requirements": coverage,
+            "captured_todos": captured_todos,
+            "closeout_plan_sha": plan["plan_sha"],
+        }
+        data["updated_at"] = now()
+        save(path, data)
+        closeout.advance(root, run, "run_accepted", state="accepted")
+        clear_active(root, run)
+        append_event(root, run, "findings_acknowledged", {
             "hash": expected["findings_hash"],
             "count": len(findings),
-            "acknowledged": True,
             "dispositions": dispositions_record,
-        },
-        "requirements": coverage,
-        "captured_todos": captured_todos,
-    }
-    data["updated_at"] = now()
-    save(path, data)
-    clear_active(root, run)
-    append_event(root, run, "findings_acknowledged", {
-        "hash": expected["findings_hash"],
-        "count": len(findings),
-        "dispositions": dispositions_record,
-        "follow_up_wo": "",
-        "deferred_todo": deferred_todo,
-    })
-    append_event(root, run, "outcome_accepted", {
-        "message": args.message,
-        "latency_seconds": latency,
-        "requirements": coverage,
-        "captured_todos": captured_todos,
-    })
+            "follow_up_wo": "",
+            "deferred_todo": deferred_todo,
+            "closeout_plan_sha": plan["plan_sha"],
+        })
+        append_event(root, run, "outcome_accepted", {
+            "message": args.message,
+            "latency_seconds": latency,
+            "requirements": coverage,
+            "captured_todos": captured_todos,
+            "closeout_plan_sha": plan["plan_sha"],
+        })
+        closeout.advance(root, run, "committed", effect_sha=plan["effect_sha"])
+    finally:
+        closeout.release_lock(root, run)
     print(f"outcome accepted: {run}")
 
 
@@ -1065,7 +1133,7 @@ def main():
 
     p = sub.add_parser("transition"); p.add_argument("--run"); p.add_argument("--to", required=True); p.set_defaults(func=cmd_transition)
 
-    p = sub.add_parser("add-wo"); p.add_argument("--run"); p.add_argument("--id", required=True); p.add_argument("--files", required=True); p.add_argument("--req"); p.add_argument("--reversible", default="true"); p.add_argument("--blast-radius", default="low"); p.set_defaults(func=cmd_add_wo)
+    p = sub.add_parser("add-wo"); p.add_argument("--run"); p.add_argument("--id", required=True); p.add_argument("--files", required=True); p.add_argument("--req"); p.add_argument("--integration", action="store_true"); p.add_argument("--reversible", default="true"); p.add_argument("--blast-radius", default="low"); p.set_defaults(func=cmd_add_wo)
 
     p = sub.add_parser("claim"); p.add_argument("--run"); p.add_argument("--wo", required=True); p.add_argument("--by", default="executor"); p.add_argument("--session-id", default=""); p.add_argument("--context-id", default=""); p.set_defaults(func=cmd_claim)
 

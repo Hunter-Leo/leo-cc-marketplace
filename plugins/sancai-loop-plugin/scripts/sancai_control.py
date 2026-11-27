@@ -249,6 +249,52 @@ def _dir_results(directory, names):
     return out
 
 
+def _file_json(path):
+    if not os.path.isfile(path):
+        return None
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, json.JSONDecodeError):
+        return "unreadable"
+
+
+def _integration_sig(root, run):
+    data = _file_json(paths.integration_evidence_path(root, run))
+    if not isinstance(data, dict):
+        return {}
+    return {
+        "success": data.get("success"),
+        "policy_sha": data.get("policy_sha"),
+        "pre_worktree_sha": data.get("pre_worktree_sha"),
+        "post_worktree_sha": data.get("post_worktree_sha"),
+        "exit_code": data.get("exit_code"),
+        "timed_out": data.get("timed_out"),
+        "output_sha": data.get("output_sha"),
+        "report_present": bool(data.get("report_sha")),
+    }
+
+
+def _updates_sig(root, run):
+    data = _file_json(paths.project_updates_path(root, run))
+    if not isinstance(data, dict):
+        return {}
+    return {
+        "todos": sorted(
+            (item.get("stage_id"), item.get("title"), item.get("type"))
+            for item in data.get("todos") or []
+        ),
+        "requirements": sorted(data.get("requirements") or []),
+    }
+
+
+def _closeout_sig(root, run):
+    data = _file_json(paths.closeout_plan_path(root, run))
+    if not isinstance(data, dict):
+        return {}
+    return {"effect_sha": data.get("effect_sha"), "plan_sha": data.get("plan_sha")}
+
+
 def fingerprint(root, run, run_data, intent=None):
     """Hash the facts that would make a retry meaningful."""
     work_orders = run_data.get("work_orders") or {}
@@ -280,6 +326,9 @@ def fingerprint(root, run, run_data, intent=None):
         "open_escalations": _open_escalations(root, run),
         "requirements": (intent or {}).get("requirements") or [],
         "revision": (intent or {}).get("revision"),
+        "integration": _integration_sig(root, run),
+        "project_updates": _updates_sig(root, run),
+        "closeout": _closeout_sig(root, run),
         "last_decision": _last_decision(root, run),
     }
     return "sha256:" + hashlib.sha256(

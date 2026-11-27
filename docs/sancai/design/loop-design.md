@@ -388,6 +388,7 @@ observe 是执行开关，策略状态是门禁等级；两者 AND。
 
 ```text
 G0 Deterministic  build / typecheck / lint / AC / test_policy / coverage
+G0-R Integration  run 级集成：全量/ e2e / smoke；worktree 不变 + 证据绑定
 G1 Semantic       golden / snapshot / property / expected-change（P0 已并入 G0）
 G2 Security       SAST / secret scan / dependency（MVP 可选）
 G3 Verifier       harness 独立上下文：AC 映射 + 负向不变量
@@ -404,13 +405,15 @@ G4 = 人通过 L3 接口做裁决；L2 只负责路由、展示最小证据、�
 规则：
 
 ```text
-1. G0 → G3 顺序执行；任一门失败，原样回灌输出
+1. G0（每个 WO）→ G3（每个 WO）→ G0-R（最后一个 WO 之后）→ G4；任一门失败，原样回灌输出
 2. G4 只看到 G0–G3 无法决定的部分
 3. 不可逆动作只走 G4；策略不能放行不可逆动作
 4. G3 必须在不同 session / prompt / 只读工具面下运行
-5. G0 由 harness 执行，不采信 agent“我跑过了”
-6. 测试失败先分类：代码错 / oracle 错 / 预期变更 / 未知；只有已冻结的 EC 才能把失败算作预期
-7. protected path 的改动没有 EC → `blocked`，不是普通返工
+5. G0 / G0-R 由 harness 执行，不采信 agent“我跑过了”
+6. G0-R 失败必须回到 executing 建 WO-INT-*；不能直接进入 reviewing
+7. 测试失败先分类：代码错 / oracle 错 / 预期变更 / 未知；只有已冻结的 EC 才能把失败算作预期
+8. protected path 的改动没有 EC → `blocked`，不是普通返工
+9. H3 closeout 是项目账本唯一发布点；失败可重放，不重新分配 id
 ```
 
 ---
@@ -847,6 +850,7 @@ Phase 3 · 收敛（持续）
 |---|---|---|---|
 | `initialized` | 意图 | L3 | 确认目标 / AC / 范围 |
 | `executing` | 执行 | L2 / L1 | 通常不参与；H2 / H4 打断 |
+| `integrating` | 集成 | L2 | 通常不参与；失败回 executing |
 | `reviewing` | 验收 | L3 | 接受 / 要求修改 |
 | `accepted` | 已交付 | — | 结束 |
 | `abandoned` | 已终止 | — | 结束 |

@@ -181,9 +181,12 @@ Rules:
 Before accepting a run:
 
 - [ ] All Work Orders are `verified`.
+- [ ] G0-R integration evidence is fresh and passed when `integration_policy` is required.
 - [ ] The gate result is `verified`.
 - [ ] The frozen expected-change manifest still matches the evidence.
+- [ ] The project ledger matches the closeout baseline (when one was recorded).
 - [ ] No open escalation.
 - [ ] No blocker or critical finding.
 - [ ] Open findings have an explicit disposition: `defer`, `waive`, or `ack`.
-- [ ] The acceptance card is bound to the run and the findings hash.
+- [ ] The acceptance card is bound to the run, the findings hash, and `closeout_sha`.
+- [ ] The closeout plan is journaled; project TODOs and requirement statuses publish only after acceptance.

@@ -10,13 +10,18 @@ implement.
 - Intent draft and alignment record, including `test_policy` and
   `change_policy` when the work touches tests, coverage, or protected paths.
 - Work Order decomposition, claim/dispatch, G0/G3 orchestration.
-- H2 escalation proposals and H3 acceptance report.
+- Run integration: `integration_policy`, G0-R result, and `WO-INT-*` rework.
+- H2 escalation proposals and H3 acceptance report, including closeout status.
 - Persisted decisions; nothing important may exist only in PM context.
 
 ## Must not
 
 - Write business code or tests.
-- Write evidence, verdicts, `science-audit.json`, or verifier conclusions.
+- Write evidence, verdicts, `science-audit.json`, integration evidence, or
+  closeout journals.
+- Publish project requirements/backlog/blueprint during a frozen run; captures
+  stage only.
+- Hand-edit or skip the closeout journal after the accept card is consumed.
 - Sign, approve, or accept on behalf of the human.
 - Expand `owned_files` or bypass a gate.
 - Treat a subagent recommendation as a human decision.
@@ -73,6 +78,25 @@ If the verifier finds scientific/numerical claims while
 `intent.science.required=false`, it must return `BLOCKED` so PM re-evaluates.
 If `evidence.science_required=true` (a corpus or large expected change), the PM
 must spawn `sancai-science-auditor` even when the intent detector was quiet.
+
+## Run integration
+
+- PM declares `integration_policy` during H1 when the work needs a run-level
+  check (cross-module behavior, e2e, smoke, migrations).
+- After the last WO verifies, PM runs `sancai_integration.py check`; it never
+  writes integration evidence by hand.
+- On failure, PM transitions to `executing` and opens a `WO-INT-*` with the
+  failing command/log in scope. Integration rework goes through the same
+  executor, G0, and G3 path.
+- Only fresh passing evidence opens `reviewing`.
+
+## H3 closeout
+
+- PM presents closeout contents before asking for acceptance: staged TODOs,
+  REQs that will move to `verified`, integration evidence, and findings.
+- PM does not publish project files. If accept dies mid-closeout, PM runs
+  `sancai_closeout.py status` and `resume`; it does not re-run accept.
+- An abandoned run leaves staged updates run-local.
 
 ## Test governance
 

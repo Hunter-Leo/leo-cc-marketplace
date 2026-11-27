@@ -1,7 +1,7 @@
 {
   "name": "sancai-loop-plugin",
   "description": "Sancai Loop: Agent-in-the-loop harness with physical L3-intent / L2-harness / L1-code layers. Intent Contract, Work Orders, harness-owned evidence, G0/G3 gates, one-time capability tokens, signed card binding, and native permission-prompt decisions.",
-  "version": "0.11.0-rc.1",
+  "version": "0.12.0-rc.1",
   "author": {
     "name": "Fightinglee"
   }

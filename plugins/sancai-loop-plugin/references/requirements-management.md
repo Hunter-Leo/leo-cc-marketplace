@@ -36,14 +36,16 @@ Fields: `id`, `title`, `type` (`bug` / `feature` / `improvement` /
 A REQ has acceptance criteria and can be selected into an intent.
 
 ```text
-proposed ──► accepted ──► in_progress* ──► verified*
+proposed ──► accepted ──► verified
     │            │
     │            ├─────► deferred
     │            └─────► rejected
     └─────► rejected
-
-* reserved for Phase 2; Phase 1 ships proposed / accepted / deferred / rejected
 ```
+
+`verified` is written only by the H3 closeout transaction, after the human
+accepts the run. Closeout upgrades selected `accepted` REQs to `verified` only
+after every selected REQ has verified Work Order coverage.
 
 Fields: `id`, `title`, `status`, `priority`, `source` (the TODO it came from),
 `acceptance[]`, `depends_on[]`, `notes`, `history[]`.
@@ -63,6 +65,21 @@ Items are never deleted; every transition appends to `history`.
 
 The capability table denies agents direct `promote`, `accept`, `defer`, and
 `reject`. An agent that wants one of these must escalate; the human runs it.
+
+### Ledger freeze during a run
+
+The project ledger is authored during H1. From `executing` until the run is
+accepted or abandoned, the ledger is frozen:
+
+- `promote`, `accept`, `defer`, `reject`, and `blueprint` are refused.
+- `capture` does not write the project backlog; it appends to the run-local
+  staging file (`L2-harness/project-updates.json`).
+- `select` only works while `planning` and the intent is unsigned.
+
+Closeout is the single publish point. It applies staged TODOs, upgrades selected
+REQs to `verified`, and regenerates the blueprint after the accept card is
+consumed. A run abandoned before H3 leaves staged updates run-local.
+See `closeout.md`.
 
 ## Run intent snapshot
 
@@ -92,9 +109,9 @@ H3 acceptance walks the snapshot: every selected REQ must have at least one
 | Moment | Action |
 |---|---|
 | H1, human states the goal | If an `accepted` REQ already covers it, `select`. If not, capture a TODO and ask the human to `promote` + `accept`; do not self-promote. If the project has no ledger, legacy intent is allowed. |
-| executing, related discovery | `capture --relation related`; it may become a REQ later. |
-| executing, unrelated discovery | `capture --relation unrelated`; log and continue. Do not touch the current intent. |
-| H3, major finding deferred | `accept --disposition defer:<WO-ID>` captures a `finding` TODO sourced to `run:<run>/WO:<WO-ID>`. It does **not** create a follow-up WO in the accepted run. |
+| executing, related discovery | `capture --relation related`; it stages a run-local TODO and may become a REQ later. |
+| executing, unrelated discovery | `capture --relation unrelated`; stage it and continue. Do not touch the current intent. |
+| H3, major finding deferred | `accept --disposition defer:<WO-ID>` stages a `finding` TODO sourced to `run:<run>/WO:<WO-ID>`. It does **not** create a follow-up WO in the accepted run. |
 | after a run | The human triages the backlog: `promote`, `defer`, or `reject`. |
 
 A TODO never mutates an intent by itself. Only `select` writes the snapshot,
@@ -140,5 +157,5 @@ Entries may be strings or objects with `text` / `expect`, and an optional `id`.
 ## Phase 2 (not implemented)
 
 Change requests while `executing` (re-sign the intent), dependency-aware
-planning, milestones, and a signed triage card. Phase 1 deliberately stops at
-capture + promote + select + coverage.
+planning, milestones, and a signed triage card. Phase 1 stops at
+capture + promote + select + coverage + closeout publication.

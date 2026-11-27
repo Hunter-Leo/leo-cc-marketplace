@@ -20,6 +20,7 @@ usage:
 """
 import argparse
 import datetime
+import hashlib
 import json
 import os
 import re
@@ -148,11 +149,160 @@ def capture_todo(root, title, type_="feature", priority="P2", source="",
 def todos_for_run(root, run):
     _, backlog = load_ledger(root)
     prefix = f"run:{run}"
-    return [
-        item for item in backlog["items"].values()
+    published = [
+        dict(item)
+        for item in backlog["items"].values()
         if str(item.get("source", "")).startswith(prefix)
         and item.get("status") != "promoted"
     ]
+    staged = [
+        {
+            "id": item["stage_id"],
+            "title": item["title"],
+            "type": item["type"],
+            "priority": item["priority"],
+            "status": "staged",
+            "relation": item["relation"],
+            "source": item["source"],
+            "notes": item.get("notes", ""),
+            "staged": True,
+            "created_at": item.get("staged_at", ""),
+        }
+        for item in load_updates(root, run).get("todos", [])
+    ]
+    return published + staged
+
+
+def canonical(value):
+    return json.dumps(value, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
+
+
+def sha(data):
+    if not isinstance(data, str):
+        data = canonical(data)
+    return "sha256:" + hashlib.sha256(data.encode("utf-8")).hexdigest()
+
+
+def active_run(root):
+    """Return the active run with the state recorded in run.json."""
+    active = load(paths.active_path(root), None)
+    if not isinstance(active, dict) or not active.get("run"):
+        return None
+    run = active["run"]
+    data = load(paths.run_path(root, run), None)
+    if not isinstance(data, dict):
+        return dict(active)
+    return {"run": run, "state": data.get("state", active.get("state"))}
+
+
+def ledger_frozen(root):
+    active = active_run(root)
+    return bool(active and active.get("state") in ("executing", "integrating", "reviewing"))
+
+
+def empty_updates(root, run):
+    return {
+        "schema_version": SCHEMA_VERSION,
+        "run": run,
+        "todos": [],
+        "requirements": [],
+        "updated_at": now(),
+    }
+
+
+def load_updates(root, run):
+    data = load(paths.project_updates_path(root, run), None)
+    if not isinstance(data, dict):
+        return empty_updates(root, run)
+    data.setdefault("todos", [])
+    data.setdefault("requirements", [])
+    return data
+
+
+def save_updates(root, run, data):
+    data["updated_at"] = now()
+    save(paths.project_updates_path(root, run), data)
+
+
+def stage_todo(root, run, title, type_="feature", priority="P2", source="",
+               relation="unrelated", notes=""):
+    """Stage a TODO for publication at H3 closeout."""
+    if type_ not in TODO_TYPES:
+        sys.exit(f"unknown TODO type: {type_}")
+    if priority not in PRIORITIES:
+        sys.exit(f"unknown priority: {priority}")
+    if relation not in RELATIONS:
+        sys.exit(f"unknown relation: {relation}")
+    title = str(title or "").strip()
+    if not title:
+        sys.exit("staged TODO title must be non-empty")
+    data = load_updates(root, run)
+    for item in data["todos"]:
+        if (
+            item.get("title") == title
+            and item.get("type") == type_
+            and item.get("source") == source
+        ):
+            return item
+    seq = len(data["todos"]) + 1
+    item = {
+        "stage_id": f"STAGE-{seq:03d}",
+        "title": title,
+        "type": type_,
+        "priority": priority,
+        "relation": relation,
+        "source": source,
+        "notes": notes,
+        "staged_at": now(),
+    }
+    data["todos"].append(item)
+    save_updates(root, run, data)
+    return item
+
+
+def _file_sha(path):
+    if not os.path.isfile(path):
+        return "absent"
+    with open(path, "rb") as f:
+        return "sha256:" + hashlib.sha256(f.read()).hexdigest()
+
+
+def record_baseline(root, run):
+    """Snapshot the project ledger before a run starts mutating code."""
+    data = {
+        "schema_version": SCHEMA_VERSION,
+        "run": run,
+        "requirements_sha": _file_sha(paths.requirements_path(root)),
+        "backlog_sha": _file_sha(paths.backlog_path(root)),
+        "blueprint_sha": _file_sha(paths.blueprint_path(root)),
+        "created_at": now(),
+    }
+    data["baseline_sha"] = sha(
+        {k: v for k, v in data.items() if k not in ("baseline_sha", "created_at")}
+    )
+    save(paths.project_baseline_path(root, run), data)
+    return data
+
+
+def baseline_problems(root, run, run_data):
+    marker = (run_data or {}).get("project_baseline")
+    if not marker:
+        return []
+    problems = []
+    expected = marker.get("baseline_sha")
+    actual = sha(
+        {k: v for k, v in marker.items() if k not in ("baseline_sha", "created_at")}
+    )
+    if expected != actual:
+        problems.append("project_baseline marker hash mismatch")
+    for key, path in (
+        ("requirements_sha", paths.requirements_path(root)),
+        ("backlog_sha", paths.backlog_path(root)),
+        ("blueprint_sha", paths.blueprint_path(root)),
+    ):
+        if marker.get(key) != _file_sha(path):
+            problems.append("project ledger changed during the run: " + key)
+    return problems
 
 
 def _parse_acceptance(raw):
@@ -214,14 +364,23 @@ def cmd_init(args):
 
 def cmd_capture(args):
     root = find_root()
-    item = capture_todo(
-        root, args.title, args.type, args.priority, args.source,
-        args.relation, args.notes,
-    )
+    active = active_run(root)
+    if active and ledger_frozen(root):
+        item = stage_todo(
+            root, active["run"], args.title, args.type, args.priority,
+            args.source, args.relation, args.notes,
+        )
+        label = f"{item['stage_id']}: {item['title']} ({item['relation']}, staged)"
+    else:
+        item = capture_todo(
+            root, args.title, args.type, args.priority, args.source,
+            args.relation, args.notes,
+        )
+        label = f"{item['id']}: {item['title']} ({item['relation']})"
     if args.json:
         print(json.dumps(item, ensure_ascii=False, indent=2))
     else:
-        print(f"captured {item['id']}: {item['title']} ({item['relation']})")
+        print("captured " + label)
 
 
 def cmd_list(args):
@@ -394,9 +553,7 @@ def _counts(items, statuses):
     return out
 
 
-def cmd_blueprint(args):
-    root = find_root()
-    requirements, backlog = load_ledger(root)
+def render_blueprint(requirements, backlog, stamp=None):
     reqs = list(requirements["requirements"].values())
     todos = list(backlog["items"].values())
     req_counts = _counts(reqs, REQ_STATUSES)
@@ -404,7 +561,7 @@ def cmd_blueprint(args):
     lines = [
         "# Requirements Blueprint",
         "",
-        f"Generated: {now()}",
+        f"Generated: {stamp or now()}",
         "",
         "## Summary",
         "",
@@ -444,10 +601,16 @@ def cmd_blueprint(args):
             f"{item.get('source') or '—'} |"
         )
     lines.append("")
+    return "\n".join(lines)
+
+
+def cmd_blueprint(args):
+    root = find_root()
+    requirements, backlog = load_ledger(root)
     out = paths.blueprint_path(root)
     os.makedirs(os.path.dirname(out), mode=0o700, exist_ok=True)
     with open(out, "w", encoding="utf-8") as f:
-        f.write("\n".join(lines))
+        f.write(render_blueprint(requirements, backlog))
     print(out)
 
 
@@ -527,6 +690,15 @@ def main():
     p.set_defaults(func=cmd_status)
 
     args = ap.parse_args()
+    root = find_root()
+    if args.cmd in ("promote", "accept", "defer", "reject", "blueprint") and ledger_frozen(root):
+        sys.exit(
+            "project ledger is frozen while a run is executing/integrating/reviewing; "
+            "capture stages TODOs for H3 closeout"
+        )
+    active = active_run(root)
+    if args.cmd == "init" and active and active.get("state") not in ("accepted", "abandoned"):
+        sys.exit("cannot reinitialize the project ledger while a run is active")
     args.func(args)
 
 

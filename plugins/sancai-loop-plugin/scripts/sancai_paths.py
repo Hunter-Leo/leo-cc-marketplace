@@ -146,6 +146,42 @@ def frozen_expected_change_manifest(root, run, wo):
     return os.path.join(frozen_expected_changes_dir(root, run, wo), "manifest.json")
 
 
+def integration_dir(root, run):
+    return os.path.join(l2_dir(root, run), "integration")
+
+
+def integration_evidence_path(root, run):
+    return os.path.join(integration_dir(root, run), "evidence.json")
+
+
+def integration_attempts_dir(root, run):
+    return os.path.join(integration_dir(root, run), "attempts")
+
+
+def project_baseline_path(root, run):
+    return os.path.join(l2_dir(root, run), "project-baseline.json")
+
+
+def project_updates_path(root, run):
+    return os.path.join(l2_dir(root, run), "project-updates.json")
+
+
+def closeout_dir(root, run):
+    return os.path.join(l2_dir(root, run), "closeout")
+
+
+def closeout_plan_path(root, run):
+    return os.path.join(closeout_dir(root, run), "plan.json")
+
+
+def closeout_journal_path(root, run):
+    return os.path.join(closeout_dir(root, run), "journal.json")
+
+
+def closeout_lock_path(root, run):
+    return os.path.join(closeout_dir(root, run), "lock")
+
+
 def progress_path(root, run):
     return os.path.join(l2_dir(root, run), "progress.md")
 
@@ -180,6 +216,9 @@ def ensure_run_layout(root, run):
         scratch_dir(root, run),
         expected_changes_dir(root, run),
         frozen_expected_changes_dir(root, run),
+        integration_dir(root, run),
+        integration_attempts_dir(root, run),
+        closeout_dir(root, run),
         audit_dir(root, run),
     ):
         os.makedirs(path, mode=0o700, exist_ok=True)

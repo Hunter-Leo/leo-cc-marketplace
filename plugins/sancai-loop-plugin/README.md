@@ -47,6 +47,7 @@ PROJECT LEDGER (spans runs)
                                         ▼
 H1  INTENT (run = planning)
   draft intent (goal / non-goals / AC / owned_files / budget)
+    ├─ [optional] test_policy / change_policy / integration_policy
     ├─ [optional] requirements select ──► requirements[] + revision+1
     ├─ assess ──► ambiguity signals
     ├─ agent reads repo context ──► 2-3 grounded candidates per signal
@@ -77,7 +78,14 @@ L2  WORK ORDER LOOP (run = executing)
                                 ├─ changes_requested ──► executor rework
                                 ├─ blocked ──► H2 / human
                                 └─ verified
-  all WOs verified/merged ──► executing → reviewing
+  all WOs verified/merged
+    ├─ no integration_policy ──► executing → reviewing (legacy)
+    └─ policy required ──► executing → integrating
+
+G0-R RUN INTEGRATION (run = integrating)
+  sancai_integration.py check
+    ├─ fail ──► transition --to executing ──► add-wo --integration WO-INT-…
+    └─ pass ──► transition --to reviewing
 
 H2  ESCALATION (only three triggers)
   irreversible | out_of_scope | spec_ambiguous
@@ -90,21 +98,25 @@ H3  ACCEPTANCE (run = reviewing)
              every selected REQ covered · no open blocking escalation
     └─ accept card ──► human /sancai accept
          ├─ blocker/critical ──► refused
-         ├─ major ──► defer:<FOLLOWUP-ID> (writes backlog TODO) | waive:<reason>
+         ├─ major ──► defer:<FOLLOWUP-ID> (stages a backlog TODO) | waive:<reason>
          └─ minor ──► --ack-findings
-              └─ run = accepted
+              └─ closeout journal ──► project ledger published
+                   └─ run = accepted
 
 ABANDON
-  planning | executing | reviewing ──► abandoned (reason recorded, audited)
+  planning | executing | integrating | reviewing ──► abandoned
+  (staged project updates stay run-local)
 ```
 
 ## State machines
 
 ```text
 Run
-  planning ──► executing ──► reviewing ──► accepted
-      │            │             │
-      └────────────┴─────────────┴──────► abandoned
+  planning ──► executing ──► integrating ──► reviewing ──► accepted
+      │            │  ▲            │              │
+      │            │  └────────────┘ (G0-R failed/WO-INT)
+      │            └──────────────► reviewing (legacy: no integration policy)
+      └────────────┴──────────────┴──────────────┴──────► abandoned
 
 Work Order
   pending ──► in_progress ──► for_review ──► verified ──► merged
@@ -118,7 +130,7 @@ TODO
      └─────► rejected
 
 REQ
-  proposed ──► accepted ──► (in_progress / verified: Phase 2)
+  proposed ──► accepted ──► verified (H3 closeout)
       │           └──────► deferred / rejected
       └──────────────────► rejected
 ```
@@ -131,8 +143,9 @@ REQ
 | WO start | WO binds a selected `REQ-*`; claim recorded | `sancai_state.py add-wo/claim` |
 | G0 | acceptance commands run by harness, evidence hashed | `sancai_check_ac.py` |
 | G3 | verifier independent (context, prompt hash, read-only), evidence matches; science audit passes when required | `sancai_gate.py`, `sancai_verdict.py`, `sancai_science.py` |
-| Reviewing | every WO verified or merged | `sancai_state.py transition` |
-| H3 | all gates passed, requirements covered, findings dispositioned | `sancai_state.py accept` |
+| G0-R | run-level integration command passes on an unchanged worktree, evidence is fresh | `sancai_integration.py`, `sancai_state.py transition` |
+| Reviewing | G0-R passed (or legacy run with no policy); every WO verified or merged | `sancai_state.py transition` |
+| H3 | all gates passed, requirements covered, findings dispositioned, ledger baseline unchanged | `sancai_state.py accept`, `sancai_closeout.py` |
 
 ## Requirements across runs
 
@@ -146,13 +159,37 @@ Requirements live in a project ledger, not in a single run:
 
 A run's `intent.json` snapshots the accepted requirements it covers
 (`requirements[]` + `revision`). Work Orders bind one with `add-wo --req`.
-The agent may capture, list, and select; only the human may promote, accept,
-defer, or reject. Unrelated discoveries are captured in the backlog and never
-widen the current run. H3 acceptance refuses to finish until every selected
-requirement has a verified Work Order, and `defer:<FOLLOWUP-ID>` captures a backlog
-TODO instead of creating a Work Order in an already accepted run.
+The agent may capture, list, and select during H1; only the human may promote,
+accept, defer, or reject. Once execution starts the ledger is frozen: captures
+and H3 deferrals are staged in `L2-harness/project-updates.json`, and the
+project files are published exactly once by the H3 closeout transaction.
+Unrelated discoveries never widen the current run. H3 acceptance refuses to
+finish until every selected requirement has a verified Work Order, the
+planning-time ledger baseline is unchanged, and the closeout journal commits
+(`accepted → verified`, backlog, blueprint) after the accept card is consumed.
+`defer:<FOLLOWUP-ID>` stages a backlog TODO instead of creating a Work Order in
+an already accepted run. A crash mid-closeout is recoverable with
+`sancai_closeout.py resume --run <run>`.
 
-See `references/requirements-management.md` for the state machines.
+See `references/requirements-management.md` and `references/closeout.md` for
+the state machines.
+
+## Run integration (G0-R)
+
+`intent.integration_policy` runs once the last Work Order is verified:
+
+```json
+{"required": true, "command": "npm test && npm run smoke",
+ "timeout_seconds": 1800, "ignore_globs": [".sancai/**"]}
+```
+
+The harness runs the command from the repository root and writes
+`L2-harness/integration/evidence.json`. Success requires exit 0 and an unchanged
+worktree, bound to HEAD, the current Work Order state, the policy hash, and the
+intent revision. Failed attempts are archived. A failure returns the run to
+`executing` for a `WO-INT-*` integration Work Order; only a passing attempt can
+open `reviewing`. Omitting the block keeps the legacy direct
+`executing → reviewing` path. See `references/integration-gate.md`.
 
 ## Loop budget
 

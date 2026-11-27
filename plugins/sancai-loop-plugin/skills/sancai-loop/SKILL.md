@@ -27,10 +27,12 @@ L1 Code     isolated executor: plan → act → verify → repair
 |---|---|---|
 | `intent.json` | Human | goal / AC / risk policy / budget / requirements snapshot / approval |
 | `requirements.json` | Human | project-level accepted `REQ-*` with acceptance criteria |
-| `backlog.json` | Harness (capture) / Human (triage) | raw `TODO-*`, including unrelated discoveries |
+| `backlog.json` | Harness (closeout) / Human (triage) | raw `TODO-*`, including staged discoveries published at H3 |
 | `run.json` + work orders | Harness | state, claim, owned_files, reversible, `req` |
 | `evidence/<wo>.json` | Harness | commands, exit codes, hashes, hidden checks |
 | `verdicts/<wo>.json` | Verifier | independent pass/fail + findings |
+| `L2-harness/integration/evidence.json` | Harness | run-level G0-R result bound to worktree/policy |
+| `L2-harness/closeout/journal.json` | Harness | idempotent H3 project publication |
 
 ## Loop control
 
@@ -48,6 +50,23 @@ run becomes `paused`: writes are rejected, Stop is allowed, and only
 `accept`, `abandon`, or a human-approved `sancai_decide.py budget-grant` can
 continue. `budget-grant` appends to `run.control.grants`; it never edits the
 signed intent.
+
+## Run integration (G0-R)
+
+Per-WO G0 proves each slice; G0-R proves the run still works as a whole. When
+`intent.integration_policy.required` is true, the last verified Work Order moves
+the run to `integrating` instead of `reviewing`.
+
+```text
+sancai_integration.py check --run <run>
+  pass → transition --to reviewing
+  fail → transition --to executing → add-wo --integration --id WO-INT-…
+```
+
+Success requires exit 0 and an unchanged worktree, bound to HEAD, Work Order
+state, policy hash, and intent revision. Failed attempts are archived and can be
+retried; only fresh passing evidence opens H3. A legacy intent without the
+policy keeps `executing → reviewing`. See `references/integration-gate.md`.
 
 ## Requirements span runs
 
@@ -67,9 +86,13 @@ capture TODO ──► human promote ──► REQ (proposed) ──► human ac
 - Only the human may `promote`, `accept`, `defer`, or `reject`; the capability
   table denies these to the agent.
 - A TODO never mutates an intent. Unrelated discoveries stay in the backlog.
+- From `executing` until H3, the project ledger is frozen; captures stage in
+  `L2-harness/project-updates.json`.
 - An intent without `requirements` is legacy: Work Orders need no `--req`.
-- H3 refuses acceptance until every selected REQ has a verified Work Order.
-- H3 `--disposition defer:<FOLLOWUP-ID>` captures a backlog TODO; it does not create
+- H3 refuses acceptance until every selected REQ has a verified Work Order and
+  the closeout transaction publishes staged TODOs and marks those REQs
+  `verified`. A crash mid-closeout resumes with `sancai_closeout.py resume`.
+- H3 `--disposition defer:<FOLLOWUP-ID>` stages a backlog TODO; it does not create
   a Work Order in the accepted run.
 
 ## Commands
@@ -95,6 +118,9 @@ init → intent assess → alignment record → intent card → interactive conf
       → sancai_check_ac.py (AC + tests + coverage + frozen EC manifest)
       → spawn sancai-verifier (fresh context-id) → sancai_verdict.py
       → sancai_gate.py --apply
+      → [last WO] integrating → sancai_integration.py check
+      → [pass] transition reviewing → H3 accept
+      → [fail] transition executing → WO-INT → loop
 ```
 
 `requirements select` is optional; when present, every `add-wo` must bind one

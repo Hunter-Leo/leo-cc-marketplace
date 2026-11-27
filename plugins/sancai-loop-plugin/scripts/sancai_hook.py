@@ -235,6 +235,25 @@ def read_only_status_call(command):
     return False
 
 
+def integrating_bash_call(command):
+    """Only G0-R and the run transition are writable while integrating."""
+    if not command:
+        return False
+    try:
+        tokens = shlex.split(command)
+    except ValueError:
+        return False
+    for i, token in enumerate(tokens):
+        base = os.path.basename(token)
+        rest = [t for t in tokens[i + 1:] if not t.startswith("-")]
+        sub = rest[0] if rest else ""
+        if base == "sancai_integration.py":
+            return sub in ("check", "status")
+        if base == "sancai_state.py":
+            return sub == "transition"
+    return read_only_status_call(command)
+
+
 def paused_reason(run_data):
     ctl = control.control_of(run_data)
     if ctl.get("status") == "paused":
@@ -369,6 +388,27 @@ def main():
                 f"Sancai: subagent {subtype or '<missing>'} is not allowed "
                 f"while state={state}; use a role from the H1/L2 role table"
             )
+
+        if state == "integrating":
+            if tool in ("Task", "Agent"):
+                deny("Sancai: subagents are disabled while the run is integrating")
+            if tool in ("Write", "Edit", "MultiEdit", "NotebookEdit"):
+                deny("Sancai: code writes are disabled while the run is integrating")
+            if tool.startswith("mcp__"):
+                deny("Sancai: external tools are disabled while the run is integrating")
+            if tool == "Bash":
+                decision = decision_call(command)
+                if decision and decision[0] == "abandon":
+                    ask_decision(decision, run)
+                ok, reason = cap_check(root, tool, command, path, run)
+                if not ok:
+                    deny(f"Sancai capability denied: {reason}")
+                if integrating_bash_call(command):
+                    allow()
+                deny(
+                    "Sancai: only integration check/status and run transition are "
+                    "allowed while integrating"
+                )
 
         if state == "executing" and claim:
             if tool == "Bash":

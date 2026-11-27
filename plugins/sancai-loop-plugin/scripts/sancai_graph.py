@@ -21,6 +21,7 @@ import datetime
 import json
 import os
 
+import sancai_integration as integration  # type: ignore
 import sancai_paths as paths  # type: ignore
 import sancai_control as control  # type: ignore  # noqa: E402
 import sancai_requirements as requirements  # type: ignore
@@ -148,6 +149,27 @@ def _attempt_status(wo_state):
     }.get(wo_state, "open")
 
 
+def _integration_summary(root, run, run_data):
+    intent_path = paths.intent_path(root, run)
+    intent = load(intent_path) if os.path.isfile(intent_path) else {}
+    policy = intent.get("integration_policy") if isinstance(intent, dict) else None
+    required = bool(policy and policy.get("required", True))
+    evidence_path = paths.integration_evidence_path(root, run)
+    evidence = load(evidence_path) if os.path.isfile(evidence_path) else None
+    problems = []
+    if required and isinstance(run_data, dict):
+        problems = integration.evidence_problems(root, run, run_data, intent)
+    return {
+        "required": required,
+        "present": isinstance(evidence, dict),
+        "success": bool(isinstance(evidence, dict) and evidence.get("success")),
+        "valid": not problems,
+        "problems": problems,
+        "exit_code": (evidence or {}).get("exit_code") if isinstance(evidence, dict) else None,
+        "evidence_sha": (evidence or {}).get("evidence_sha") if isinstance(evidence, dict) else "",
+    }
+
+
 def build_graph(root, run):
     run_path, run_data = load_run(root, run)
     rd = run_dir(root, run)
@@ -163,6 +185,7 @@ def build_graph(root, run):
         "claim": run_data.get("claim"),
         "session_id": run_data.get("session_id"),
         "control": run_data.get("control") or {},
+        "integration": _integration_summary(root, run, run_data),
         "created_at": run_data.get("created_at"),
         "updated_at": run_data.get("updated_at"),
     })
@@ -502,8 +525,12 @@ def _allowed_for(state, claim):
             "code-write", "accept", "approve", "mint",
         ]
     if state == "reviewing":
-        return ["read", "status", "accept", "findings-ack"], [
+        return ["read", "status", "accept", "findings-ack", "integration-check"], [
             "code-write", "add-wo", "approve", "mint",
+        ]
+    if state == "integrating":
+        return ["read", "status", "integration-check", "transition"], [
+            "code-write", "add-wo", "claim", "accept", "approve", "mint",
         ]
     return ["read", "status", "timeline"], ["all-mutations"]
 
@@ -543,6 +570,21 @@ def next_step(graph):
     elif action == "accept":
         reason = "all work orders are verified; acceptance is a human decision"
         check = f"sancai_card.py accept --run {run}"
+    elif action == "integration":
+        reason = "all work orders are verified; the run integration gate must pass"
+        check = f"sancai_integration.py check --run {run}"
+    elif action == "integration-failed":
+        reason = "run integration failed; add an integration work order or return to executing"
+        if run.get("state") == "reviewing":
+            check = f"sancai_state.py transition --run {run} --to executing"
+        else:
+            check = (
+                f"sancai_state.py add-wo --run {run} --integration --id WO-INT-001 "
+                "--files <paths>"
+            )
+    elif action == "review":
+        reason = "integration passed; move the run to reviewing"
+        check = f"sancai_state.py transition --run {run} --to reviewing"
     elif action == "dispatch" and wo:
         reason = f"{wo} is pending and has no active claim"
         check = f"sancai_state.py claim --wo {wo} --by <executor>"
@@ -586,6 +628,8 @@ def position(graph):
     elif state == "executing":
         stage = "Execution"
         layer = "L3" if blocking else ("L1" if claim else "L2")
+    elif state == "integrating":
+        stage, layer = "Integration", "L2"
     elif state == "reviewing":
         stage, layer = "Acceptance", "L3"
     elif state == "accepted":
@@ -677,7 +721,17 @@ def next_work_order(graph):
     state = run.get("state")
     if state == "planning":
         return {"action": "start", "wo": None}
+    if state == "integrating":
+        integ = run.get("integration") or {}
+        if integ.get("success"):
+            return {"action": "review", "wo": None}
+        return {"action": "integration", "wo": None}
     if state == "reviewing":
+        integ = run.get("integration") or {}
+        if integ.get("required") and not integ.get("valid"):
+            if integ.get("present") and not integ.get("success"):
+                return {"action": "integration-failed", "wo": None}
+            return {"action": "integration", "wo": None}
         return {"action": "accept", "wo": None}
     if state in ("accepted", "abandoned"):
         return {"action": "none", "wo": None}
@@ -696,6 +750,11 @@ def next_work_order(graph):
         if wo.get("state") in ("pending", "changes_requested"):
             return {"action": "dispatch", "wo": wo["id"]}
     if wos and all(w.get("state") in ("verified", "merged") for w in wos):
+        integ = run.get("integration") or {}
+        if integ.get("required"):
+            if integ.get("present") and not integ.get("success"):
+                return {"action": "integration-failed", "wo": None}
+            return {"action": "integration", "wo": None}
         return {"action": "accept", "wo": None}
     return {"action": "none", "wo": None}
 
@@ -898,6 +957,10 @@ def infer_transition(event):
             return "for_review", "in_progress"
     if name == "escalation_raised":
         return "—", "open"
+    if name == "integration_pass":
+        return "integrating", "integrating"
+    if name == "integration_fail":
+        return "integrating", "integrating"
     if name in ("decision_recorded", "human_decision"):
         return "open", "resolved"
     if name == "outcome_accepted":

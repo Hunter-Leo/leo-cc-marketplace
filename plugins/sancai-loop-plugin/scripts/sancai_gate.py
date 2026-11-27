@@ -13,6 +13,7 @@ import os
 import sancai_paths as paths  # type: ignore
 import sancai_change as change  # type: ignore  # noqa: E402
 import sancai_control as control  # type: ignore  # noqa: E402
+import sancai_integration as integration  # type: ignore  # noqa: E402
 import sancai_science as science  # type: ignore  # noqa: E402
 
 import subprocess
@@ -24,7 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
 from sancai_state import (  # type: ignore  # noqa: E402
-    append_event, require_signed_intent, validate_id, validate_intent,
+    append_event, require_signed_intent, validate_id, validate_intent, write_active,
 )
 
 
@@ -344,12 +345,14 @@ def main():
             and run_data["work_orders"]
             and all(w.get("state") in ("verified", "merged") for w in run_data["work_orders"].values())
         ):
-            run_data["state"] = "reviewing"
-            print("run: executing -> reviewing (all work orders verified)")
+            nxt = "integrating" if integration.required(intent) else "reviewing"
+            run_data["state"] = nxt
+            print(f"run: executing -> {nxt} (all work orders verified)")
             append_event(root, args.run, "run_transition", {
                 "from": "executing",
-                "to": "reviewing",
+                "to": nxt,
             })
+            write_active(root, args.run, nxt)
         save(run_path, run_data)
         print(f"applied: {args.wo} -> {wo['state']}")
 
