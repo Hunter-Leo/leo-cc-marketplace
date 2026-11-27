@@ -11,6 +11,7 @@ import json
 import os
 
 import sancai_paths as paths  # type: ignore
+import sancai_change as change  # type: ignore  # noqa: E402
 import sancai_control as control  # type: ignore  # noqa: E402
 import sancai_science as science  # type: ignore  # noqa: E402
 
@@ -22,7 +23,9 @@ os.umask(0o077)
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 
-from sancai_state import append_event, validate_id  # type: ignore  # noqa: E402
+from sancai_state import (  # type: ignore  # noqa: E402
+    append_event, require_signed_intent, validate_id, validate_intent,
+)
 
 
 def now():
@@ -145,21 +148,85 @@ def main():
     if args.wo not in (run_data.get("work_orders") or {}):
         sys.exit(f"unknown work order: {args.wo}")
 
-    # G0: deterministic acceptance checks, harness-owned.
-    proc = subprocess.run(
-        [sys.executable, os.path.join(HERE, "sancai_check_ac.py"), "--run", args.run, "--wo", args.wo],
-        cwd=root, capture_output=True, text=True,
-    )
+    intent_path = paths.intent_path(root, args.run, run_data)
     evidence_path = os.path.join(paths.evidence_dir(root, args.run), f"{args.wo}.json")
+    verifier_path = os.path.join(paths.verdicts_dir(root, args.run), f"{args.wo}.json")
+
+    # G0 preflight: the signed intent and any existing expected-change freeze
+    # must still match before deterministic checks are allowed to run.
+    pre_problems = []
+    intent = load(intent_path) if os.path.isfile(intent_path) else {}
+    if not intent:
+        pre_problems.append("intent is missing")
+    else:
+        try:
+            validate_intent(intent, root, args.run)
+            require_signed_intent(args.run, intent)
+        except SystemExit as exc:
+            pre_problems.append(str(exc))
+        try:
+            frozen_pre = change.check_frozen_manifest(root, args.run, args.wo, require=False)
+        except change.ChangeError as exc:
+            pre_problems.append(f"expected-change policy: {exc}")
+        else:
+            if not frozen_pre["ok"]:
+                pre_problems.append(frozen_pre["reason"] or "expected-change freeze is invalid")
+
+    proc = None
     evidence = load(evidence_path) if os.path.isfile(evidence_path) else None
+    if not pre_problems:
+        proc = subprocess.run(
+            [sys.executable, os.path.join(HERE, "sancai_check_ac.py"), "--run", args.run, "--wo", args.wo],
+            cwd=root, capture_output=True, text=True,
+        )
+        evidence = load(evidence_path) if os.path.isfile(evidence_path) else None
+
+    post_problems = []
+    if not pre_problems:
+        intent = load(intent_path)
+        try:
+            validate_intent(intent, root, args.run)
+            require_signed_intent(args.run, intent)
+        except SystemExit as exc:
+            post_problems.append("intent changed during G0: " + str(exc))
+        try:
+            frozen_post = change.check_frozen_manifest(root, args.run, args.wo, require=True)
+        except change.ChangeError as exc:
+            post_problems.append(f"expected-change policy: {exc}")
+        else:
+            if not frozen_post["ok"]:
+                post_problems.append(frozen_post["reason"] or "expected-change freeze is invalid")
+            elif frozen_post.get("required") and evidence is not None:
+                expected_manifest = "sha256:" + frozen_post["sha"] if frozen_post.get("sha") else None
+                if evidence.get("expected_change_manifest_sha") != expected_manifest:
+                    post_problems.append("evidence expected-change manifest hash drift")
+                post_problems.extend(
+                    change.expected_change_drift(
+                        evidence.get("expected_changes") or [],
+                        frozen_post.get("manifest"),
+                    )
+                )
+        if evidence is None:
+            post_problems.append("G0 evidence is missing")
+        else:
+            integrity = evidence.get("integrity_violations") or []
+            if integrity:
+                post_problems.append(
+                    "expected-change integrity: " + "; ".join(str(item) for item in integrity)
+                )
+    problems = pre_problems + post_problems
 
     # G3: independent verifier verdict.
-    verifier_path = os.path.join(paths.verdicts_dir(root, args.run), f"{args.wo}.json")
     verifier = load(verifier_path) if os.path.isfile(verifier_path) else None
-    problems = validate_verifier(verifier, run_data, evidence)
+    if evidence is None:
+        verifier_problems = ["no G0 evidence for verifier"]
+    else:
+        verifier_problems = validate_verifier(verifier, run_data, evidence)
     if verifier:
-        problems += validate_attestation(root, args.run, args.wo, verifier)
-    intent = load(paths.intent_path(root, args.run, run_data))
+        verifier_problems += validate_attestation(root, args.run, args.wo, verifier)
+    problems += verifier_problems
+
+    intent = load(intent_path) if os.path.isfile(intent_path) else {}
     ctl = control.control_of(run_data)
     budget = control.effective_budget(intent, ctl)
     deadline = control.deadline_reason(ctl, budget)
@@ -174,7 +241,17 @@ def main():
         problems.append(reason)
         append_event(root, args.run, "budget_exhausted", {"reason": reason})
     save(run_path, run_data)
-    science_status = science.audit_status(root, args.run, args.wo, intent)
+
+    science_required = bool(science.required(intent))
+    ec_ids = None
+    if evidence is not None:
+        if evidence.get("science_required"):
+            science_required = True
+        if evidence.get("expected_changes"):
+            ec_ids = [item.get("id") for item in evidence["expected_changes"] if item.get("id")]
+    science_status = science.audit_status(
+        root, args.run, args.wo, intent, required_override=science_required, ec_ids=ec_ids,
+    )
     science_fail = (
         science_status.get("required")
         and science_status.get("verdict") == "fail"
@@ -191,32 +268,31 @@ def main():
             if f.get("severity") in ("blocker", "critical")
         ]
 
-    if evidence and evidence.get("success"):
-        if problems:
-            result = "blocked"
-            reasons = problems
-        elif science_fail:
-            result = "changes_requested"
-            reasons = ["science audit failed"]
-        elif blockers:
-            result = "changes_requested"
-            reasons = [f"blocking findings: {blockers}"]
-        elif verifier is not None and verifier.get("verdict") == "pass":
-            result = "verified"
-            reasons = []
-        else:
-            result = "changes_requested"
-            reasons = ["verifier failed"]
-    else:
+    if problems:
+        result = "blocked"
+        reasons = problems
+    elif not evidence or not evidence.get("success"):
         result = "changes_requested"
         reasons = ["G0 acceptance checks failed"]
+    elif science_fail:
+        result = "changes_requested"
+        reasons = ["science audit failed"]
+    elif blockers:
+        result = "changes_requested"
+        reasons = [f"blocking findings: {blockers}"]
+    elif verifier is not None and verifier.get("verdict") == "pass":
+        result = "verified"
+        reasons = []
+    else:
+        result = "changes_requested"
+        reasons = ["verifier failed"]
 
     gate = {
         "run": args.run,
         "work_order": args.wo,
         "result": result,
         "reasons": reasons,
-        "g0_exit_code": proc.returncode,
+        "g0_exit_code": proc.returncode if proc is not None else None,
         "evidence": os.path.relpath(evidence_path, root) if evidence else None,
         "verifier": os.path.relpath(verifier_path, root) if verifier else None,
         "ts": now(),
@@ -246,6 +322,11 @@ def main():
             )
         if result == "verified" and wo["state"] == "for_review":
             wo["state"] = "verified"
+            if evidence and evidence.get("expected_changes"):
+                wo["expected_change"] = True
+                wo["expected_changes"] = [
+                    item.get("id") for item in evidence["expected_changes"] if item.get("id")
+                ]
         elif result == "changes_requested" and wo["state"] == "for_review":
             wo["state"] = "changes_requested"
         elif result == "blocked":

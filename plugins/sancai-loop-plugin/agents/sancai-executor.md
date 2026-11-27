@@ -30,6 +30,7 @@ instance for the next one.
    - `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/documentation-standard.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/verification-standard.md`
+   - `${CLAUDE_PLUGIN_ROOT}/references/expected-change.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
    - `${CLAUDE_PLUGIN_ROOT}/references/method-playbooks.md`
@@ -48,6 +49,23 @@ read → plan → implement → test → progress update → repeat
 - Run the acceptance commands locally before reporting.
 - Do not write `.sancai/runs/<run>/L2-harness/evidence/` or `verdicts/`; the harness owns them.
 - Do not declare "done". The gate decides.
+
+## Tests and expected changes
+
+- Run `intent.test_policy.command` and its coverage command before reporting.
+- Write tests in the same Work Order. Do not skip, weaken, or stub a test to
+  make G0 pass.
+- If a legitimate behavior, oracle, or corpus change invalidates a historical
+  test, do not silently update the expectation. Submit an expected-change
+  proposal through the harness:
+
+```bash
+python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_change.py" propose   --run <run> --wo <WO-ID> --file <EC.json>
+```
+
+The proposal is a draft under `L1-code/expected-changes/<WO>/`; G0 freezes it
+under L2 and G3 judges it. You cannot approve it yourself. A protected-path
+change without a frozen EC blocks the gate.
 
 ## Progress and escalation
 
@@ -118,6 +136,8 @@ escalation:
 - Declaring done
 - `git push`, merge to main, or any irreversible action
 - Weakening tests to make them pass
+- Editing historical expectations without an expected-change proposal
+- Writing `.sancai/**` directly, including expected-change drafts
 - Hardcoding secrets
 - Silently expanding scope
 

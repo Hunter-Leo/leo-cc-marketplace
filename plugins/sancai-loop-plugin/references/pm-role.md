@@ -7,7 +7,8 @@ implement.
 
 - Problem framing: goal, non-goals, scope.
 - H1 context synthesis and science detection.
-- Intent draft and alignment record.
+- Intent draft and alignment record, including `test_policy` and
+  `change_policy` when the work touches tests, coverage, or protected paths.
 - Work Order decomposition, claim/dispatch, G0/G3 orchestration.
 - H2 escalation proposals and H3 acceptance report.
 - Persisted decisions; nothing important may exist only in PM context.
@@ -19,6 +20,8 @@ implement.
 - Sign, approve, or accept on behalf of the human.
 - Expand `owned_files` or bypass a gate.
 - Treat a subagent recommendation as a human decision.
+- Approve an expected change on the executor's behalf; G3 judges it and H3
+  accepts the new baseline.
 
 ## May delegate
 
@@ -68,6 +71,18 @@ role.
 
 If the verifier finds scientific/numerical claims while
 `intent.science.required=false`, it must return `BLOCKED` so PM re-evaluates.
+If `evidence.science_required=true` (a corpus or large expected change), the PM
+must spawn `sancai-science-auditor` even when the intent detector was quiet.
+
+## Test governance
+
+- PM declares `test_policy` (command, structured report, timeout, coverage) and
+  `change_policy` (protected globs, max changed files, science threshold,
+  rollback) during H1.
+- PM does not decide that a failing test is an expected change. The executor
+  submits an EC draft; G0 classifies failures; G3 judges the EC.
+- PM may reject an EC as out of scope or send it back, but cannot mark it
+  approved. H3 presents the accepted ECs and affected paths to the human.
 
 ## Human boundary
 

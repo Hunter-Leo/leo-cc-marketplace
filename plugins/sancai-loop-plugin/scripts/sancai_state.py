@@ -28,6 +28,7 @@ import re
 import sys
 
 import sancai_cards  # type: ignore
+import sancai_change as change  # type: ignore
 import sancai_control as control  # type: ignore
 import sancai_graph  # type: ignore
 import sancai_requirements as requirements  # type: ignore
@@ -137,11 +138,16 @@ def intent_snapshot(intent):
     return "sha256:" + hashlib.sha256(canonical(clean).encode()).hexdigest()
 
 
-def validate_intent(intent, root=None):
+def validate_intent(intent, root=None, run=None):
     if not isinstance(intent, dict):
         sys.exit("intent must be a JSON object")
     control.budget_of(intent)
     science.validate_block(intent)
+    try:
+        change.validate_test_policy(intent.get("test_policy"), run)
+        change.validate_change_policy(intent.get("change_policy"))
+    except change.ChangeError as exc:
+        sys.exit(f"invalid test/change policy: {exc}")
     refs = intent.get("research_refs")
     if refs is not None:
         if not isinstance(refs, list) or len(refs) > 20:
@@ -187,6 +193,18 @@ def validate_intent(intent, root=None):
             sys.exit(f"requirement {req_id} is {req.get('status')}, not accepted")
         if not req.get("acceptance"):
             sys.exit(f"requirement {req_id} has no acceptance criteria")
+
+
+def require_signed_intent(run, intent):
+    approval = intent.get("approval") or {}
+    if not approval:
+        sys.exit("intent is not signed; run sign first")
+    if approval.get("run_id") != run:
+        sys.exit("approval run_id does not match the run")
+    if approval.get("user_message") not in ALLOWED_APPROVALS:
+        sys.exit("approval user_message is not an accepted confirmation phrase")
+    if approval.get("snapshot") != intent_snapshot(intent):
+        sys.exit("intent changed after approval; re-sign before executing")
 
 
 def require_alignment(intent):
@@ -284,7 +302,7 @@ def cmd_init(args):
                 )
     src = os.path.abspath(args.intent)
     intent = load(src)
-    validate_intent(intent, root)
+    validate_intent(intent, root, args.run)
     rd = paths.run_dir(root, args.run)
     run_path = paths.run_path(root, args.run)
     if os.path.isfile(run_path) and not args.force:
@@ -339,7 +357,7 @@ def cmd_sign(args):
     validate_id(session_id, "session id")
     intent_path = paths.intent_path(root, run, data)
     intent = load(intent_path)
-    validate_intent(intent, root)
+    validate_intent(intent, root, run)
     require_alignment(intent)
     snapshot = intent_snapshot(intent)
     ctl = control.control_of(data)
@@ -405,7 +423,7 @@ def cmd_record_intent(args):
     validate_id(session_id, "session id")
     intent_path = paths.intent_path(root, run, data)
     intent = load(intent_path)
-    validate_intent(intent, root)
+    validate_intent(intent, root, run)
     require_alignment(intent)
     snapshot = intent_snapshot(intent)
     ctl = control.control_of(data)
@@ -534,16 +552,8 @@ def cmd_transition(args):
     if nxt == "executing":
         intent_path = paths.intent_path(root, run, data)
         intent = load(intent_path)
-        validate_intent(intent, root)
-        approval = intent.get("approval") or {}
-        if not approval:
-            sys.exit("intent is not signed; run sign first")
-        if approval.get("run_id") != run:
-            sys.exit("approval run_id does not match the run")
-        if approval.get("user_message") not in ALLOWED_APPROVALS:
-            sys.exit("approval user_message is not an accepted confirmation phrase")
-        if approval.get("snapshot") != intent_snapshot(intent):
-            sys.exit("intent changed after approval; re-sign before executing")
+        validate_intent(intent, root, run)
+        require_signed_intent(run, intent)
         dirty = _dirty_files(root)
         if dirty:
             sys.exit(
@@ -648,6 +658,7 @@ def cmd_claim(args):
             "reason": reason,
         })
         sys.exit(reason)
+    change.reset_freeze(root, run, args.wo)
     data["claim"] = {
         "wo": args.wo,
         "by": args.by,
@@ -869,6 +880,23 @@ def cmd_accept(args):
         ]
         if blockers:
             sys.exit(f"blocking findings remain for {wid}: {blockers}")
+        frozen = change.check_frozen_manifest(root, run, wid, require=True)
+        if not frozen["ok"]:
+            sys.exit(f"expected-change freeze invalid for {wid}: {frozen['reason']}")
+        evidence_path = os.path.join(paths.evidence_dir(root, run), f"{wid}.json")
+        if not os.path.isfile(evidence_path):
+            if frozen.get("required"):
+                sys.exit(f"evidence missing for {wid}; cannot verify expected-change freeze")
+            continue
+        evidence = load(evidence_path)
+        expected_sha = "sha256:" + frozen["sha"] if frozen["sha"] else None
+        if evidence.get("expected_change_manifest_sha") != expected_sha:
+            sys.exit(f"evidence expected-change manifest hash drift for {wid}")
+        drift = change.expected_change_drift(
+            evidence.get("expected_changes") or [], frozen.get("manifest")
+        )
+        if drift:
+            sys.exit(f"evidence expected changes differ from the freeze for {wid}: {drift}")
 
     findings = _all_findings(root, run)
     blocking = [f for f in findings if severity_of(f) in BLOCKING_SEVERITIES]

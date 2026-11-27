@@ -91,7 +91,8 @@ executes the loop automatically:
 init → intent assess → alignment record → intent card → interactive confirm
       → record-intent → requirements select → clean-tree check → git switch -c sancai/<run>
       → transition executing → add-wo --req → claim → spawn sancai-executor
-      → sancai_check_ac.py
+      → sancai_change.py propose (only for a protected-path change)
+      → sancai_check_ac.py (AC + tests + coverage + frozen EC manifest)
       → spawn sancai-verifier (fresh context-id) → sancai_verdict.py
       → sancai_gate.py --apply
 ```
@@ -134,8 +135,9 @@ to the question:
   consequence of each choice.
 - H2 escalation: the proposed operation, its target, the diff or affected
   surface, and the irreversible effect.
-- H3 acceptance: what was implemented, which checks and evidence prove it, and
-  which verdicts are still open.
+- H3 acceptance: what was implemented, which checks and evidence prove it,
+  which expected changes and affected paths the run accepted, and which
+  verdicts are still open.
 
 There is no fixed format. The requirement is that the human can check the thing
 in front of them without opening files; ground every line in the intent, the
@@ -189,7 +191,9 @@ Binding rules:
 ```
 sancai_state.py      run / WO state, claim, progress, accept, abandon
 sancai_requirements.py project REQ/TODO ledger, selection, blueprint
-sancai_check_ac.py   G0: run AC, write harness-owned evidence
+sancai_check_ac.py   G0: run AC/tests/coverage, freeze ECs, write evidence
+sancai_change.py     validate/freeze/classify expected changes (harness CLI)
+sancai_tests.py      run test/coverage commands, parse structured reports
 sancai_capability.py tool capability table, fail-closed check, capability tokens
 sancai_gate.py       combine G0 + G3, write gate verdict
 sancai_verdict.py    verifier writes a structured verdict via Bash
@@ -304,7 +308,8 @@ verify or audit.
 5. `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`
 6. `${CLAUDE_PLUGIN_ROOT}/references/documentation-standard.md`
 7. `${CLAUDE_PLUGIN_ROOT}/references/verification-standard.md`
-8. `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
+8. `${CLAUDE_PLUGIN_ROOT}/references/expected-change.md`
+9. `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
 9. `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
 10. `${CLAUDE_PLUGIN_ROOT}/references/progress-updates.md`
 11. `${CLAUDE_PLUGIN_ROOT}/references/capability-table.md`

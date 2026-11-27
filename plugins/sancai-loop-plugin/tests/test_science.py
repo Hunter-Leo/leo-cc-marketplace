@@ -140,6 +140,32 @@ class ScienceAuditTest(unittest.TestCase):
         self.assertFalse(status["ok"])
         self.assertEqual(status["verdict"], "unverifiable")
 
+    def test_audit_must_cover_frozen_ec_ids(self):
+        audit = {
+            "run": "001", "wo": "WO-001", "verdict": "pass",
+            "expected_changes": ["EC-001"],
+        }
+        path = self.root / ".sancai/runs/001/L2-harness/science-audit/WO-001.json"
+        path.parent.mkdir(parents=True)
+        path.write_text(json.dumps(audit))
+        ok = science.audit_status(
+            self.tmp, "001", "WO-001", self.intent, ec_ids={"EC-001"}
+        )
+        self.assertTrue(ok["ok"])
+        bad = science.audit_status(
+            self.tmp, "001", "WO-001", self.intent, ec_ids={"EC-001", "EC-002"}
+        )
+        self.assertFalse(bad["ok"])
+        self.assertIn("does not cover", bad["reason"])
+
+    def test_required_override_requests_audit_without_intent_signal(self):
+        intent = {"goal": "no science signal", "acceptance": []}
+        status = science.audit_status(
+            self.tmp, "001", "WO-001", intent, required_override=True
+        )
+        self.assertTrue(status["required"])
+        self.assertFalse(status["ok"])
+
     def test_record_audit_cli(self):
         source = self.root / "audit-source.json"
         source.write_text(json.dumps({"verdict": "unverifiable"}))

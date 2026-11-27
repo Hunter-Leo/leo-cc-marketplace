@@ -151,8 +151,9 @@ def audit_path(root, run, wo):
     return os.path.join(paths.science_audit_dir(root, run), f"{wo}.json")
 
 
-def audit_status(root, run, wo, intent):
-    if not required(intent):
+def audit_status(root, run, wo, intent, required_override=None, ec_ids=None):
+    needed = bool(required_override) if required_override is not None else bool(required(intent))
+    if not needed:
         return {"required": False, "ok": True, "verdict": None}
     path = audit_path(root, run, wo)
     if not os.path.isfile(path):
@@ -164,6 +165,13 @@ def audit_status(root, run, wo, intent):
     verdict = audit.get("verdict")
     if verdict not in VERDICTS:
         return {"required": True, "ok": False, "verdict": verdict, "reason": "invalid science audit verdict"}
+    if ec_ids is not None:
+        bound = audit.get("expected_changes") or audit.get("ec_ids") or []
+        if not isinstance(bound, list) or sorted(str(item) for item in bound) != sorted(str(item) for item in ec_ids):
+            return {
+                "required": True, "ok": False, "verdict": verdict,
+                "reason": "science audit does not cover the frozen expected changes",
+            }
     return {"required": True, "ok": verdict == "pass", "verdict": verdict, "reason": ""}
 
 

@@ -8,8 +8,11 @@
 Before submitting a Work Order:
 
 - [ ] Formatter and linter pass.
-- [ ] All tests pass; no regression.
+- [ ] `test_policy.command` passes, or every failure is declared by a frozen
+      expected change. No unclassified failure or stale expectation.
+- [ ] `test_policy.coverage` meets `minimum_core_percent` when enforced.
 - [ ] New behavior has normal, edge, and error tests.
+- [ ] Every changed protected path is covered by an expected-change (EC) draft.
 - [ ] Core logic coverage is at least 80%, or the gap is justified in `design.md`.
 - [ ] Public APIs have type annotations and docstrings.
 - [ ] No secret, token, or environment value is written to evidence.
@@ -23,10 +26,13 @@ edit `evidence/` or `verdicts/`.
 
 The verifier receives only:
 
-- `L2-harness/evidence/<WO>.json`
-- the acceptance criteria from `intent.json`
+- `L2-harness/evidence/<WO>.json`, including `tests`, `coverage`,
+  `protected_changes`, and the frozen `expected_changes` snapshot
+- the acceptance criteria, `science`, `test_policy`, and `change_policy` from
+  `intent.json`
 - the diff
-- the relevant standards (`design-principles`, `data-model`, `comment`, `verification`)
+- the relevant standards (`design-principles`, `data-model`, `comment`,
+  `verification`, `expected-change`)
 
 The verifier must not read the executor's report, narrative, or reasoning.
 
@@ -42,6 +48,23 @@ Checks:
 8. Data model changes have a schema version and migration plan.
 9. OOP/SOLID deviations are documented and justified.
 10. Comments explain why and match the code.
+11. Science routing: a required audit exists and passes; a numeric or
+    statistical claim without routing is a `major` finding.
+12. Test execution: the policy command ran, did not time out, and produced a
+    valid report; no skipped, weakened, or stub tests.
+13. Coverage: the core percentage meets the enforced threshold, or the gap is
+    justified.
+14. Test quality: normal, edge, and error cases; public interfaces; mocks only
+    at system boundaries.
+15. Expected-change traceability: every EC binds a requirement (when selected)
+    and the AC it changes.
+16. Expected-change scope: every protected change is covered, and
+    `affected_cases` matches `applies_to`.
+17. Oracle independence: the new expectation is not merely the current output.
+18. Impact and rollback: `affected_cases` is honest; breaking changes have a
+    migration plan and, when required, a rollback plan.
+19. Corpus/science routing: corpus, label, golden, or statistical changes
+    trigger an audit that covers the EC ids.
 
 Verdict rules:
 
@@ -92,9 +115,28 @@ Do not mock your own classes, modules, or internal collaborators.
 - Test names that describe implementation instead of behavior.
 - Weakening an assertion to make a failing test pass.
 
+## Expected changes
+
+A test failure is not automatically a regression. Classify it:
+
+| Cause | Action |
+|---|---|
+| Code is wrong | Fix the code. |
+| Test oracle is wrong | Fix the test, with proof of the correct oracle. |
+| Behavior intentionally changed | Submit `sancai_change.py propose` with an EC. |
+| Corpus/labels intentionally changed | Submit a `corpus_rebaseline` EC and a science audit. |
+| Unknown | Block and escalate; do not update the expectation. |
+
+`intent.change_policy` declares `protected_globs`, `max_changed_files`,
+`expected_change_allowed`, `science_audit_above`, `baseline_id`, and
+`require_rollback_plan`. G0 freezes EC drafts before running tests. G3 rejects
+any live EC that differs from the frozen manifest. H3 accepts the new baseline.
+
+Never use "test failed → update the expected value → pass" as a workflow.
+
 ## Evidence format
 
-Every evidence record includes:
+Every evidence record includes the legacy fields:
 
 ```json
 {
@@ -119,6 +161,12 @@ Rules:
 - Normalize nondeterministic output (test duration, temp paths) before hashing.
 - `diff_sha` covers the exact diff that was verified.
 - Evidence is immutable after collection.
+- `test_policy` adds `tests` and `coverage`; `change_policy` adds
+  `changed_files`, `protected_changes`, `integrity_violations`,
+  `expected_changes`, `expected_change_manifest_sha`, `regressions`, and
+  `science_required`.
+- New keys appear only when the corresponding policy exists; a legacy intent
+  produces byte-identical evidence and `evidence_sha`.
 
 ## Verifier independence
 
@@ -134,6 +182,7 @@ Before accepting a run:
 
 - [ ] All Work Orders are `verified`.
 - [ ] The gate result is `verified`.
+- [ ] The frozen expected-change manifest still matches the evidence.
 - [ ] No open escalation.
 - [ ] No blocker or critical finding.
 - [ ] Open findings have an explicit disposition: `defer`, `waive`, or `ack`.

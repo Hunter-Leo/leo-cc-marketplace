@@ -387,8 +387,8 @@ observe 是执行开关，策略状态是门禁等级；两者 AND。
 ## 7. 门禁 G0–G4
 
 ```text
-G0 Deterministic  build / typecheck / lint / unit / integration
-G1 Semantic       contract / golden / snapshot / property（MVP 可选）
+G0 Deterministic  build / typecheck / lint / AC / test_policy / coverage
+G1 Semantic       golden / snapshot / property / expected-change（P0 已并入 G0）
 G2 Security       SAST / secret scan / dependency（MVP 可选）
 G3 Verifier       harness 独立上下文：AC 映射 + 负向不变量
 G4 Human          L3 的裁决接口（不是 L2 的一个门）
@@ -409,6 +409,8 @@ G4 = 人通过 L3 接口做裁决；L2 只负责路由、展示最小证据、�
 3. 不可逆动作只走 G4；策略不能放行不可逆动作
 4. G3 必须在不同 session / prompt / 只读工具面下运行
 5. G0 由 harness 执行，不采信 agent“我跑过了”
+6. 测试失败先分类：代码错 / oracle 错 / 预期变更 / 未知；只有已冻结的 EC 才能把失败算作预期
+7. protected path 的改动没有 EC → `blocked`，不是普通返工
 ```
 
 ---

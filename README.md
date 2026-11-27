@@ -43,7 +43,7 @@ Requires Agent Teams in an interactive Claude Code session (`CLAUDE_CODE_EXPERIM
 
 ### sancai-loop-plugin
 
-Agent-in-the-loop harness. Three layers: **L3 Human Intent → L2 Harness Work Orders/Gates → L1 isolated executor**. Evidence is harness-owned; irreversible actions require a one-time human capability token. The MVP is single-repository, single-writer, serial — **no worktree required**.
+Agent-in-the-loop harness. Three layers: **L3 Human Intent → L2 Harness Work Orders/Gates → L1 isolated executor**. Evidence is harness-owned; irreversible actions require a one-time human capability token. Test governance adds structured test/coverage reports and an explicit expected-change protocol: protected-path changes need a frozen EC, not a silently edited golden file. The MVP is single-repository, single-writer, serial — **no worktree required**.
 
 | Component | Usage | Description |
 |-----------|-------|-------------|
@@ -53,7 +53,7 @@ Agent-in-the-loop harness. Three layers: **L3 Human Intent → L2 Harness Work O
 | `/sancai status` | `/sancai status` | Read-only run state, Work Orders, claim, gates |
 | `/sancai abandon` | `/sancai abandon <reason>` | Abandon the run with an audit record |
 
-`run` and `check` are internal: after H1 the PM agent executes add-wo → claim → executor → G0 → G3 → gate automatically, stopping only on the three escalation types (`out_of_scope`, `spec_ambiguous`, `irreversible`) plus H3 acceptance. Two subagents only: `sancai-executor` (L1, writes code) and `sancai-verifier` (L2/G3, read-only judgment). The plugin is **not a sandbox**; pair it with OS-level isolation for untrusted work. See the [first-principles design](docs/sancai/design/first-principles-design.md), [AITL design](docs/sancai/design/loop-design.md), [human-side fool-proofing](docs/leo-team/design/human-side-foolproofing-design.md), and [Phase -1 eval plan](docs/sancai/eval/phase-minus-1-eval.md).
+`run` and `check` are internal: after H1 the PM agent executes add-wo → claim → executor → G0 → G3 → gate automatically, stopping only on the three escalation types (`out_of_scope`, `spec_ambiguous`, `irreversible`) plus H3 acceptance. Roles: `sancai-explorer` / `sancai-design-critic` / `sancai-researcher` during H1, `sancai-executor` (L1), `sancai-verifier` and `sancai-science-auditor` (fresh L2/G3 judgment). The plugin is **not a sandbox**; pair it with OS-level isolation for untrusted work. See the [first-principles design](docs/sancai/design/first-principles-design.md), [AITL design](docs/sancai/design/loop-design.md), [test-governance design](docs/sancai/design/test-governance-design.md), [human-side fool-proofing](docs/leo-team/design/human-side-foolproofing-design.md), and [Phase -1 eval plan](docs/sancai/eval/phase-minus-1-eval.md).
 
 ## Local Development
 

@@ -132,6 +132,20 @@ def scratch_dir(root, run):
     return os.path.join(l1_dir(root, run), "scratch")
 
 
+def expected_changes_dir(root, run, wo=None):
+    base = os.path.join(l1_dir(root, run), "expected-changes")
+    return os.path.join(base, wo) if wo else base
+
+
+def frozen_expected_changes_dir(root, run, wo=None):
+    base = os.path.join(l2_dir(root, run), "expected-changes")
+    return os.path.join(base, wo) if wo else base
+
+
+def frozen_expected_change_manifest(root, run, wo):
+    return os.path.join(frozen_expected_changes_dir(root, run, wo), "manifest.json")
+
+
 def progress_path(root, run):
     return os.path.join(l2_dir(root, run), "progress.md")
 
@@ -164,6 +178,8 @@ def ensure_run_layout(root, run):
         l1_dir(root, run),
         attempts_dir(root, run),
         scratch_dir(root, run),
+        expected_changes_dir(root, run),
+        frozen_expected_changes_dir(root, run),
         audit_dir(root, run),
     ):
         os.makedirs(path, mode=0o700, exist_ok=True)

@@ -165,7 +165,26 @@ Create `.sancai/runs/<run>/L3-intent/intent.json`:
   ],
   "manual_ac_ratio": 0.0,
   "risk_policy_ref": "policy/risk@1",
-  "budget": {"max_attempts": 10, "max_human_rounds": 6, "deadline_seconds": 172800}
+  "budget": {"max_attempts": 10, "max_human_rounds": 6, "deadline_seconds": 172800},
+  "test_policy": {
+    "command": "python3 tools/run_tests.py --report .sancai/runs/<run>/L2-harness/test-report.json",
+    "report": ".sancai/runs/<run>/L2-harness/test-report.json",
+    "timeout_seconds": 1800,
+    "coverage": {
+      "command": "python3 tools/run_coverage.py --report .sancai/runs/<run>/L2-harness/coverage.json",
+      "report": ".sancai/runs/<run>/L2-harness/coverage.json",
+      "core_globs": ["src/core/**"],
+      "minimum_core_percent": 80,
+      "enforce": true
+    }
+  },
+  "change_policy": {
+    "expected_change_allowed": true,
+    "protected_globs": ["tests/golden/**", "corpus/**"],
+    "max_changed_files": 20,
+    "science_audit_above": 0,
+    "require_rollback_plan": true
+  }
 }
 ```
 
@@ -173,6 +192,13 @@ Do not hand-write `requirements` here unless the project ledger already contains
 those accepted REQs. A new project has no `REQ-001`; `init` rejects unknown
 requirements. Initialize the run first, then use
 `sancai_requirements.py select` in step 2 to snapshot accepted requirements.
+
+Both `test_policy` and `change_policy` are optional, but a run that touches
+golden files, corpora, or stored expected outputs must declare
+`change_policy.protected_globs`. Reports must live under
+`.sancai/runs/<run>/L2-harness/`. See
+`${CLAUDE_PLUGIN_ROOT}/references/expected-change.md` for the full schema and
+the expected-change protocol.
 
 `budget` has only three fields: `max_attempts`, `max_human_rounds`, and
 `deadline_seconds`. When a limit is exhausted the run becomes `paused`; only
@@ -390,15 +416,25 @@ Then spawn **`sancai-executor`** with:
 - `${CLAUDE_PLUGIN_ROOT}/references/comment-standard.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/data-model-standard.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/verification-standard.md`
+- `${CLAUDE_PLUGIN_ROOT}/references/expected-change.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/execution-discipline.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/git-workflow.md`
 - `${CLAUDE_PLUGIN_ROOT}/references/progress-updates.md`
+
+If the Work Order intentionally changes a protected path, the executor submits
+an EC draft through `sancai_change.py propose`. Do not let it edit the draft
+after the first G0 run: G0 freezes the draft under L2 and G3 rejects drift.
 
 After the executor reports:
 
 ```bash
 python3 "${CLAUDE_PLUGIN_ROOT}/scripts/sancai_check_ac.py" --run <run> --wo WO-001
 ```
+
+G0 now runs `test_policy.command` and coverage separately, classifies declared
+failures, and freezes the EC manifest. Inspect `tests`, `coverage`,
+`integrity_violations`, `expected_changes`, and `regressions` in the evidence
+before preparing the verifier.
 
 Before spawning the verifier, prepare a one-time token bound to this Work Order's
 current evidence. This is a human-approved native prompt:
@@ -415,11 +451,13 @@ reading the token directory does not reveal the secret. Without a token,
 
 Then spawn **`sancai-verifier`** as a fresh one-shot `Task`/`Agent` with the raw evidence + AC + diff (never the executor's narrative, and never a session that saw earlier work). The verifier writes its verdict through `sancai_verdict.py` with a fresh `--context-id` (different from the executor and its claim) and a `--prompt-hash`; a pass verdict carrying a blocker/critical finding is rejected.
 
-If `intent.science.required` is true, spawn `sancai-science-auditor` as another
+If `intent.science.required` or `evidence.science_required` is true, spawn
+`sancai-science-auditor` as another
 fresh one-shot instance and record its audit through
 `sancai_science.py record-audit`. The gate requires a
 `pass` audit for every Work Order; `fail` sends the WO back, and
-`unverifiable`/missing blocks it.
+`unverifiable`/missing blocks it. When ECs exist, the audit must list their ids
+so the gate can verify coverage.
 
 Then:
 

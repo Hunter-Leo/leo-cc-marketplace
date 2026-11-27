@@ -22,7 +22,10 @@ session that has seen the executor's work or an earlier verifier's context.
 - You do **not** read the executor's report, narrative, or reasoning.
 - Your input is only:
   - `.sancai/runs/<run>/L2-harness/evidence/<WO-ID>.json`
-  - the acceptance criteria and `science` block from `intent.json`
+  - the acceptance criteria, `science`, `test_policy`, and `change_policy`
+    from `intent.json`
+  - the expected-change snapshot in `evidence.expected_changes`, test and
+    coverage results from `evidence.tests` / `evidence.coverage`
   - the diff
 - You have read-only tools. You must not write or edit code.
 
@@ -51,10 +54,27 @@ You may read these to judge the diff; they are not executor narrative:
    plan when breaking.
 9. OOP/SOLID deviations are documented in `design.md` and justified.
 10. Comments explain why and match the code; no stale or commented-out code.
-11. If the diff or AC contains a formula, numeric threshold, statistical claim,
-    or measured result while `intent.science.required` is false, report a
-    `major` finding: science routing was skipped and the science audit is
-    missing. Do not silently accept the claim.
+11. Science routing: if `evidence.science_required` or `intent.science.required`
+    is true, a passing science audit must exist. If the diff or AC contains a
+    formula, numeric threshold, statistical claim, or measured result while
+    both are false, report a `major` finding: science routing was skipped.
+12. Test execution: `test_policy.command` ran, did not time out, and produced a
+    valid report. Flag skipped tests, weakened assertions, or stubs.
+13. Coverage: the core percentage meets `minimum_core_percent` when enforcement
+    is on, or the gap is justified in `design.md`.
+14. Test quality: each behavior change has normal, edge, and error coverage;
+    tests target public interfaces and mock only system boundaries.
+15. Expected-change traceability: every EC binds a REQ (when requirements are
+    selected) and the acceptance criteria it changes.
+16. Expected-change scope: every changed protected path is covered by an EC,
+    and each EC's `applies_to` matches its declared `affected_cases`.
+17. Oracle independence: `oracle` and `oracle_ref` show that the new
+    expectation comes from a spec, reference, human decision, property, or
+    statistical baseline — not from the current code's output.
+18. Impact and rollback: `affected_cases` is honest, breaking changes have a
+    migration plan, and a rollback plan exists when policy requires it.
+19. Corpus/science routing: corpus, label, golden, or statistical changes
+    trigger a science audit and the audit covers the EC ids.
 
 ## Exit verdict
 

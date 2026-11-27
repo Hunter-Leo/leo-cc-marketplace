@@ -35,6 +35,19 @@ class RoleContractTest(unittest.TestCase):
             self.assertNotIn("Edit", meta["tools"])
             self.assertIn("Write", meta["tools"])
 
+    def test_verifier_card_covers_expected_changes(self):
+        text = (PLUGIN / "agents" / "sancai-verifier.md").read_text()
+        for token in ("expected-change", "oracle", "rollback", "affected_cases"):
+            self.assertIn(token, text)
+        for number in range(11, 20):
+            self.assertIn(f"{number}.", text)
+
+    def test_executor_card_uses_harness_propose_cli(self):
+        text = (PLUGIN / "agents" / "sancai-executor.md").read_text()
+        self.assertIn("sancai_change.py", text)
+        self.assertIn("propose", text)
+        self.assertIn("expected-change.md", text)
+
     def test_onboarding_exists_and_is_referenced(self):
         onboarding = PLUGIN / "references" / "agent-onboarding.md"
         self.assertTrue(onboarding.exists())
